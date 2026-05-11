@@ -1,4 +1,4 @@
-module tp-lavado-dinero
+module github.com/zaspeh/tp-lavado-dinero
 
 go 1.26.1
 
