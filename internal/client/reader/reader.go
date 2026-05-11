@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"tp-lavado-dinero/common/external/protocol"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
 )
 
 const (

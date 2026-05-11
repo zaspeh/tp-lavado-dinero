@@ -3,7 +3,7 @@ package serializer
 import (
 	"errors"
 
-	"tp-lavado-dinero/common/external/protocol"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
 )
 
 func SerializeTransaction(tx *protocol.Transaction) ([]byte, error) {

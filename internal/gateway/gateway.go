@@ -8,13 +8,14 @@ import (
 	"sync/atomic"
 	"syscall"
 
-	"tp-lavado-dinero/gateway/clientregistry"
+	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/clientregistry"
 
-	m "tp-lavado-dinero/common/middleware"
+	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 
-	"tp-lavado-dinero/common/external"
-	"tp-lavado-dinero/common/external/protocol"
-	"tp-lavado-dinero/common/external/serializer"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
+
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
 )
 
 type GatewayConfig struct {

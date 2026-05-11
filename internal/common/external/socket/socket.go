@@ -3,7 +3,7 @@ package socket
 import (
 	"io"
 
-	"tp-lavado-dinero/common/external/serializer"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 )
 
 func Write(writer io.Writer, data []byte) error {

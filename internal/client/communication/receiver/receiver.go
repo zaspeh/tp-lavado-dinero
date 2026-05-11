@@ -6,9 +6,9 @@ import (
 
 	"net"
 
-	"tp-lavado-dinero/common/external"
-	"tp-lavado-dinero/common/external/protocol"
-	"tp-lavado-dinero/common/external/serializer"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 )
 
 func ReceiveResults(

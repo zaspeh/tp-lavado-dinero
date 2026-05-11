@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"syscall"
 
-	"tp-lavado-dinero/client/communication/receiver"
-	"tp-lavado-dinero/client/communication/sender"
-	"tp-lavado-dinero/client/reader"
-	"tp-lavado-dinero/common/external/protocol"
+	"github.com/zaspeh/tp-lavado-dinero/internal/client/communication/receiver"
+	"github.com/zaspeh/tp-lavado-dinero/internal/client/communication/sender"
+	"github.com/zaspeh/tp-lavado-dinero/internal/client/reader"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
 )
 
 type ClientConfig struct {

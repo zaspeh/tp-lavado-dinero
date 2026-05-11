@@ -1,7 +1,7 @@
 package serializer
 
 import (
-	"tp-lavado-dinero/common/external/protocol"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
 )
 
 func SerializeEOF(eof *protocol.EOF) ([]byte, error) {

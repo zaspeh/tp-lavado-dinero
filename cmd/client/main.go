@@ -9,25 +9,25 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/client"
 )
 
-func loadConfig() (client.Config, error) {
+func loadConfig() (client.ClientConfig, error) {
 	serverHost := os.Getenv("SERVER_HOST")
 	if serverHost == "" {
-		return client.Config{}, errors.New("SERVER_HOST is required")
+		return client.ClientConfig{}, errors.New("SERVER_HOST is required")
 	}
 
 	serverPort := os.Getenv("SERVER_PORT")
 	if serverPort == "" {
-		return client.Config{}, errors.New("SERVER_PORT is required")
+		return client.ClientConfig{}, errors.New("SERVER_PORT is required")
 	}
 
 	inputFile := os.Getenv("INPUT_FILE")
 	if inputFile == "" {
-		return client.Config{}, errors.New("INPUT_FILE is required")
+		return client.ClientConfig{}, errors.New("INPUT_FILE is required")
 	}
 
 	outputDir := os.Getenv("OUTPUT_DIR")
 	if outputDir == "" {
-		return client.Config{}, errors.New("OUTPUT_DIR is required")
+		return client.ClientConfig{}, errors.New("OUTPUT_DIR is required")
 	}
 
 	clientID := os.Getenv("CLIENT_ID")
@@ -35,7 +35,7 @@ func loadConfig() (client.Config, error) {
 		clientID = "client-default"
 	}
 
-	return client.Config{
+	return client.ClientConfig{
 		ServerHost: serverHost,
 		ServerPort: serverPort,
 		InputFile:  inputFile,
