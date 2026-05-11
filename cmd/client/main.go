@@ -6,8 +6,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-
-	"tp-lavado-dinero/client"
+	"github.com/zaspeh/tp-lavado-dinero/internal/client"
 )
 
 func loadConfig() (client.Config, error) {

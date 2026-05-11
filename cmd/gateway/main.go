@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"tp-lavado-dinero/gateway/gateway"
+	"github.com/zaspeh/tp-lavado-dinero/internal/gateway"
 )
 
 func loadConfig() (gateway.GatewayConfig, error) {
