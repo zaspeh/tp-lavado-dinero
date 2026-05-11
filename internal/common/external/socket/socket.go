@@ -1,65 +1,42 @@
 package socket
 
 import (
-	"io"
-
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
+	"net"
 )
 
-func Write(writer io.Writer, data []byte) error {
-	size := serializer.SerializeUint32(uint32(len(data)))
-
-	if err := WriteAll(writer, size); err != nil {
-		return err
-	}
-
-	return WriteAll(writer, data)
+type Socket struct {
+	conn net.Conn
 }
 
-func Read(reader io.Reader) ([]byte, error) {
-	sizeBytes, err := ReadAll(reader, serializer.UINT32_SIZE)
-	if err != nil {
-		return nil, err
-	}
-
-	size := serializer.DeserializeUint32(sizeBytes)
-
-	data, err := ReadAll(reader, int(size))
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
+func New(conn net.Conn) *Socket {
+	return &Socket{conn: conn}
 }
 
-func ReadAll(reader io.Reader, size int) ([]byte, error) {
-	data := make([]byte, size)
-
-	total := 0
-
-	for total < size {
-		n, err := reader.Read(data[total:])
-		if err != nil {
-			return nil, err
-		}
-
-		total += n
-	}
-
-	return data, nil
-}
-
-func WriteAll(writer io.Writer, data []byte) error {
-	total := 0
-
-	for total < len(data) {
-		n, err := writer.Write(data[total:])
+func (s *Socket) WriteAll(data []byte) error {
+	totalSent := 0
+	for totalSent < len(data) {
+		sended, err := s.conn.Write(data[totalSent:])
 		if err != nil {
 			return err
 		}
-
-		total += n
+		totalSent += sended
 	}
-
 	return nil
+}
+
+func (s *Socket) ReadAll(amountToRead int) ([]byte, error) {
+	buffer := make([]byte, amountToRead)
+	total_received := 0
+	for total_received < amountToRead {
+		received, err := s.conn.Read(buffer[total_received:])
+		if err != nil {
+			return nil, err
+		}
+		total_received += received
+	}
+	return buffer, nil
+}
+
+func (s *Socket) Close() error {
+	return s.conn.Close()
 }
