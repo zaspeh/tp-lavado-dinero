@@ -1,17 +1,19 @@
 package client
 
 import (
-	"fmt"
+	"bufio"
+	"log/slog"
+	"math"
 	"net"
 	"os"
 	"os/signal"
 	"sync/atomic"
 	"syscall"
+	"time"
 
-	"github.com/zaspeh/tp-lavado-dinero/internal/client/communication/receiver"
-	"github.com/zaspeh/tp-lavado-dinero/internal/client/communication/sender"
-	"github.com/zaspeh/tp-lavado-dinero/internal/client/reader"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 )
 
 type ClientConfig struct {
@@ -28,76 +30,92 @@ type ClientConfig struct {
 }
 
 type Client struct {
-	config  ClientConfig
-	conn    net.Conn
-	running atomic.Bool
+	config   ClientConfig
+	running  atomic.Bool
+	protocol *external.ExternalProtocol
 }
 
-func New(config ClientConfig) (*Client, error) {
-	address := fmt.Sprintf(
-		"%s:%s",
-		config.ServerHost,
-		config.ServerPort,
-	)
+func connectWithRetry(host string, port string) (*socket.Socket, error) {
+	address := host + ":" + port
+	maxAttemps := 3
+	var err error
+	for i := range maxAttemps {
+		conn, err_aux := net.Dial("tcp", address)
+		if err_aux == nil {
+			return socket.New(conn), nil
+		}
+		err = err_aux
 
-	conn, err := net.Dial("tcp", address)
+		// Exponential backoff strategy for reconnection attempts
+		waitTime := time.Duration(math.Pow(2, float64(i))) * time.Second
+		time.Sleep(waitTime)
+	}
+	return nil, err
+}
+func New(config ClientConfig) (*Client, error) {
+	socket, err := connectWithRetry(config.ServerHost, config.ServerPort)
 	if err != nil {
 		return nil, err
 	}
 
 	client := &Client{
-		config: config,
-		conn:   conn,
+		config:   config,
+		protocol: external.New(socket),
 	}
 
 	client.running.Store(true)
-
 	return client, nil
 }
 
 func (c *Client) Run() error {
-	defer c.conn.Close()
-
+	defer c.protocol.Close()
 	go c.handleSignals()
 
-	err := reader.ReadTransactions( // leo las transacciones desde el reader
-		c.config.InputFile,
-		func(tx *protocol.Transaction) error { // por cada tx que leo, la envío en el sender
-			return sender.SendTransaction(
-				c.conn,
-				c.config.JobID,
-				c.config.ClientID,
-				tx,
-			)
-		},
-	)
-
+	err := c.processTransactions()
 	if err != nil {
-		if c.running.Load() {
-			return err
-		}
-		return nil
+		return err
 	}
 
-	if err := sender.SendEOF( // una vez enviadas todas las tx envio el EOF desde el sender
-		c.conn,
-		c.config.JobID,
-		c.config.ClientID,
-	); err != nil {
-		if c.running.Load() {
+	//TODO: missing receive results
+	return nil
+}
+
+func (c *Client) processTransactions() error {
+	file, err := os.Open(c.config.InputFile)
+	if err != nil {
+		slog.Debug("Error while runninging input file", "err", err)
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if !c.running.Load() {
+			break
+		}
+		record := scanner.Text()
+		transactionMessage := message.NewTransaction(record)
+		err := c.protocol.SendTransaction(transactionMessage)
+		if err != nil {
+			slog.Debug("Error while sending transaction", "err", err)
 			return err
 		}
-		return nil
+		err = c.protocol.WaitAck()
+		if err != nil {
+			slog.Debug("Error while waiting ack", "err", err)
+			return err
+		}
 	}
 
-	if err := receiver.ReceiveResults( // recibo los resultados de lo que envíe -> busywait?
-		c.conn,
-		c.config.OutputDir,
-	); err != nil {
-		if c.running.Load() {
-			return err
-		}
-		return nil
+	if err := scanner.Err(); err != nil {
+		slog.Debug("Error while scanning input file", "err", err)
+		return err
+	}
+
+	err = c.protocol.SendEOF()
+	if err != nil {
+		slog.Debug("Error while sending EOF", "err", err)
+		return err
 	}
 
 	return nil
@@ -105,16 +123,13 @@ func (c *Client) Run() error {
 
 func (c *Client) handleSignals() { // no estoy seguro de si esto va acá
 	signals := make(chan os.Signal, 1)
-
 	signal.Notify(
 		signals,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 	)
-
 	<-signals
-
+	slog.Info("Received shutdown signal, stopping client...")
 	c.running.Store(false)
-
-	c.conn.Close()
+	c.protocol.Close()
 }
