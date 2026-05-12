@@ -10,12 +10,12 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/clientregistry"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/protocol"
 )
 
 type GatewayConfig struct {
