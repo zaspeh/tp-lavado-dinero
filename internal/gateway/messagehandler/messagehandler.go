@@ -3,9 +3,11 @@ package messagehandler
 import (
 	"encoding/csv"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
@@ -13,7 +15,7 @@ import (
 	pb "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 )
 
-func TransactionToProto(msg message.Transaction) (*pb.Transaction, error) {
+func TransactionToProto(msg message.Transaction) (*m.Message, error) {
 	reader := csv.NewReader(strings.NewReader(msg.Record))
 
 	fields, err := reader.Read()
@@ -25,12 +27,12 @@ func TransactionToProto(msg message.Transaction) (*pb.Transaction, error) {
 		return nil, fmt.Errorf("invalid record: expected 8 fields, got %d", len(fields))
 	}
 
-	fromBank, err := parseInt(fields[1])
+	fromBank, err := strconv.Atoi(fields[1])
 	if err != nil {
 		return nil, err
 	}
 
-	toBank, err := parseInt(fields[3])
+	toBank, err := strconv.Atoi(fields[3])
 	if err != nil {
 		return nil, err
 	}
@@ -40,10 +42,10 @@ func TransactionToProto(msg message.Transaction) (*pb.Transaction, error) {
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
 
-	transaction = &pb.Transaction{
+	transaction := &pb.Transaction{
 		Timestamp:       timestamppb.New(timestamp),
-		FromBank:        fromBank,
-		ToBank:          toBank,
+		FromBank:        int32(fromBank),
+		ToBank:          int32(toBank),
 		Account:         fields[2],
 		ToAccount:       fields[4],
 		PaymentCurrency: fields[5],
@@ -51,11 +53,24 @@ func TransactionToProto(msg message.Transaction) (*pb.Transaction, error) {
 		PaymentFormat:   fields[7],
 	}
 
-	if marshalledTransaction, err := proto.Marshal(transaction); err != nil {
+	marshalledTransaction, err := proto.Marshal(transaction)
+
+	if err != nil {
 		return nil, fmt.Errorf("error marshalling transaction: %w", err)
 	}
 
-	wrappedMessage := m.Message{Body: marshalledTransaction}
+	moneyLaundry := &pb.MoneyLaundry{
+		Type:    pb.MessageType_TRANSACTION,
+		Payload: marshalledTransaction,
+	}
+
+	marshalledMoneyLaundry, err := proto.Marshal(moneyLaundry)
+
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling money laundry: %w", err)
+	}
+
+	wrappedMessage := &m.Message{Body: marshalledMoneyLaundry}
 
 	return wrappedMessage, nil
 }
