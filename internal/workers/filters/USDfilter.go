@@ -11,6 +11,7 @@ type USDFilter struct {
 	amountFilterQueue middleware.Middleware
 	bankRouterQueue   middleware.Middleware
 	periodFilterQueue middleware.Middleware
+	currencyToFilter  string
 }
 
 type USDFilterConfig struct {
@@ -20,6 +21,7 @@ type USDFilterConfig struct {
 	PeriodFilterQueueName           string
 	MomHost                         string
 	MomPort                         int
+	CurrencyToFilter                string
 }
 
 func NewUSDFilter(config USDFilterConfig) (*USDFilter, error) {
@@ -59,6 +61,7 @@ func NewUSDFilter(config USDFilterConfig) (*USDFilter, error) {
 		amountFilterQueue: amountFilterQueue,
 		bankRouterQueue:   bankRouterQueue,
 		periodFilterQueue: periodFilterQueue,
+		currencyToFilter:  config.CurrencyToFilter,
 	}, nil
 }
 
@@ -92,7 +95,7 @@ func (f *USDFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry
 		return
 	}
 
-	if transaction.PaymentCurrency == "USD" {
+	if transaction.GetPaymentCurrency() == f.currencyToFilter {
 		err := f.broadcastToQueues(transaction)
 		if err != nil {
 			nack()
@@ -106,11 +109,11 @@ func (f *USDFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry
 func (f *USDFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
 	//q1
 	microtransaction := &protobuf.Microtransaction{
-		FromBank:   transaction.FromBank,
-		ToBank:     transaction.ToBank,
-		Account:    transaction.Account,
-		ToAccount:  transaction.ToAccount,
-		AmountPaid: transaction.AmountPaid,
+		FromBank:   transaction.GetFromBank(),
+		ToBank:     transaction.GetToBank(),
+		Account:    transaction.GetAccount(),
+		ToAccount:  transaction.GetToAccount(),
+		AmountPaid: transaction.GetAmountPaid(),
 	}
 
 	serializedMessage, err := serializer.SerializeProtoMessage(microtransaction, protobuf.MessageType_MICROTRANSACTION)
