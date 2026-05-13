@@ -6,16 +6,16 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
-type USDFilter struct {
-	usdQueue          middleware.Middleware
-	amountFilterQueue middleware.Middleware
-	bankRouterQueue   middleware.Middleware
-	periodFilterQueue middleware.Middleware
-	currencyToFilter  string
+type CurrencyFilter struct {
+	inputQueue                  middleware.Middleware
+	microtransactionFilterQueue middleware.Middleware
+	bankRouterQueue             middleware.Middleware
+	periodFilterQueue           middleware.Middleware
+	currencyToFilter            string
 }
 
-type USDFilterConfig struct {
-	USDQueueName                    string
+type CurrencyFilterConfig struct {
+	InputQueueName                  string
 	MicrotransactionFilterQueueName string
 	BankRouterQueueName             string
 	PeriodFilterQueueName           string
@@ -24,52 +24,49 @@ type USDFilterConfig struct {
 	CurrencyToFilter                string
 }
 
-func NewUSDFilter(config USDFilterConfig) (*USDFilter, error) {
+func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 	connSettings := middleware.ConnSettings{
 		Hostname: config.MomHost,
 		Port:     config.MomPort,
 	}
 
-	usdQueue, err := middleware.CreateQueueMiddleware(config.USDQueueName, connSettings)
+	inputQueue, err := middleware.CreateQueueMiddleware(config.InputQueueName, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
-	amountFilterQueue, err := middleware.CreateQueueMiddleware(config.MicrotransactionFilterQueueName, connSettings)
+	microtransactionFilterQueue, err := middleware.CreateQueueMiddleware(config.MicrotransactionFilterQueueName, connSettings)
 	if err != nil {
-		usdQueue.Close()
+		inputQueue.Close()
 		return nil, err
 	}
 
 	bankRouterQueue, err := middleware.CreateQueueMiddleware(config.BankRouterQueueName, connSettings)
 	if err != nil {
-		usdQueue.Close()
-		amountFilterQueue.Close()
+		inputQueue.Close()
+		microtransactionFilterQueue.Close()
 		return nil, err
 	}
 
 	periodFilterQueue, err := middleware.CreateQueueMiddleware(config.PeriodFilterQueueName, connSettings)
 	if err != nil {
-		usdQueue.Close()
-		amountFilterQueue.Close()
+		inputQueue.Close()
+		microtransactionFilterQueue.Close()
 		bankRouterQueue.Close()
 		return nil, err
 	}
 
-	return &USDFilter{
-		usdQueue:          usdQueue,
-		amountFilterQueue: amountFilterQueue,
-		bankRouterQueue:   bankRouterQueue,
-		periodFilterQueue: periodFilterQueue,
-		currencyToFilter:  config.CurrencyToFilter,
+	return &CurrencyFilter{
+		inputQueue:                  inputQueue,
+		microtransactionFilterQueue: microtransactionFilterQueue,
+		bankRouterQueue:             bankRouterQueue,
+		periodFilterQueue:           periodFilterQueue,
+		currencyToFilter:            config.CurrencyToFilter,
 	}, nil
 }
 
-func (f *USDFilter) Run() {
-	f.usdQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		// Recibo un mensaje y filtro que sea Dolar, entonces envío a todas las colas.
-		// Si no es Dolar, hago ACK y no envío a ninguna cola.
-		// En caso de error, hago NACK para que el mensaje vuelva a la cola.
+func (f *CurrencyFilter) Run() {
+	f.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
 		if err != nil {
 			nack()
@@ -88,7 +85,7 @@ func (f *USDFilter) Run() {
 	})
 }
 
-func (f *USDFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	transaction, err := serializer.DeserializeTransaction(moneyLaundry.Payload, &protobuf.Transaction{})
 	if err != nil {
 		nack()
@@ -106,7 +103,7 @@ func (f *USDFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry
 	ack()
 }
 
-func (f *USDFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
+func (f *CurrencyFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
 	//q1
 	microtransaction := &protobuf.Microtransaction{
 		FromBank:   transaction.GetFromBank(),
@@ -122,7 +119,7 @@ func (f *USDFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
 		return err
 	}
 
-	if err := f.amountFilterQueue.Send(*serializedMessage); err != nil {
+	if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
 		return err
 	}
 
@@ -131,8 +128,8 @@ func (f *USDFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
 	//q2
 }
 
-func (f *USDFilter) broadcastEOFMessage(msg middleware.Message, ack, nack func()) {
-	if err := f.amountFilterQueue.Send(msg); err != nil {
+func (f *CurrencyFilter) broadcastEOFMessage(msg middleware.Message, ack, nack func()) {
+	if err := f.microtransactionFilterQueue.Send(msg); err != nil {
 		nack()
 		return
 	}

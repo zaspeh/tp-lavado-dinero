@@ -23,7 +23,7 @@ type GatewayConfig struct {
 	ServerPort         string
 	MomHost            string
 	MomPort            int
-	USDQueueName       string
+	CurrencyQueueName  string
 	ClientExchangeName string
 }
 
@@ -92,7 +92,7 @@ func (gateway *Gateway) handleIncomingConnection(conn net.Conn) {
 	socket := socket.New(conn)
 	protocol := external.New(socket)
 	clientId := gateway.generateClientId()
-	client, err := clientconnection.New(clientId, protocol, connSettings, gateway.config.USDQueueName, gateway.config.ClientExchangeName)
+	client, err := clientconnection.New(clientId, protocol, connSettings, gateway.config.CurrencyQueueName, gateway.config.ClientExchangeName)
 	if err != nil {
 		slog.Error("failed to create client connection", "error", err)
 		protocol.Close()

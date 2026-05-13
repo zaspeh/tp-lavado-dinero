@@ -15,9 +15,9 @@ func loadConfig() (gateway.GatewayConfig, error) {
 		return gateway.GatewayConfig{}, errors.New("USD_QUEUE is required")
 	}
 
-	outputQueueName := os.Getenv("OUTPUT_QUEUE")
+	outputQueueName := os.Getenv("CLIENT_EXCHANGE")
 	if outputQueueName == "" {
-		return gateway.GatewayConfig{}, errors.New("OUTPUT_QUEUE is required")
+		return gateway.GatewayConfig{}, errors.New("CLIENT_EXCHANGE is required")
 	}
 
 	serverHost := os.Getenv("SERVER_HOST")
@@ -41,12 +41,12 @@ func loadConfig() (gateway.GatewayConfig, error) {
 	}
 
 	return gateway.GatewayConfig{
-		USDQueueName:    USDQueueName,
-		OutputQueueName: outputQueueName,
-		ServerHost:      serverHost,
-		ServerPort:      serverPort,
-		MomHost:         momHost,
-		MomPort:         momPort,
+		CurrencyQueueName:  USDQueueName,
+		ClientExchangeName: outputQueueName,
+		ServerHost:         serverHost,
+		ServerPort:         serverPort,
+		MomHost:            momHost,
+		MomPort:            momPort,
 	}, nil
 }
 

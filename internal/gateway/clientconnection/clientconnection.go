@@ -8,16 +8,16 @@ import (
 )
 
 type ClientConnection struct {
-	id       string
-	protocol *external.ExternalProtocol
-	usdQueue m.Middleware
+	id                  string
+	protocol            *external.ExternalProtocol
+	currencyFilterQueue m.Middleware
 	// dateQueue      m.Middleware
 	resultExchange     *m.ExchangeMiddleware
 	transactionCounter int
 }
 
-func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSettings, usdQueueName string, clientExchangeName string) (*ClientConnection, error) {
-	usdQueue, err := m.CreateQueueMiddleware(usdQueueName, connSettings)
+func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSettings, currencyQueueName string, clientExchangeName string) (*ClientConnection, error) {
+	currencyFilterQueue, err := m.CreateQueueMiddleware(currencyQueueName, connSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -25,16 +25,16 @@ func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSett
 	exchangeRoutingKey := []string{clientExchangeName + "." + id}
 	resultExchange, err := m.CreateExchangeMiddleware(clientExchangeName, exchangeRoutingKey, connSettings)
 	if err != nil {
-		usdQueue.Close()
+		currencyFilterQueue.Close()
 		return nil, err
 	}
 
 	return &ClientConnection{
-		id:                 id,
-		protocol:           protocol,
-		usdQueue:           usdQueue,
-		resultExchange:     resultExchange,
-		transactionCounter: 0,
+		id:                  id,
+		protocol:            protocol,
+		currencyFilterQueue: currencyFilterQueue,
+		resultExchange:      resultExchange,
+		transactionCounter:  0,
 	}, nil
 }
 
@@ -60,7 +60,7 @@ func (cc *ClientConnection) HandleTransaction(msg message.Transaction) error {
 		return err
 	}
 
-	if err := cc.usdQueue.Send(*wrappedMessage); err != nil {
+	if err := cc.currencyFilterQueue.Send(*wrappedMessage); err != nil {
 		return err
 	}
 
@@ -74,7 +74,7 @@ func (cc *ClientConnection) HandleEOF(msg message.EOF) error {
 		return err
 	}
 
-	if err := cc.usdQueue.Send(*wrappedMessage); err != nil {
+	if err := cc.currencyFilterQueue.Send(*wrappedMessage); err != nil {
 		return err
 	}
 
@@ -86,7 +86,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 }
 
 func (cc *ClientConnection) Close() error {
-	err := cc.usdQueue.Close()
+	err := cc.currencyFilterQueue.Close()
 	if err != nil {
 		return err
 	}
