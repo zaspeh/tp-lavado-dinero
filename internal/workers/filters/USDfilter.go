@@ -76,8 +76,11 @@ func (f *USDFilter) Run() {
 		switch moneyLaundry.Type {
 		case protobuf.MessageType_TRANSACTION:
 			f.handleTransactionMessage(moneyLaundry, ack, nack)
+
+		case protobuf.MessageType_EOF:
+			f.broadcastEOFMessage(msg, ack, nack)
 		default:
-			ack()
+			nack()
 		}
 	})
 }
@@ -90,13 +93,17 @@ func (f *USDFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry
 	}
 
 	if transaction.PaymentCurrency == "USD" {
-		f.broadcastToQueues(transaction, ack, nack)
+		err := f.broadcastToQueues(transaction)
+		if err != nil {
+			nack()
+			return
+		}
 	}
 
 	ack()
 }
 
-func (f *USDFilter) broadcastToQueues(transaction *protobuf.Transaction, ack, nack func()) {
+func (f *USDFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
 	//q1
 	microtransaction := &protobuf.Microtransaction{
 		FromBank:   transaction.FromBank,
@@ -109,14 +116,33 @@ func (f *USDFilter) broadcastToQueues(transaction *protobuf.Transaction, ack, na
 	serializedMessage, err := serializer.SerializeProtoMessage(microtransaction, protobuf.MessageType_MICROTRANSACTION)
 
 	if err != nil {
-		nack()
-		return
+		return err
 	}
 
 	if err := f.amountFilterQueue.Send(*serializedMessage); err != nil {
+		return err
+	}
+
+	return nil
+
+	//q2
+}
+
+func (f *USDFilter) broadcastEOFMessage(msg middleware.Message, ack, nack func()) {
+	if err := f.amountFilterQueue.Send(msg); err != nil {
 		nack()
 		return
 	}
 
-	//q2
+	if err := f.bankRouterQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+
+	if err := f.periodFilterQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
 }

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: internal/common/inner/protobuf/transaction.proto
+// source: tp-lavado-dinero/internal/common/inner/protobuf/transaction.proto
 
 package protobuf
 
@@ -24,21 +24,22 @@ const (
 
 type Transaction struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Timestamp       *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	FromBank        int32                  `protobuf:"varint,2,opt,name=from_bank,json=fromBank,proto3" json:"from_bank,omitempty"`
-	ToBank          int32                  `protobuf:"varint,3,opt,name=to_bank,json=toBank,proto3" json:"to_bank,omitempty"`
-	Account         string                 `protobuf:"bytes,4,opt,name=account,proto3" json:"account,omitempty"`
-	ToAccount       string                 `protobuf:"bytes,5,opt,name=to_account,json=toAccount,proto3" json:"to_account,omitempty"`
-	PaymentCurrency string                 `protobuf:"bytes,6,opt,name=payment_currency,json=paymentCurrency,proto3" json:"payment_currency,omitempty"`
-	AmountPaid      string                 `protobuf:"bytes,7,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"` //	chequear el tipo de este campo.
-	PaymentFormat   string                 `protobuf:"bytes,8,opt,name=payment_format,json=paymentFormat,proto3" json:"payment_format,omitempty"`
+	ClientID        string                 `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
+	Timestamp       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	FromBank        int32                  `protobuf:"varint,3,opt,name=from_bank,json=fromBank,proto3" json:"from_bank,omitempty"`
+	ToBank          int32                  `protobuf:"varint,4,opt,name=to_bank,json=toBank,proto3" json:"to_bank,omitempty"`
+	Account         string                 `protobuf:"bytes,5,opt,name=account,proto3" json:"account,omitempty"`
+	ToAccount       string                 `protobuf:"bytes,6,opt,name=to_account,json=toAccount,proto3" json:"to_account,omitempty"`
+	PaymentCurrency string                 `protobuf:"bytes,7,opt,name=payment_currency,json=paymentCurrency,proto3" json:"payment_currency,omitempty"`
+	AmountPaid      string                 `protobuf:"bytes,8,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"` //	chequear el tipo de este campo.
+	PaymentFormat   string                 `protobuf:"bytes,9,opt,name=payment_format,json=paymentFormat,proto3" json:"payment_format,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Transaction) Reset() {
 	*x = Transaction{}
-	mi := &file_internal_common_inner_protobuf_transaction_proto_msgTypes[0]
+	mi := &file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -50,7 +51,7 @@ func (x *Transaction) String() string {
 func (*Transaction) ProtoMessage() {}
 
 func (x *Transaction) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_transaction_proto_msgTypes[0]
+	mi := &file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -63,7 +64,14 @@ func (x *Transaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Transaction.ProtoReflect.Descriptor instead.
 func (*Transaction) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_transaction_proto_rawDescGZIP(), []int{0}
+	return file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Transaction) GetClientID() string {
+	if x != nil {
+		return x.ClientID
+	}
+	return ""
 }
 
 func (x *Transaction) GetTimestamp() *timestamppb.Timestamp {
@@ -122,41 +130,42 @@ func (x *Transaction) GetPaymentFormat() string {
 	return ""
 }
 
-var File_internal_common_inner_protobuf_transaction_proto protoreflect.FileDescriptor
+var File_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto protoreflect.FileDescriptor
 
-const file_internal_common_inner_protobuf_transaction_proto_rawDesc = "" +
+const file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDesc = "" +
 	"\n" +
-	"0internal/common/inner/protobuf/transaction.proto\x12\bprotobuf\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa9\x02\n" +
-	"\vTransaction\x128\n" +
-	"\ttimestamp\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1b\n" +
-	"\tfrom_bank\x18\x02 \x01(\x05R\bfromBank\x12\x17\n" +
-	"\ato_bank\x18\x03 \x01(\x05R\x06toBank\x12\x18\n" +
-	"\aaccount\x18\x04 \x01(\tR\aaccount\x12\x1d\n" +
+	"Atp-lavado-dinero/internal/common/inner/protobuf/transaction.proto\x12\bprotobuf\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x02\n" +
+	"\vTransaction\x12\x1a\n" +
+	"\bclientID\x18\x01 \x01(\tR\bclientID\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1b\n" +
+	"\tfrom_bank\x18\x03 \x01(\x05R\bfromBank\x12\x17\n" +
+	"\ato_bank\x18\x04 \x01(\x05R\x06toBank\x12\x18\n" +
+	"\aaccount\x18\x05 \x01(\tR\aaccount\x12\x1d\n" +
 	"\n" +
-	"to_account\x18\x05 \x01(\tR\ttoAccount\x12)\n" +
-	"\x10payment_currency\x18\x06 \x01(\tR\x0fpaymentCurrency\x12\x1f\n" +
-	"\vamount_paid\x18\a \x01(\tR\n" +
+	"to_account\x18\x06 \x01(\tR\ttoAccount\x12)\n" +
+	"\x10payment_currency\x18\a \x01(\tR\x0fpaymentCurrency\x12\x1f\n" +
+	"\vamount_paid\x18\b \x01(\tR\n" +
 	"amountPaid\x12%\n" +
-	"\x0epayment_format\x18\b \x01(\tR\rpaymentFormatB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x0epayment_format\x18\t \x01(\tR\rpaymentFormatB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
-	file_internal_common_inner_protobuf_transaction_proto_rawDescOnce sync.Once
-	file_internal_common_inner_protobuf_transaction_proto_rawDescData []byte
+	file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDescOnce sync.Once
+	file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDescData []byte
 )
 
-func file_internal_common_inner_protobuf_transaction_proto_rawDescGZIP() []byte {
-	file_internal_common_inner_protobuf_transaction_proto_rawDescOnce.Do(func() {
-		file_internal_common_inner_protobuf_transaction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_transaction_proto_rawDesc), len(file_internal_common_inner_protobuf_transaction_proto_rawDesc)))
+func file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDescGZIP() []byte {
+	file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDescOnce.Do(func() {
+		file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDesc), len(file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDesc)))
 	})
-	return file_internal_common_inner_protobuf_transaction_proto_rawDescData
+	return file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_internal_common_inner_protobuf_transaction_proto_goTypes = []any{
+var file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_goTypes = []any{
 	(*Transaction)(nil),           // 0: protobuf.Transaction
 	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
 }
-var file_internal_common_inner_protobuf_transaction_proto_depIdxs = []int32{
+var file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_depIdxs = []int32{
 	1, // 0: protobuf.Transaction.timestamp:type_name -> google.protobuf.Timestamp
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
@@ -165,26 +174,26 @@ var file_internal_common_inner_protobuf_transaction_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_internal_common_inner_protobuf_transaction_proto_init() }
-func file_internal_common_inner_protobuf_transaction_proto_init() {
-	if File_internal_common_inner_protobuf_transaction_proto != nil {
+func init() { file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_init() }
+func file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_init() {
+	if File_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_transaction_proto_rawDesc), len(file_internal_common_inner_protobuf_transaction_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDesc), len(file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_internal_common_inner_protobuf_transaction_proto_goTypes,
-		DependencyIndexes: file_internal_common_inner_protobuf_transaction_proto_depIdxs,
-		MessageInfos:      file_internal_common_inner_protobuf_transaction_proto_msgTypes,
+		GoTypes:           file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_goTypes,
+		DependencyIndexes: file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_depIdxs,
+		MessageInfos:      file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_msgTypes,
 	}.Build()
-	File_internal_common_inner_protobuf_transaction_proto = out.File
-	file_internal_common_inner_protobuf_transaction_proto_goTypes = nil
-	file_internal_common_inner_protobuf_transaction_proto_depIdxs = nil
+	File_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto = out.File
+	file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_goTypes = nil
+	file_tp_lavado_dinero_internal_common_inner_protobuf_transaction_proto_depIdxs = nil
 }

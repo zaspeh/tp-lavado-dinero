@@ -23,11 +23,12 @@ const (
 
 type Microtransaction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	FromBank      int32                  `protobuf:"varint,1,opt,name=from_bank,json=fromBank,proto3" json:"from_bank,omitempty"`
-	ToBank        int32                  `protobuf:"varint,2,opt,name=to_bank,json=toBank,proto3" json:"to_bank,omitempty"`
-	Account       string                 `protobuf:"bytes,3,opt,name=account,proto3" json:"account,omitempty"`
-	ToAccount     string                 `protobuf:"bytes,4,opt,name=to_account,json=toAccount,proto3" json:"to_account,omitempty"`
-	AmountPaid    string                 `protobuf:"bytes,5,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
+	ClientID      string                 `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
+	FromBank      int32                  `protobuf:"varint,2,opt,name=from_bank,json=fromBank,proto3" json:"from_bank,omitempty"`
+	ToBank        int32                  `protobuf:"varint,3,opt,name=to_bank,json=toBank,proto3" json:"to_bank,omitempty"`
+	Account       string                 `protobuf:"bytes,4,opt,name=account,proto3" json:"account,omitempty"`
+	ToAccount     string                 `protobuf:"bytes,5,opt,name=to_account,json=toAccount,proto3" json:"to_account,omitempty"`
+	AmountPaid    string                 `protobuf:"bytes,6,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -60,6 +61,13 @@ func (x *Microtransaction) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Microtransaction.ProtoReflect.Descriptor instead.
 func (*Microtransaction) Descriptor() ([]byte, []int) {
 	return file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Microtransaction) GetClientID() string {
+	if x != nil {
+		return x.ClientID
+	}
+	return ""
 }
 
 func (x *Microtransaction) GetFromBank() int32 {
@@ -101,14 +109,15 @@ var File_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto 
 
 const file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDesc = "" +
 	"\n" +
-	"Ftp-lavado-dinero/internal/common/inner/protobuf/microtransaction.proto\x12\bprotobuf\"\xa2\x01\n" +
-	"\x10Microtransaction\x12\x1b\n" +
-	"\tfrom_bank\x18\x01 \x01(\x05R\bfromBank\x12\x17\n" +
-	"\ato_bank\x18\x02 \x01(\x05R\x06toBank\x12\x18\n" +
-	"\aaccount\x18\x03 \x01(\tR\aaccount\x12\x1d\n" +
+	"Ftp-lavado-dinero/internal/common/inner/protobuf/microtransaction.proto\x12\bprotobuf\"\xbe\x01\n" +
+	"\x10Microtransaction\x12\x1a\n" +
+	"\bclientID\x18\x01 \x01(\tR\bclientID\x12\x1b\n" +
+	"\tfrom_bank\x18\x02 \x01(\x05R\bfromBank\x12\x17\n" +
+	"\ato_bank\x18\x03 \x01(\x05R\x06toBank\x12\x18\n" +
+	"\aaccount\x18\x04 \x01(\tR\aaccount\x12\x1d\n" +
 	"\n" +
-	"to_account\x18\x04 \x01(\tR\ttoAccount\x12\x1f\n" +
-	"\vamount_paid\x18\x05 \x01(\tR\n" +
+	"to_account\x18\x05 \x01(\tR\ttoAccount\x12\x1f\n" +
+	"\vamount_paid\x18\x06 \x01(\tR\n" +
 	"amountPaidB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (

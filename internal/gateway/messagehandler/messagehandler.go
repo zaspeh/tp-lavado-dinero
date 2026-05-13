@@ -56,3 +56,11 @@ func TransactionToProto(msg message.Transaction) (*m.Message, error) {
 	return serializer.SerializeProtoMessage(transaction, pb.MessageType_TRANSACTION)
 
 }
+
+func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
+	eofMessage := &pb.EOF{
+		ClientID:          clientID,
+		TotalTransactions: int32(transactionCounter),
+	}
+	return serializer.SerializeProtoMessage(eofMessage, pb.MessageType_EOF)
+}

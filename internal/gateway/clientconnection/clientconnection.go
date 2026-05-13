@@ -69,6 +69,15 @@ func (cc *ClientConnection) HandleTransaction(msg message.Transaction) error {
 }
 
 func (cc *ClientConnection) HandleEOF(msg message.EOF) error {
+	wrappedMessage, err := messagehandler.EOFToProto(cc.id, cc.transactionCounter)
+	if err != nil {
+		return err
+	}
+
+	if err := cc.usdQueue.Send(*wrappedMessage); err != nil {
+		return err
+	}
+
 	return nil
 }
 
