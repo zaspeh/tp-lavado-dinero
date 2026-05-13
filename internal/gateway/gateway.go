@@ -8,70 +8,42 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"github.com/google/uuid"
+	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/clientconnection"
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/clientregistry"
 
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
-
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 )
 
 type GatewayConfig struct {
-	ServerHost string
-	ServerPort string
-
-	MomHost string
-	MomPort int
-
-	USDQueueName    string
-	OutputQueueName string
+	ServerHost         string
+	ServerPort         string
+	MomHost            string
+	MomPort            int
+	USDQueueName       string
+	ClientExchangeName string
 }
 
 type Gateway struct {
-	config GatewayConfig
-
+	config   GatewayConfig
 	registry clientregistry.ClientRegistry
-
 	listener net.Listener
-
-	usdQueue    m.Middleware
-	outputQueue m.Middleware
-
-	running atomic.Bool
+	running  atomic.Bool
 }
 
 func New(config GatewayConfig) (*Gateway, error) {
-	connSettings := m.ConnSettings{
-		Hostname: config.MomHost,
-		Port:     config.MomPort,
-	}
-
-	usdQueue, err := m.CreateQueueMiddleware(config.USDQueueName, connSettings)
-	if err != nil {
-		return nil, err
-	}
-
-	outputQueue, err := m.CreateQueueMiddleware(config.OutputQueueName, connSettings)
-	if err != nil {
-		usdQueue.Close()
-		return nil, err
-	}
-
 	listener, err := net.Listen("tcp", config.ServerHost+":"+config.ServerPort)
 	if err != nil {
-		usdQueue.Close()
-		outputQueue.Close()
 		return nil, err
 	}
 
 	gateway := &Gateway{
-		config:      config,
-		registry:    clientregistry.New(),
-		listener:    listener,
-		usdQueue:    usdQueue,
-		outputQueue: outputQueue,
+		config:   config,
+		registry: clientregistry.New(),
+		listener: listener,
 	}
 
 	gateway.running.Store(true)
@@ -80,16 +52,10 @@ func New(config GatewayConfig) (*Gateway, error) {
 }
 
 func (gateway *Gateway) Run() error {
-	defer g.listener.Close()
-
-	go gateway.outputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		gateway.handleClientResponse(msg, ack, nack)
-	})
-
+	defer gateway.listener.Close()
 	go gateway.handleSignals()
 
 	slog.Info("accepting connections")
-
 	for {
 		conn, err := gateway.listener.Accept()
 		if err != nil {
@@ -99,130 +65,50 @@ func (gateway *Gateway) Run() error {
 
 			return err
 		}
-
-		go gateway.handleClientRequest(conn)
+		// TODO: REAP DEAD CONNECTIONS
+		gateway.handleIncomingConnection(conn)
 	}
-
-	gateway.outputQueue.StopConsuming()
 	gateway.registry.CloseAll()
-
 	return nil
 }
 
 func (gateway *Gateway) handleSignals() {
 	signals := make(chan os.Signal, 1)
-
 	signal.Notify(
 		signals,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 	)
-
 	<-signals
-
 	slog.Info("shutdown signal received")
-
 	gateway.running.Store(false)
-
 	gateway.listener.Close()
 }
 
-func (gateway *Gateway) handleClientRequest(conn net.Conn) {
-loop:
-	for {
-		msg, err := external.ReadMessage(conn)
-		if err != nil {
-			slog.Debug("while reading message", "err", err)
-			return
-		}
-
-		gateway.registry.Add(msg.JobID, conn)
-
-		switch msg.Type {
-		case protocol.TypeTransaction:
-			if err := gateway.handleTransactionMessage(msg); err != nil {
-				slog.Debug("while handling transaction message", "err", err)
-				return
-			}
-
-		case protocol.TypeEOF:
-			if err := gateway.handleEOFMessage(msg); err != nil {
-				slog.Debug("while handling EOF message", "err", err)
-				return
-			}
-
-			break loop
-
-		default:
-			slog.Debug("unexpected message type")
-			return
-		}
+func (gateway *Gateway) handleIncomingConnection(conn net.Conn) {
+	connSettings := m.ConnSettings{
+		Hostname: gateway.config.MomHost,
+		Port:     gateway.config.MomPort,
 	}
-}
-
-func (gateway *Gateway) handleClientResponse(
-	msg m.Message,
-	ack func(),
-	nack func(),
-) {
-	protocolMsg, err := serializer.DeserializeMessage(msg.Body)
-
+	socket := socket.New(conn)
+	protocol := external.New(socket)
+	clientId := gateway.generateClientId()
+	client, err := clientconnection.New(clientId, protocol, connSettings, gateway.config.USDQueueName, gateway.config.ClientExchangeName)
 	if err != nil {
-		slog.Debug("while deserializing output message", "err", err)
-		nack()
+		slog.Error("failed to create client connection", "error", err)
+		protocol.Close()
 		return
 	}
-
-	conn, ok := gateway.registry.Get(protocolMsg.JobID)
-	if !ok {
-		slog.Warn("client connection not found", "jobID", protocolMsg.JobID)
-		nack()
-		return
-	}
-
-	if err := external.WriteMessage(conn, protocolMsg); err != nil {
-		slog.Debug("while writing message to client", "err", err)
-		nack()
-		return
-	}
-
-	gateway.registry.Remove(protocolMsg.JobID)
-
-	ack()
+	// What to do with errors on Run method?
+	go client.Run()
+	gateway.registry.Add(clientId, client)
 }
 
-func (gateway *Gateway) handleTransactionMessage(msg *protocol.Message) error {
-	data, err := serializer.SerializeMessage(msg)
-	if err != nil {
-		slog.Debug("while serializing transaction message", "err", err)
-		return err
+func (gateway *Gateway) generateClientId() string {
+	id := uuid.New().String()
+	_, exists := gateway.registry.Get(id)
+	if exists {
+		return gateway.generateClientId()
 	}
-
-	rabbitMsg := m.Message{Body: data}
-
-	if err := gateway.usdQueue.Send(rabbitMsg); err != nil {
-		slog.Debug("while sending transaction message", "err", err)
-		return err
-	}
-
-	return nil
-}
-
-func (gateway *Gateway) handleEOFMessage(msg *protocol.Message) error {
-	slog.Info("received EOF message")
-
-	data, err := serializer.SerializeMessage(msg)
-	if err != nil {
-		slog.Debug("while serializing EOF message", "err", err)
-		return err
-	}
-
-	rabbitMsg := m.Message{Body: data}
-
-	if err := gateway.usdQueue.Send(rabbitMsg); err != nil {
-		slog.Debug("while sending EOF message", "err", err)
-		return err
-	}
-
-	return nil
+	return id
 }
