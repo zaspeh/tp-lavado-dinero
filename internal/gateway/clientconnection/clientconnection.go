@@ -36,7 +36,7 @@ func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSett
 }
 
 func (cc *ClientConnection) Run() error {
-	cc.resultExchange.StartConsuming(func(msg m.Message, ack, nack func()) {
+	go cc.resultExchange.StartConsuming(func(msg m.Message, ack, nack func()) {
 		cc.handleResult(msg, ack, nack)
 	})
 
@@ -45,7 +45,9 @@ func (cc *ClientConnection) Run() error {
 		if err != nil {
 			return err
 		}
-		message.Handle(cc)
+		if err = message.Handle(cc); err != nil {
+			return err
+		}
 	}
 }
 
@@ -61,8 +63,14 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 
 }
 
-func (cc *ClientConnection) Close() {
-	// TODO: CHECK ERR
-	cc.usdQueue.Close()
-	cc.resultExchange.Close()
+func (cc *ClientConnection) Close() error {
+	err := cc.usdQueue.Close()
+	if err != nil {
+		return err
+	}
+	err = cc.resultExchange.Close()
+	if err != nil {
+		return err
+	}
+	return cc.protocol.Close()
 }
