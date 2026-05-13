@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+message Microtransaction {
+	int32 from_bank = 1;
+	int32 to_bank = 2;
+	string account = 3;
+	string to_account = 4;
+	string amount_paid = 5;
+}

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: internal/common/inner/protobuf/moneylaundry.proto
+// source: tp-lavado-dinero/internal/common/inner/protobuf/moneylaundry.proto
 
 package protobuf
 
@@ -24,8 +24,9 @@ const (
 type MessageType int32
 
 const (
-	MessageType_EOF         MessageType = 0
-	MessageType_TRANSACTION MessageType = 1
+	MessageType_EOF              MessageType = 0
+	MessageType_TRANSACTION      MessageType = 1
+	MessageType_MICROTRANSACTION MessageType = 2
 )
 
 // Enum value maps for MessageType.
@@ -33,10 +34,12 @@ var (
 	MessageType_name = map[int32]string{
 		0: "EOF",
 		1: "TRANSACTION",
+		2: "MICROTRANSACTION",
 	}
 	MessageType_value = map[string]int32{
-		"EOF":         0,
-		"TRANSACTION": 1,
+		"EOF":              0,
+		"TRANSACTION":      1,
+		"MICROTRANSACTION": 2,
 	}
 )
 
@@ -51,11 +54,11 @@ func (x MessageType) String() string {
 }
 
 func (MessageType) Descriptor() protoreflect.EnumDescriptor {
-	return file_internal_common_inner_protobuf_moneylaundry_proto_enumTypes[0].Descriptor()
+	return file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_enumTypes[0].Descriptor()
 }
 
 func (MessageType) Type() protoreflect.EnumType {
-	return &file_internal_common_inner_protobuf_moneylaundry_proto_enumTypes[0]
+	return &file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_enumTypes[0]
 }
 
 func (x MessageType) Number() protoreflect.EnumNumber {
@@ -64,7 +67,7 @@ func (x MessageType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MessageType.Descriptor instead.
 func (MessageType) EnumDescriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_moneylaundry_proto_rawDescGZIP(), []int{0}
+	return file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescGZIP(), []int{0}
 }
 
 type MoneyLaundry struct {
@@ -77,7 +80,7 @@ type MoneyLaundry struct {
 
 func (x *MoneyLaundry) Reset() {
 	*x = MoneyLaundry{}
-	mi := &file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes[0]
+	mi := &file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -89,7 +92,7 @@ func (x *MoneyLaundry) String() string {
 func (*MoneyLaundry) ProtoMessage() {}
 
 func (x *MoneyLaundry) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes[0]
+	mi := &file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -102,7 +105,7 @@ func (x *MoneyLaundry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoneyLaundry.ProtoReflect.Descriptor instead.
 func (*MoneyLaundry) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_moneylaundry_proto_rawDescGZIP(), []int{0}
+	return file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *MoneyLaundry) GetType() MessageType {
@@ -119,37 +122,38 @@ func (x *MoneyLaundry) GetPayload() []byte {
 	return nil
 }
 
-var File_internal_common_inner_protobuf_moneylaundry_proto protoreflect.FileDescriptor
+var File_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto protoreflect.FileDescriptor
 
-const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
+const file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\"S\n" +
+	"Btp-lavado-dinero/internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\"S\n" +
 	"\fMoneyLaundry\x12)\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
-	"\apayload\x18\x02 \x01(\fR\apayload*'\n" +
+	"\apayload\x18\x02 \x01(\fR\apayload*=\n" +
 	"\vMessageType\x12\a\n" +
 	"\x03EOF\x10\x00\x12\x0f\n" +
-	"\vTRANSACTION\x10\x01B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\vTRANSACTION\x10\x01\x12\x14\n" +
+	"\x10MICROTRANSACTION\x10\x02B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
-	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
-	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescData []byte
+	file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
+	file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescData []byte
 )
 
-func file_internal_common_inner_protobuf_moneylaundry_proto_rawDescGZIP() []byte {
-	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce.Do(func() {
-		file_internal_common_inner_protobuf_moneylaundry_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc), len(file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc)))
+func file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescGZIP() []byte {
+	file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce.Do(func() {
+		file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDesc), len(file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDesc)))
 	})
-	return file_internal_common_inner_protobuf_moneylaundry_proto_rawDescData
+	return file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_moneylaundry_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_internal_common_inner_protobuf_moneylaundry_proto_goTypes = []any{
+var file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_goTypes = []any{
 	(MessageType)(0),     // 0: protobuf.MessageType
 	(*MoneyLaundry)(nil), // 1: protobuf.MoneyLaundry
 }
-var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
+var file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	0, // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
@@ -158,27 +162,27 @@ var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_internal_common_inner_protobuf_moneylaundry_proto_init() }
-func file_internal_common_inner_protobuf_moneylaundry_proto_init() {
-	if File_internal_common_inner_protobuf_moneylaundry_proto != nil {
+func init() { file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_init() }
+func file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_init() {
+	if File_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc), len(file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDesc), len(file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_internal_common_inner_protobuf_moneylaundry_proto_goTypes,
-		DependencyIndexes: file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs,
-		EnumInfos:         file_internal_common_inner_protobuf_moneylaundry_proto_enumTypes,
-		MessageInfos:      file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes,
+		GoTypes:           file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_goTypes,
+		DependencyIndexes: file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_depIdxs,
+		EnumInfos:         file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_enumTypes,
+		MessageInfos:      file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_msgTypes,
 	}.Build()
-	File_internal_common_inner_protobuf_moneylaundry_proto = out.File
-	file_internal_common_inner_protobuf_moneylaundry_proto_goTypes = nil
-	file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = nil
+	File_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto = out.File
+	file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_goTypes = nil
+	file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = nil
 }

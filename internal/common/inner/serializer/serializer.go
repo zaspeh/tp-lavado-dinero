@@ -41,8 +41,8 @@ func SerializeProtoMessage[T proto.Message](transaction T, messageType protobuf.
 	return serializeMoneyLaundering(moneyLaundering)
 }
 
-func DeserializeTransaction[T proto.Message](message middleware.Message, transaction T) (T, error) {
-	if err := proto.Unmarshal(message.Body, transaction); err != nil {
+func DeserializeTransaction[T proto.Message](payload []byte, transaction T) (T, error) {
+	if err := proto.Unmarshal(payload, transaction); err != nil {
 		var zero T
 
 		return zero, fmt.Errorf("error unmarshalling transaction: %w", err)
