@@ -55,16 +55,16 @@ func (cc *ClientConnection) Run() error {
 }
 
 func (cc *ClientConnection) HandleTransaction(msg message.Transaction) error {
-	wrappedTransaction, err := messagehandler.TransactionToProto(msg)
+	wrappedMessage, err := messagehandler.TransactionToProto(msg)
 	if err != nil {
 		return err
 	}
 
-	if err := cc.usdQueue.Send(wrappedTransaction); err != nil {
+	if err := cc.usdQueue.Send(*wrappedMessage); err != nil {
 		return err
 	}
 
-	transactionCounter++
+	cc.transactionCounter++
 	return nil
 }
 
