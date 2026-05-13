@@ -1,48 +1,58 @@
 package clientregistry
 
 import (
-	"net"
 	"sync"
+
+	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/clientconnection"
 )
 
 type ClientRegistry struct {
-	mutex sync.RWMutex
-
-	clients map[string]net.Conn
+	mutex   sync.RWMutex
+	clients map[string]*clientconnection.ClientConnection
 }
 
 func New() ClientRegistry {
 	return ClientRegistry{
-		clients: make(map[string]net.Conn),
+		clients: make(map[string]*clientconnection.ClientConnection),
 	}
 }
 
 func (r *ClientRegistry) Add(
-	jobID string,
-	conn net.Conn,
+	clientId string,
+	conn *clientconnection.ClientConnection,
 ) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	r.clients[jobID] = conn
+	r.clients[clientId] = conn
 }
 
 func (r *ClientRegistry) Get(
-	jobID string,
-) (net.Conn, bool) {
+	clientId string,
+) (*clientconnection.ClientConnection, bool) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	conn, ok := r.clients[jobID]
-
+	conn, ok := r.clients[clientId]
 	return conn, ok
 }
 
 func (r *ClientRegistry) Remove(
-	jobID string,
+	clientId string,
 ) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	delete(r.clients, jobID)
+	delete(r.clients, clientId)
+}
+
+func (r *ClientRegistry) CloseAll() {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	for _, client := range r.clients {
+		client.Close()
+	}
+
+	clear(r.clients)
 }
