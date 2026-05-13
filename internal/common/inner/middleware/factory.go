@@ -53,7 +53,7 @@ func CreateQueueMiddleware(queueName string, connectionSettings ConnSettings) (M
 	}, nil
 }
 
-func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings ConnSettings) (Middleware, error) {
+func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings ConnSettings) (*ExchangeMiddleware, error) {
 	url := fmt.Sprintf("amqp://guest:guest@%s:%d/", connectionSettings.Hostname, connectionSettings.Port)
 	conn, err := amqp.Dial(url)
 	if err != nil {
