@@ -12,7 +12,8 @@ type ClientConnection struct {
 	protocol *external.ExternalProtocol
 	usdQueue m.Middleware
 	// dateQueue      m.Middleware
-	resultExchange *m.ExchangeMiddleware
+	resultExchange     *m.ExchangeMiddleware
+	transactionCounter int
 }
 
 func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSettings, usdQueueName string, clientExchangeName string) (*ClientConnection, error) {
@@ -29,10 +30,11 @@ func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSett
 	}
 
 	return &ClientConnection{
-		id:             id,
-		protocol:       protocol,
-		usdQueue:       usdQueue,
-		resultExchange: resultExchange,
+		id:                 id,
+		protocol:           protocol,
+		usdQueue:           usdQueue,
+		resultExchange:     resultExchange,
+		transactionCounter: 0,
 	}, nil
 }
 
@@ -62,6 +64,7 @@ func (cc *ClientConnection) HandleTransaction(msg message.Transaction) error {
 		return err
 	}
 
+	transactionCounter++
 	return nil
 }
 
