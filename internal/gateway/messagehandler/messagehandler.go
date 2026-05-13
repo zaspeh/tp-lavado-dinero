@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	pb "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 func TransactionToProto(msg message.Transaction) (*m.Message, error) {
@@ -53,24 +53,6 @@ func TransactionToProto(msg message.Transaction) (*m.Message, error) {
 		PaymentFormat:   fields[7],
 	}
 
-	marshalledTransaction, err := proto.Marshal(transaction)
+	return serializer.SerializeProtoMessage(transaction, pb.MessageType_TRANSACTION)
 
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling transaction: %w", err)
-	}
-
-	moneyLaundry := &pb.MoneyLaundry{
-		Type:    pb.MessageType_TRANSACTION,
-		Payload: marshalledTransaction,
-	}
-
-	marshalledMoneyLaundry, err := proto.Marshal(moneyLaundry)
-
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling money laundry: %w", err)
-	}
-
-	wrappedMessage := &m.Message{Body: marshalledMoneyLaundry}
-
-	return wrappedMessage, nil
 }
