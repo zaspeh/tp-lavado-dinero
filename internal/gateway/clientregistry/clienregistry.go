@@ -11,8 +11,8 @@ type ClientRegistry struct {
 	clients map[string]*clientconnection.ClientConnection
 }
 
-func New() ClientRegistry {
-	return ClientRegistry{
+func New() *ClientRegistry {
+	return &ClientRegistry{
 		clients: make(map[string]*clientconnection.ClientConnection),
 	}
 }

@@ -29,7 +29,7 @@ type GatewayConfig struct {
 
 type Gateway struct {
 	config   GatewayConfig
-	registry clientregistry.ClientRegistry
+	registry *clientregistry.ClientRegistry
 	listener net.Listener
 	running  atomic.Bool
 }
