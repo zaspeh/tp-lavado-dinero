@@ -65,8 +65,7 @@ func (gateway *Gateway) Run() error {
 
 			return err
 		}
-		// TODO: REAP DEAD CONNECTIONS
-		gateway.handleIncomingConnection(conn)
+		go gateway.handleIncomingConnection(conn)
 	}
 	gateway.registry.CloseAll()
 	return nil
@@ -99,9 +98,12 @@ func (gateway *Gateway) handleIncomingConnection(conn net.Conn) {
 		protocol.Close()
 		return
 	}
-	// What to do with errors on Run method?
-	go client.Run()
 	gateway.registry.Add(clientId, client)
+	if err := client.Run(); err != nil {
+		slog.Error("client connection error", "error", err)
+	}
+	client.Close()
+	gateway.registry.Remove(clientId)
 }
 
 func (gateway *Gateway) generateClientId() string {
