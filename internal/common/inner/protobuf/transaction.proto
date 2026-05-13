@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+import "google/protobuf/timestamp.proto";
+
+message Transaction {
+	google.protobuf.Timestamp timestamp = 1;
+	int32 from_bank = 2;
+	int32 to_bank = 3;
+	string account = 4;
+	string to_account = 5;
+	string payment_currency = 6;
+	string amount_paid = 7; //	chequear el tipo de este campo.
+	string payment_format = 8;
+}

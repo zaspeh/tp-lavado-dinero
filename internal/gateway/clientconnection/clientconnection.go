@@ -4,6 +4,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/messagehandler"
 )
 
 type ClientConnection struct {
@@ -52,6 +53,15 @@ func (cc *ClientConnection) Run() error {
 }
 
 func (cc *ClientConnection) HandleTransaction(msg message.Transaction) error {
+	wrappedTransaction, err := messagehandler.TransactionToProto(msg)
+	if err != nil {
+		return err
+	}
+
+	if err := cc.usdQueue.Send(wrappedTransaction); err != nil {
+		return err
+	}
+
 	return nil
 }
 

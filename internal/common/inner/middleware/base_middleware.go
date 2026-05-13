@@ -22,7 +22,7 @@ func (b *baseMiddleware) runConsumerLoop(msgs <-chan amqp.Delivery, callbackFunc
 	var ackError error
 	for msg := range msgs {
 		callbackFunc(
-			Message{Body: string(msg.Body)},
+			Message{Body: []byte(msg.Body)},
 			func() {
 				if err := msg.Ack(false); err != nil {
 					ackError = ErrMessageMiddlewareMessage
