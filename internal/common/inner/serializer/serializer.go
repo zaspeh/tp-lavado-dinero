@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SerializeMoneyLaundering(moneyLaundering *protobuf.MoneyLaundry) (*middleware.Message, error) {
+func serializeMoneyLaundering(moneyLaundering *protobuf.MoneyLaundry) (*middleware.Message, error) {
 	marshalledMoneyLaundering, err := proto.Marshal(moneyLaundering)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling money laundry: %w", err)
@@ -27,21 +27,25 @@ func DeserializeMoneyLaundering(message middleware.Message) (*protobuf.MoneyLaun
 	return moneyLaundering, nil
 }
 
-func SerializeTransaction(transaction *protobuf.Transaction) (*middleware.Message, error) {
+func SerializeProtoMessage[T proto.Message](transaction T, messageType protobuf.MessageType) (*middleware.Message, error) {
 	marshalledTransaction, err := proto.Marshal(transaction)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling transaction: %w", err)
 	}
 
-	return &middleware.Message{
-		Body: marshalledTransaction,
-	}, nil
+	moneyLaundering := &protobuf.MoneyLaundry{
+		Type:    messageType,
+		Payload: marshalledTransaction,
+	}
+
+	return serializeMoneyLaundering(moneyLaundering)
 }
 
-func DeserializeTransaction(message middleware.Message) (*protobuf.Transaction, error) {
-	transaction := &protobuf.Transaction{}
+func DeserializeTransaction[T proto.Message](message middleware.Message, transaction T) (T, error) {
 	if err := proto.Unmarshal(message.Body, transaction); err != nil {
-		return nil, fmt.Errorf("error unmarshalling transaction: %w", err)
+		var zero T
+
+		return zero, fmt.Errorf("error unmarshalling transaction: %w", err)
 	}
 	return transaction, nil
 }
