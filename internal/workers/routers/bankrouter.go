@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type BackRouterConfig struct {
@@ -78,5 +79,14 @@ func (br *BankRouter) handleSignals() {
 }
 
 func (br *BankRouter) handleMessage(msg middleware.Message, ack, nack func()) {
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
 
+	switch moneyLaundry.Type {
+	default:
+		nack()
+	}
 }
