@@ -2,6 +2,10 @@ package routers
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 )
@@ -50,4 +54,29 @@ func NewBankRouter(config BackRouterConfig) (*BankRouter, error) {
 		maxBankExchangeKeys: maxBankExchangeKeys,
 		maxWorkersAmount:    config.MaxBankWorkerAmount,
 	}, nil
+}
+
+func (br *BankRouter) Run() {
+	go br.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		br.handleMessage(msg, ack, nack)
+	})
+
+	go br.handleSignals()
+}
+
+func (br *BankRouter) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(
+		signals,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	<-signals
+	slog.Info("shutdown signal received")
+	br.inputQueue.Close()
+	br.maxBankExchange.Close()
+}
+
+func (br *BankRouter) handleMessage(msg middleware.Message, ack, nack func()) {
+
 }
