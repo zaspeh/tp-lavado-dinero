@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
@@ -86,7 +87,13 @@ func (br *BankRouter) handleMessage(msg middleware.Message, ack, nack func()) {
 	}
 
 	switch moneyLaundry.Type {
+	case protobuf.MessageType_MAXBANK:
+		br.handleMaxBankMessage(msg, ack, nack)
 	default:
 		nack()
 	}
+}
+
+func (br *BankRouter) handleMaxBankMessage(msg middleware.Message, ack, nack func()) {
+
 }
