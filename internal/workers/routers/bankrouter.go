@@ -2,6 +2,7 @@ package routers
 
 import (
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -86,14 +87,32 @@ func (br *BankRouter) handleMessage(msg middleware.Message, ack, nack func()) {
 		return
 	}
 
-	switch moneyLaundry.Type {
+	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_MAXBANK:
-		br.handleMaxBankMessage(msg, ack, nack)
+		br.handleMaxBankMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
 }
 
-func (br *BankRouter) handleMaxBankMessage(msg middleware.Message, ack, nack func()) {
+func (br *BankRouter) handleMaxBankMessage(moneyLaundryMsg *protobuf.MoneyLaundry, serializeMsg middleware.Message, ack, nack func()) {
+	maxBankMessage, err := serializer.DeserializeTransaction(moneyLaundryMsg.GetPayload(), &protobuf.MaxBank{})
+	if err != nil {
+		nack()
+		return
+	}
 
+	workerKey := br.selectWorkerKey(maxBankMessage.GetFromBank())
+	if err := br.maxBankExchange.SendWithKey(workerKey, serializeMsg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
+}
+
+func (br *BankRouter) selectWorkerKey(bankName string) string {
+	h := fnv.New32a()
+	h.Write([]byte(bankName))
+	return br.maxBankExchangeKeys[h.Sum32()%uint32(br.maxWorkersAmount)]
 }
