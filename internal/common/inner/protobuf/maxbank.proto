@@ -4,8 +4,20 @@ package protobuf;
 
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
-message MaxBank{
-	string from_bank = 1;
-    string account = 2;
-    string amount = 3;
+message MaxBank {
+    string from_bank = 1; 
+    
+    oneof payload {
+        BankMetadata bank_metadata = 2;
+        TransferSummary transfer_summary = 3; 
+    }
+}
+
+message BankMetadata {
+    string bank_name = 1;
+}
+
+message TransferSummary {
+    string account = 1; 
+    string amount = 2; 
 }
