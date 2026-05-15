@@ -19,14 +19,8 @@ import (
 type ClientConfig struct {
 	ServerHost string
 	ServerPort string
-
-	InputFile string
-	OutputDir string
-
-	ClientID string
-	JobID    string
-
-	ChunkSize int
+	InputFile  string
+	OutputDir  string
 }
 
 type Client struct {

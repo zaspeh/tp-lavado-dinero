@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/google/uuid"
 	"github.com/zaspeh/tp-lavado-dinero/internal/client"
 )
 
@@ -30,19 +29,11 @@ func loadConfig() (client.ClientConfig, error) {
 		return client.ClientConfig{}, errors.New("OUTPUT_DIR is required")
 	}
 
-	clientID := os.Getenv("CLIENT_ID")
-	if clientID == "" {
-		clientID = "client-default"
-	}
-
 	return client.ClientConfig{
 		ServerHost: serverHost,
 		ServerPort: serverPort,
 		InputFile:  inputFile,
 		OutputDir:  outputDir,
-		ClientID:   clientID,
-		JobID:      uuid.NewString(),
-		ChunkSize:  1000,
 	}, nil
 }
 
