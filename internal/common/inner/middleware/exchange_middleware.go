@@ -72,6 +72,13 @@ func (em *ExchangeMiddleware) Send(msg Message) error {
 	return nil
 }
 
+func (em *ExchangeMiddleware) SendWithKey(key string, msg Message) error {
+	ctx, cancel := context.WithTimeout(context.Background(), publishTimeout)
+	defer cancel()
+
+	return em.publish(ctx, em.exchange, key, msg)
+}
+
 func (em *ExchangeMiddleware) Close() error {
 	return em.baseMiddleware.close()
 }
