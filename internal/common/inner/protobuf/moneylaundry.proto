@@ -9,6 +9,7 @@ enum MessageType {
     EOF = 0;
     TRANSACTION = 1;
     MICROTRANSACTION = 2;
+    MAXBANK = 3;
 }
 
 message MoneyLaundry {

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+message MaxBank{
+	string from_bank = 1;
+    string account = 2;
+    string amount = 3;
+}
