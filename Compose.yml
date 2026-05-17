@@ -1,0 +1,78 @@
+networks:
+  money_laundering_network:
+    driver: bridge
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+    - RABBITMQ_LOG_LEVELS=error
+    healthcheck:
+      interval: 5s
+      retries: 10
+      start_period: 50s
+      test: rabbitmq-diagnostics check_port_connectivity
+      timeout: 3s
+    ports:
+      - 15672:15672
+      - 5672:5672
+    networks:
+      - money_laundering_network
+
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+    ports:
+      - 8080:8080
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - money_laundering_network
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+    environment:
+      - SERVER_HOST=gateway
+      - SERVER_PORT=8080
+      - INPUT_FILE=/data/dataset.csv
+    depends_on:
+      - gateway
+    networks:
+      - money_laundering_network
+
+  currency_filter:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      - WORKER_TYPE=CURRENCY_FILTER    
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - money_laundering_network
+
+  bank_router:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      - WORKER_TYPE=BANK_ROUTER        
+      - MOM_HOST=rabbitmq
+      - MOM_PORT=5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - money_laundering_network
