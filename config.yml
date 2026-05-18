@@ -1,0 +1,20 @@
+# Cantidad de instancias para cada tipo de servicio
+services:
+  client:
+    count: 1
+    
+  currency_filter:
+    count: 1
+    
+  max_bank:
+    count: 1
+    
+  bank_router:
+    count: 1
+
+gateway:
+  port: 8080
+  
+rabbitmq:
+  amqp_port: 5672
+  management_port: 15672
