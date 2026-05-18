@@ -1,4 +1,4 @@
-package workers
+package groupers
 
 import (
 	"log/slog"
