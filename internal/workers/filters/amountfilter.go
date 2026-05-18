@@ -10,7 +10,7 @@ import (
 
 type AmountFilter struct {
 	inputQueue  middleware.Middleware
-	OutputQueue middleware.Middleware
+	outputQueue middleware.Middleware
 
 	AmountToFilter float64
 }
@@ -44,7 +44,7 @@ func NewAmountFilter(config AmountFilterConfig) (*AmountFilter, error) {
 
 	return &AmountFilter{
 		inputQueue:     inputQueue,
-		OutputQueue:    outputQueue,
+		outputQueue:    outputQueue,
 		AmountToFilter: config.AmountToFilter,
 	}, nil
 }
@@ -63,7 +63,7 @@ func (af *AmountFilter) Run() error {
 			af.handleMicrotransactionMessage(moneyLaundering, msg, ack, nack)
 
 		case protobuf.MessageType_EOF:
-			if err := af.OutputQueue.Send(msg); err != nil {
+			if err := af.outputQueue.Send(msg); err != nil {
 				nack()
 				return
 			}
@@ -93,7 +93,7 @@ func (af *AmountFilter) handleMicrotransactionMessage(moneyLaundering *protobuf.
 	}
 
 	if amount < af.AmountToFilter {
-		if err := af.OutputQueue.Send(msg); err != nil {
+		if err := af.outputQueue.Send(msg); err != nil {
 			nack()
 			return
 		}

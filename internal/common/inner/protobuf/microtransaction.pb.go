@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: tp-lavado-dinero/internal/common/inner/protobuf/microtransaction.proto
+// source: internal/common/inner/protobuf/microtransaction.proto
 
 package protobuf
 
@@ -35,7 +35,7 @@ type Microtransaction struct {
 
 func (x *Microtransaction) Reset() {
 	*x = Microtransaction{}
-	mi := &file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_microtransaction_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *Microtransaction) String() string {
 func (*Microtransaction) ProtoMessage() {}
 
 func (x *Microtransaction) ProtoReflect() protoreflect.Message {
-	mi := &file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_microtransaction_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *Microtransaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Microtransaction.ProtoReflect.Descriptor instead.
 func (*Microtransaction) Descriptor() ([]byte, []int) {
-	return file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescGZIP(), []int{0}
+	return file_internal_common_inner_protobuf_microtransaction_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Microtransaction) GetClientID() string {
@@ -105,11 +105,55 @@ func (x *Microtransaction) GetAmountPaid() string {
 	return ""
 }
 
-var File_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto protoreflect.FileDescriptor
+type MicrotransactionResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Transactions  []*Microtransaction    `protobuf:"bytes,1,rep,name=transactions,proto3" json:"transactions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDesc = "" +
+func (x *MicrotransactionResult) Reset() {
+	*x = MicrotransactionResult{}
+	mi := &file_internal_common_inner_protobuf_microtransaction_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MicrotransactionResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MicrotransactionResult) ProtoMessage() {}
+
+func (x *MicrotransactionResult) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_microtransaction_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MicrotransactionResult.ProtoReflect.Descriptor instead.
+func (*MicrotransactionResult) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_microtransaction_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *MicrotransactionResult) GetTransactions() []*Microtransaction {
+	if x != nil {
+		return x.Transactions
+	}
+	return nil
+}
+
+var File_internal_common_inner_protobuf_microtransaction_proto protoreflect.FileDescriptor
+
+const file_internal_common_inner_protobuf_microtransaction_proto_rawDesc = "" +
 	"\n" +
-	"Ftp-lavado-dinero/internal/common/inner/protobuf/microtransaction.proto\x12\bprotobuf\"\xbe\x01\n" +
+	"5internal/common/inner/protobuf/microtransaction.proto\x12\bprotobuf\"\xbe\x01\n" +
 	"\x10Microtransaction\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12\x1b\n" +
 	"\tfrom_bank\x18\x02 \x01(\x05R\bfromBank\x12\x17\n" +
@@ -118,52 +162,56 @@ const file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_prot
 	"\n" +
 	"to_account\x18\x05 \x01(\tR\ttoAccount\x12\x1f\n" +
 	"\vamount_paid\x18\x06 \x01(\tR\n" +
-	"amountPaidB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"amountPaid\"X\n" +
+	"\x16MicrotransactionResult\x12>\n" +
+	"\ftransactions\x18\x01 \x03(\v2\x1a.protobuf.MicrotransactionR\ftransactionsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
-	file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescOnce sync.Once
-	file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescData []byte
+	file_internal_common_inner_protobuf_microtransaction_proto_rawDescOnce sync.Once
+	file_internal_common_inner_protobuf_microtransaction_proto_rawDescData []byte
 )
 
-func file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescGZIP() []byte {
-	file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescOnce.Do(func() {
-		file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDesc), len(file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDesc)))
+func file_internal_common_inner_protobuf_microtransaction_proto_rawDescGZIP() []byte {
+	file_internal_common_inner_protobuf_microtransaction_proto_rawDescOnce.Do(func() {
+		file_internal_common_inner_protobuf_microtransaction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_microtransaction_proto_rawDesc), len(file_internal_common_inner_protobuf_microtransaction_proto_rawDesc)))
 	})
-	return file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDescData
+	return file_internal_common_inner_protobuf_microtransaction_proto_rawDescData
 }
 
-var file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_goTypes = []any{
-	(*Microtransaction)(nil), // 0: protobuf.Microtransaction
+var file_internal_common_inner_protobuf_microtransaction_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_internal_common_inner_protobuf_microtransaction_proto_goTypes = []any{
+	(*Microtransaction)(nil),       // 0: protobuf.Microtransaction
+	(*MicrotransactionResult)(nil), // 1: protobuf.MicrotransactionResult
 }
-var file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+var file_internal_common_inner_protobuf_microtransaction_proto_depIdxs = []int32{
+	0, // 0: protobuf.MicrotransactionResult.transactions:type_name -> protobuf.Microtransaction
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_init() }
-func file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_init() {
-	if File_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto != nil {
+func init() { file_internal_common_inner_protobuf_microtransaction_proto_init() }
+func file_internal_common_inner_protobuf_microtransaction_proto_init() {
+	if File_internal_common_inner_protobuf_microtransaction_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDesc), len(file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_microtransaction_proto_rawDesc), len(file_internal_common_inner_protobuf_microtransaction_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_goTypes,
-		DependencyIndexes: file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_depIdxs,
-		MessageInfos:      file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_msgTypes,
+		GoTypes:           file_internal_common_inner_protobuf_microtransaction_proto_goTypes,
+		DependencyIndexes: file_internal_common_inner_protobuf_microtransaction_proto_depIdxs,
+		MessageInfos:      file_internal_common_inner_protobuf_microtransaction_proto_msgTypes,
 	}.Build()
-	File_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto = out.File
-	file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_goTypes = nil
-	file_tp_lavado_dinero_internal_common_inner_protobuf_microtransaction_proto_depIdxs = nil
+	File_internal_common_inner_protobuf_microtransaction_proto = out.File
+	file_internal_common_inner_protobuf_microtransaction_proto_goTypes = nil
+	file_internal_common_inner_protobuf_microtransaction_proto_depIdxs = nil
 }

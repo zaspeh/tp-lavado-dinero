@@ -4,12 +4,14 @@ package protobuf;
 
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
-
 enum MessageType {
     EOF = 0;
     TRANSACTION = 1;
     MICROTRANSACTION = 2;
     MAXBANK = 3;
+
+    MICROTRANSACTION_RESULT = 4;
+    MAXBANK_RESULT = 5;
 }
 
 message MoneyLaundry {
