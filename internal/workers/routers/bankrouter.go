@@ -59,12 +59,15 @@ func NewBankRouter(config BackRouterConfig) (*BankRouter, error) {
 	}, nil
 }
 
-func (br *BankRouter) Run() {
+func (br *BankRouter) Run() error {
 	go br.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		br.handleMessage(msg, ack, nack)
 	})
 
 	go br.handleSignals()
+
+	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
+	return nil
 }
 
 func (br *BankRouter) handleSignals() {

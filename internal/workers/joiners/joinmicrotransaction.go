@@ -62,12 +62,14 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 	}, nil
 }
 
-func (j *JoinMicrotransaction) Run() {
+func (j *JoinMicrotransaction) Run() error {
 	go j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
 	})
 
 	go j.handleSignals()
+	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
+	return nil
 }
 
 func (j *JoinMicrotransaction) handleMessage(msg middleware.Message, ack, nack func()) {

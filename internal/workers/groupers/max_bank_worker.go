@@ -58,12 +58,14 @@ func NewMaxBankWorker(cfg MaxBankWorkerConfig) (*MaxBankWorker, error) {
 	}, nil
 }
 
-func (w *MaxBankWorker) Run() {
+func (w *MaxBankWorker) Run() error {
 	go w.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		w.handleMessage(msg, ack, nack)
 	})
 
 	go w.handleSignals()
+	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
+	return nil
 }
 
 func (w *MaxBankWorker) handleSignals() {

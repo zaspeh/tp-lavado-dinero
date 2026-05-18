@@ -65,7 +65,7 @@ func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 	}, nil
 }
 
-func (f *CurrencyFilter) Run() {
+func (f *CurrencyFilter) Run() error {
 	f.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
 		if err != nil {
@@ -83,6 +83,8 @@ func (f *CurrencyFilter) Run() {
 			nack()
 		}
 	})
+	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
+	return nil
 }
 
 func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
