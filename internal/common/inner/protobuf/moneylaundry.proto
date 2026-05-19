@@ -15,6 +15,7 @@ enum MessageType {
 }
 
 message MoneyLaundry {
-    MessageType type = 1;
-    bytes payload = 2;
+    string clientID = 1;
+    MessageType type = 2;
+    bytes payload = 3;
 }
