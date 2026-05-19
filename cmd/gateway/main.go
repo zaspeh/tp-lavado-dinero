@@ -1,79 +1,21 @@
 package main
 
 import (
-	"errors"
 	"log/slog"
 	"os"
-	"strconv"
 
-	"github.com/zaspeh/tp-lavado-dinero/internal/gateway"
+	"github.com/zaspeh/tp-lavado-dinero/internal/factory"
 )
 
-func loadConfig() (gateway.GatewayConfig, error) {
-	USDQueueName := os.Getenv("USD_QUEUE")
-	if USDQueueName == "" {
-		return gateway.GatewayConfig{}, errors.New("USD_QUEUE is required")
-	}
-
-	outputQueueName := os.Getenv("CLIENT_EXCHANGE")
-	if outputQueueName == "" {
-		return gateway.GatewayConfig{}, errors.New("CLIENT_EXCHANGE is required")
-	}
-
-	serverHost := os.Getenv("SERVER_HOST")
-	if serverHost == "" {
-		return gateway.GatewayConfig{}, errors.New("SERVER_HOST is required")
-	}
-
-	serverPort := os.Getenv("SERVER_PORT")
-	if serverPort == "" {
-		return gateway.GatewayConfig{}, errors.New("SERVER_PORT is required")
-	}
-
-	momPort, err := strconv.Atoi(os.Getenv("MOM_PORT"))
-	if err != nil {
-		return gateway.GatewayConfig{}, errors.New("MOM_PORT is required and must be a number")
-	}
-
-	momHost := os.Getenv("MOM_HOST")
-	if momHost == "" {
-		return gateway.GatewayConfig{}, errors.New("MOM_HOST is required")
-	}
-
-	return gateway.GatewayConfig{
-		CurrencyQueueName:  USDQueueName,
-		ClientExchangeName: outputQueueName,
-		ServerHost:         serverHost,
-		ServerPort:         serverPort,
-		MomHost:            momHost,
-		MomPort:            momPort,
-	}, nil
-}
-
 func run() int {
-	config, err := loadConfig()
+	gateway, err := factory.CreateGateway()
 	if err != nil {
-		slog.Error(
-			"while loading config",
-			"err", err,
-		)
+		slog.Error("while loading config", "err", err)
 		return 1
 	}
 
-	server, err := gateway.New(config)
-	if err != nil {
-		slog.Error(
-			"while creating gateway",
-			"err", err,
-		)
-		return 1
-	}
-
-	if err := server.Run(); err != nil {
-		slog.Error(
-			"gateway stopped with error",
-			"err", err,
-		)
+	if err := gateway.Run(); err != nil {
+		slog.Error("gateway stopped with error", "err", err)
 		return 1
 	}
 

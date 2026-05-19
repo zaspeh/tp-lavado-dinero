@@ -2,6 +2,7 @@ package factory
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/client"
+	"github.com/zaspeh/tp-lavado-dinero/internal/gateway"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 )
 
@@ -18,4 +19,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 
 func CreateClient() (*client.Client, error) {
 	return buildClient()
+}
+
+func CreateGateway() (*gateway.Gateway, error) {
+	return buildGateway()
 }
