@@ -2,6 +2,10 @@ package periodfilter
 
 import (
 	"errors"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 )
@@ -100,4 +104,40 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		paymentTypeFilterQueue:  paymentTypeFilterQueue,
 		periods:                 config.Periods,
 	}, nil
+}
+
+func (pf *PeriodFilterWorker) Run() error {
+	go pf.usdInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		pf.handleUSDMessage(msg, ack, nack)
+	})
+	go pf.rawInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		pf.handleRawMessage(msg, ack, nack)
+	})
+
+	go pf.handleSignals()
+	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
+	return nil
+}
+
+func (pf *PeriodFilterWorker) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
+	slog.Info("shutdown signal received")
+	pf.usdInputQueue.Close()
+	pf.rawInputQueue.Close()
+	for _, queue := range pf.avgByTypeQueues {
+		queue.Close()
+	}
+	pf.groupByOriginQueue.Close()
+	pf.groupByDestinationQueue.Close()
+	pf.paymentTypeFilterQueue.Close()
+}
+
+func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack func()) {
+	// Implementation for handling USD messages
+}
+
+func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack func()) {
+	// Implementation for handling raw messages
 }
