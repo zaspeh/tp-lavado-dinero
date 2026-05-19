@@ -183,14 +183,50 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 		return
 	}
 
-	transactionTime := periodFilterMsg.GetTimestamp().AsTime()
-	for _, route := range pf.avgByTypeRoutes {
-		if route.Period.Contains(transactionTime) {
-			//enviar mensaje con campos para avg by type a route.Queue
-		}
+	err = pf.publishToAvgByTypeRoutes(periodFilterMsg)
+	if err != nil {
+		nack()
+		return
 	}
 
-	if pf.scatterGatherPeriod.Contains(transactionTime) {
-		//enviar mensaje con campos para scatter gather a GroupBy queues
+	err = pf.publishScatterGatherMessage(periodFilterMsg)
+	if err != nil {
+		nack()
+		return
 	}
+
+	ack()
+}
+
+func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *protobuf.PeriodFilter) error {
+	if !pf.scatterGatherPeriod.Contains(periodFilterMsg.GetTimestamp().AsTime()) {
+		return nil
+	}
+	//enviar mensaje con campos para scatter gather a GroupBy queues
+	scatterGatherMsg := &protobuf.ScatterGather{
+		FromBank:  periodFilterMsg.GetFromBank(),
+		ToBank:    periodFilterMsg.GetToBank(),
+		Account:   periodFilterMsg.GetAccount(),
+		ToAccount: periodFilterMsg.GetToAccount(),
+	}
+
+	serializedMsg, err := serializer.SerializeProtoMessage(scatterGatherMsg, protobuf.MessageType_SCATTERGATHER)
+	if err != nil {
+		return err
+	}
+
+	if err := pf.groupByOriginQueue.Send(*serializedMsg); err != nil {
+		return err
+	}
+
+	if err := pf.groupByDestinationQueue.Send(*serializedMsg); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pf *PeriodFilterWorker) publishToAvgByTypeRoutes(periodFilterMsg *protobuf.PeriodFilter) error {
+	//enviar mensaje a avgByTypeRoutes correspondientes al periodo
+	return nil
 }
