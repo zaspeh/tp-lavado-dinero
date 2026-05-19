@@ -9,6 +9,5 @@ type Record struct {
 type ProcessedRecord struct {
 	BankName     string
 	Account      string
-	AmountValue  float64
 	AmountString string
 }

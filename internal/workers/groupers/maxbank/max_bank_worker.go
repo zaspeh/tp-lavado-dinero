@@ -118,34 +118,5 @@ func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry
 }
 
 func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func()) {
-	results := w.maxBankStorage.GetResults()
-	for _, rec := range results {
-		mb := &protobuf.MaxBank{
-			FromBank: rec.BankName,
-			Payload: &protobuf.MaxBank_TransferSummary{
-				TransferSummary: &protobuf.TransferSummary{
-					Account: rec.Account,
-					Amount:  rec.AmountString,
-				},
-			},
-		}
-
-		serialized, err := serializer.SerializeProtoMessage(mb, protobuf.MessageType_MAXBANK)
-		if err != nil {
-			nack()
-			return
-		}
-
-		if err := w.outputQueue.Send(*serialized); err != nil {
-			nack()
-			return
-		}
-	}
-
-	if err := w.outputQueue.Send(originalMsg); err != nil {
-		nack()
-		return
-	}
-
 	ack()
 }

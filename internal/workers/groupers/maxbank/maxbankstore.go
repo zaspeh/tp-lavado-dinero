@@ -6,22 +6,15 @@ const (
 	noBankName      = ""
 )
 
-type MaxBankRecord struct {
-	Account      string
-	AmountValue  float64
-	AmountString string
-	BankName     string
-}
-
 type MaxBankStore struct {
 	bankNames       map[string]string
-	maxTransactions map[string][]MaxBankRecord
+	maxTransactions map[string][]Record
 }
 
 func NewBankStore() *MaxBankStore {
 	return &MaxBankStore{
 		bankNames:       make(map[string]string),
-		maxTransactions: make(map[string][]MaxBankRecord),
+		maxTransactions: make(map[string][]Record),
 	}
 }
 
@@ -34,7 +27,7 @@ func (s *MaxBankStore) UpdateMaxTransaction(bankID string, account string, amoun
 
 	// Nuevo maximo
 	if !ok || amount > current[maxIndex].AmountValue {
-		s.maxTransactions[bankID] = []MaxBankRecord{{
+		s.maxTransactions[bankID] = []Record{{
 			Account:      account,
 			AmountValue:  amount,
 			AmountString: amountStr,
@@ -44,7 +37,7 @@ func (s *MaxBankStore) UpdateMaxTransaction(bankID string, account string, amoun
 
 	// Maximo repetido
 	if amount == current[maxIndex].AmountValue {
-		s.maxTransactions[bankID] = append(s.maxTransactions[bankID], MaxBankRecord{
+		s.maxTransactions[bankID] = append(s.maxTransactions[bankID], Record{
 			Account:      account,
 			AmountValue:  amount,
 			AmountString: amountStr,
@@ -52,18 +45,6 @@ func (s *MaxBankStore) UpdateMaxTransaction(bankID string, account string, amoun
 	}
 }
 
-func (s *MaxBankStore) GetResults() []MaxBankRecord {
-	var results []MaxBankRecord
-	for bankID, records := range s.maxTransactions {
-		name := s.bankNames[bankID]
-		if name == noBankName {
-			name = defaultBankName
-		}
-
-		for _, r := range records {
-			r.BankName = name
-			results = append(results, r)
-		}
-	}
-	return results
+func (s *MaxBankStore) Reader() *Reader {
+	return NewReader(s)
 }
