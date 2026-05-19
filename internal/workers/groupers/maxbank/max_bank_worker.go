@@ -1,4 +1,4 @@
-package groupers
+package maxbank
 
 import (
 	"log/slog"
@@ -12,17 +12,10 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
-type MaxBankRecord struct {
-	Account      string
-	AmountValue  float64
-	AmountString string
-}
-
 type MaxBankWorker struct {
-	inputQueue      middleware.Middleware
-	outputQueue     middleware.Middleware
-	bankNames       map[string]string
-	maxTransactions map[string]MaxBankRecord
+	inputQueue     middleware.Middleware
+	outputQueue    middleware.Middleware
+	maxBankStorage *MaxBankStore
 }
 
 type MaxBankWorkerConfig struct {
@@ -51,10 +44,9 @@ func NewMaxBankWorker(cfg MaxBankWorkerConfig) (*MaxBankWorker, error) {
 	}
 
 	return &MaxBankWorker{
-		inputQueue:      inputExchange,
-		outputQueue:     outputQueue,
-		bankNames:       make(map[string]string),
-		maxTransactions: make(map[string]MaxBankRecord),
+		inputQueue:     inputExchange,
+		outputQueue:    outputQueue,
+		maxBankStorage: NewBankStore(),
 	}, nil
 }
 
@@ -104,7 +96,7 @@ func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry
 	bankID := maxBankMsg.GetFromBank()
 
 	if meta := maxBankMsg.GetBankMetadata(); meta != nil {
-		w.bankNames[bankID] = meta.GetBankName()
+		w.maxBankStorage.UpdateBankName(bankID, meta.GetBankName())
 		ack()
 		return
 	}
@@ -117,15 +109,7 @@ func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry
 			return
 		}
 
-		current, ok := w.maxTransactions[bankID]
-		if !ok || amountVal > current.AmountValue {
-			w.maxTransactions[bankID] = MaxBankRecord{
-				Account:      ts.GetAccount(),
-				AmountValue:  amountVal,
-				AmountString: amountStr,
-			}
-		}
-
+		w.maxBankStorage.UpdateMaxTransaction(bankID, ts.GetAccount(), amountVal, amountStr)
 		ack()
 		return
 	}
@@ -134,14 +118,10 @@ func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry
 }
 
 func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func()) {
-	results := make(map[string]MaxBankRecord, len(w.maxTransactions))
-	for k, v := range w.maxTransactions {
-		results[k] = v
-	}
-
-	for bankID, rec := range results {
+	results := w.maxBankStorage.GetResults()
+	for _, rec := range results {
 		mb := &protobuf.MaxBank{
-			FromBank: bankID,
+			FromBank: rec.BankName,
 			Payload: &protobuf.MaxBank_TransferSummary{
 				TransferSummary: &protobuf.TransferSummary{
 					Account: rec.Account,
