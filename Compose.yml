@@ -1,7 +1,6 @@
 networks:
   money_laundering_network:
     driver: bridge
-
 services:
   rabbitmq:
     image: rabbitmq:3-management
@@ -14,65 +13,75 @@ services:
       test: rabbitmq-diagnostics check_port_connectivity
       timeout: 3s
     ports:
-      - 15672:15672
-      - 5672:5672
+    - 15672:15672
+    - 5672:5672
     networks:
-      - money_laundering_network
-
+    - money_laundering_network
   gateway:
     build:
       context: .
       dockerfile: docker/gateway.Dockerfile
     environment:
-      - SERVER_HOST=0.0.0.0
-      - SERVER_PORT=8080
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
+    - SERVER_HOST=0.0.0.0
+    - SERVER_PORT=8080
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
     ports:
-      - 8080:8080
+    - 8080:8080
     depends_on:
       rabbitmq:
         condition: service_healthy
     networks:
-      - money_laundering_network
-
-  client:
+    - money_laundering_network
+  client_0:
     build:
       context: .
       dockerfile: docker/client.Dockerfile
     environment:
-      - SERVER_HOST=gateway
-      - SERVER_PORT=8080
-      - INPUT_FILE=/data/dataset.csv
+    - SERVER_HOST=gateway
+    - SERVER_PORT=8080
+    - INPUT_FILE=/data/dataset.csv
     depends_on:
-      - gateway
+    - gateway
     networks:
-      - money_laundering_network
-
-  currency_filter:
+    - money_laundering_network
+  currency_filter_0:
     build:
       context: .
       dockerfile: docker/worker.Dockerfile
     environment:
-      - WORKER_TYPE=CURRENCY_FILTER    
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
+    - WORKER_TYPE=CURRENCY_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
     depends_on:
       rabbitmq:
         condition: service_healthy
     networks:
-      - money_laundering_network
-
-  bank_router:
+    - money_laundering_network
+  max_bank_0:
     build:
       context: .
       dockerfile: docker/worker.Dockerfile
     environment:
-      - WORKER_TYPE=BANK_ROUTER        
-      - MOM_HOST=rabbitmq
-      - MOM_PORT=5672
+    - WORKER_TYPE=MAX_BANK
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
     depends_on:
       rabbitmq:
         condition: service_healthy
     networks:
-      - money_laundering_network
+    - money_laundering_network
+  bank_router_0:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+    - WORKER_TYPE=BANK_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - MAX_BANK_WORKER_AMOUNT=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network

@@ -12,6 +12,7 @@ services:
   bank_router:
     count: 1
 
+# Puertos y configuraciones específicas para cada servicio
 gateway:
   port: 8080
   
