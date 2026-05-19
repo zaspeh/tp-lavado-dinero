@@ -9,9 +9,10 @@ enum MessageType {
     TRANSACTION = 1;
     MICROTRANSACTION = 2;
     MAXBANK = 3;
+    PERIODFILTER = 4;
 
-    MICROTRANSACTION_RESULT = 4;
-    MAXBANK_RESULT = 5;
+    MICROTRANSACTION_RESULT = 5;
+    MAXBANK_RESULT = 6;
 }
 
 message MoneyLaundry {
