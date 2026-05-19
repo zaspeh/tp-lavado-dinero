@@ -29,8 +29,9 @@ const (
 	MessageType_MICROTRANSACTION        MessageType = 2
 	MessageType_MAXBANK                 MessageType = 3
 	MessageType_PERIODFILTER            MessageType = 4
-	MessageType_MICROTRANSACTION_RESULT MessageType = 5
-	MessageType_MAXBANK_RESULT          MessageType = 6
+	MessageType_SCATTERGATHER           MessageType = 5
+	MessageType_MICROTRANSACTION_RESULT MessageType = 6
+	MessageType_MAXBANK_RESULT          MessageType = 7
 )
 
 // Enum value maps for MessageType.
@@ -41,8 +42,9 @@ var (
 		2: "MICROTRANSACTION",
 		3: "MAXBANK",
 		4: "PERIODFILTER",
-		5: "MICROTRANSACTION_RESULT",
-		6: "MAXBANK_RESULT",
+		5: "SCATTERGATHER",
+		6: "MICROTRANSACTION_RESULT",
+		7: "MAXBANK_RESULT",
 	}
 	MessageType_value = map[string]int32{
 		"EOF":                     0,
@@ -50,8 +52,9 @@ var (
 		"MICROTRANSACTION":        2,
 		"MAXBANK":                 3,
 		"PERIODFILTER":            4,
-		"MICROTRANSACTION_RESULT": 5,
-		"MAXBANK_RESULT":          6,
+		"SCATTERGATHER":           5,
+		"MICROTRANSACTION_RESULT": 6,
+		"MAXBANK_RESULT":          7,
 	}
 )
 
@@ -150,15 +153,16 @@ const file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_ra
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload*\x8d\x01\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload*\xa0\x01\n" +
 	"\vMessageType\x12\a\n" +
 	"\x03EOF\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
 	"\x10MICROTRANSACTION\x10\x02\x12\v\n" +
 	"\aMAXBANK\x10\x03\x12\x10\n" +
-	"\fPERIODFILTER\x10\x04\x12\x1b\n" +
-	"\x17MICROTRANSACTION_RESULT\x10\x05\x12\x12\n" +
-	"\x0eMAXBANK_RESULT\x10\x06B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\fPERIODFILTER\x10\x04\x12\x11\n" +
+	"\rSCATTERGATHER\x10\x05\x12\x1b\n" +
+	"\x17MICROTRANSACTION_RESULT\x10\x06\x12\x12\n" +
+	"\x0eMAXBANK_RESULT\x10\aB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_tp_lavado_dinero_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once

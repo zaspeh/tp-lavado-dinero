@@ -10,9 +10,10 @@ enum MessageType {
     MICROTRANSACTION = 2;
     MAXBANK = 3;
     PERIODFILTER = 4;
+    SCATTERGATHER = 5;
 
-    MICROTRANSACTION_RESULT = 5;
-    MAXBANK_RESULT = 6;
+    MICROTRANSACTION_RESULT = 6;
+    MAXBANK_RESULT = 7;
 }
 
 message MoneyLaundry {
