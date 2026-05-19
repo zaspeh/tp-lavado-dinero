@@ -3,6 +3,7 @@ package factory
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 )
 
 func buildCurrencyFilterWorker() (workers.Worker, error) {
@@ -52,6 +53,113 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 	}
 
 	return filters.NewCurrencyFilter(config)
+}
+
+func buildPeriodFilterWorker() (workers.Worker, error) {
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	usdInputQ, err := getEnvStrict("USD_INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	rawInputQ, err := getEnvStrict("RAW_INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	groupByOriginQ, err := getEnvStrict("GROUP_BY_ORIGIN_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	groupByDestinationQ, err := getEnvStrict("GROUP_BY_DESTINATION_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	paymentTypeQ, err := getEnvStrict("PAYMENT_TYPE_FILTER_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	avgByTypeQ1, err := getEnvStrict("AVG_BY_TYPE_PERIOD_1_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	avgByTypeQ2, err := getEnvStrict("AVG_BY_TYPE_PERIOD_2_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	avgByTypePeriod1, err := buildPeriodFromEnv(
+		"AVG_BY_TYPE_PERIOD_1_START",
+		"AVG_BY_TYPE_PERIOD_1_END",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	avgByTypePeriod2, err := buildPeriodFromEnv(
+		"AVG_BY_TYPE_PERIOD_2_START",
+		"AVG_BY_TYPE_PERIOD_2_END",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	scatterGatherPeriod, err := buildPeriodFromEnv(
+		"SCATTER_GATHER_PERIOD_START",
+		"SCATTER_GATHER_PERIOD_END",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	paymentTypePeriod, err := buildPeriodFromEnv(
+		"PAYMENT_TYPE_PERIOD_START",
+		"PAYMENT_TYPE_PERIOD_END",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	config := periodfilter.PeriodFilterWorkerConfig{
+		UsdInputQueueName: usdInputQ,
+		RawInputQueueName: rawInputQ,
+
+		AvgByTypeQueueNames: []string{
+			avgByTypeQ1,
+			avgByTypeQ2,
+		},
+
+		AvgByTypePeriods: []periodfilter.Period{
+			avgByTypePeriod1,
+			avgByTypePeriod2,
+		},
+
+		ScatterGatherPeriod: scatterGatherPeriod,
+
+		GroupByOriginQueueName:      groupByOriginQ,
+		GroupByDestinationQueueName: groupByDestinationQ,
+
+		PaymentTypePeriod:          paymentTypePeriod,
+		PaymentTypeFilterQueueName: paymentTypeQ,
+
+		MomHost: host,
+		MomPort: port,
+	}
+
+	return periodfilter.NewPeriodFilterWorker(config)
 }
 
 func buildAmountFilterWorker() (workers.Worker, error) {
