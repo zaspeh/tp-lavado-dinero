@@ -12,30 +12,45 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
+type AvgByTypeRoute struct {
+	Queue  middleware.Middleware
+	Period Period
+}
+
 type PeriodFilterWorker struct {
-	usdInputQueue           middleware.Middleware
-	rawInputQueue           middleware.Middleware
-	avgByTypeQueues         []middleware.Middleware
+	usdInputQueue middleware.Middleware
+	rawInputQueue middleware.Middleware
+
+	avgByTypeRoutes []AvgByTypeRoute
+
+	scatterGatherPeriod     Period
 	groupByOriginQueue      middleware.Middleware
 	groupByDestinationQueue middleware.Middleware
-	paymentTypeFilterQueue  middleware.Middleware
-	periods                 []Period
+
+	paymentTypePeriod      Period
+	paymentTypeFilterQueue middleware.Middleware
 }
 
 type PeriodFilterWorkerConfig struct {
-	UsdInputQueueName           string
-	RawInputQueueName           string
-	AvgByTypeQueueNames         []string
+	UsdInputQueueName string
+	RawInputQueueName string
+
+	AvgByTypeQueueNames []string
+	AvgByTypePeriods    []Period
+
+	ScatterGatherPeriod         Period
 	GroupByOriginQueueName      string
 	GroupByDestinationQueueName string
-	PaymentTypeFilterQueueName  string
-	MomHost                     string
-	MomPort                     int
-	Periods                     []Period
+
+	PaymentTypePeriod          Period
+	PaymentTypeFilterQueueName string
+
+	MomHost string
+	MomPort int
 }
 
 func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker, error) {
-	if len(config.Periods) != len(config.AvgByTypeQueueNames) {
+	if len(config.AvgByTypePeriods) != len(config.AvgByTypeQueueNames) {
 		return nil, errors.New("period count must match avgByType queue count")
 	}
 
@@ -65,14 +80,17 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 	}
 	createdQueues = append(createdQueues, rawInputQueue)
 
-	var avgByTypeQueues []middleware.Middleware
-	for _, queueName := range config.AvgByTypeQueueNames {
+	var avgByTypeRoutes []AvgByTypeRoute
+	for i, queueName := range config.AvgByTypeQueueNames {
 		queue, err := middleware.CreateQueueMiddleware(queueName, connSettings)
 		if err != nil {
 			closeAllQueues()
 			return nil, err
 		}
-		avgByTypeQueues = append(avgByTypeQueues, queue)
+		avgByTypeRoutes = append(avgByTypeRoutes, AvgByTypeRoute{
+			Queue:  queue,
+			Period: config.AvgByTypePeriods[i],
+		})
 		createdQueues = append(createdQueues, queue)
 	}
 
@@ -100,11 +118,12 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 	return &PeriodFilterWorker{
 		usdInputQueue:           usdInputQueue,
 		rawInputQueue:           rawInputQueue,
-		avgByTypeQueues:         avgByTypeQueues,
+		avgByTypeRoutes:         avgByTypeRoutes,
+		scatterGatherPeriod:     config.ScatterGatherPeriod,
 		groupByOriginQueue:      groupByOriginQueue,
 		groupByDestinationQueue: groupByDestinationQueue,
+		paymentTypePeriod:       config.PaymentTypePeriod,
 		paymentTypeFilterQueue:  paymentTypeFilterQueue,
-		periods:                 config.Periods,
 	}, nil
 }
 
@@ -128,8 +147,8 @@ func (pf *PeriodFilterWorker) handleSignals() {
 	slog.Info("shutdown signal received")
 	pf.usdInputQueue.Close()
 	pf.rawInputQueue.Close()
-	for _, queue := range pf.avgByTypeQueues {
-		queue.Close()
+	for _, route := range pf.avgByTypeRoutes {
+		route.Queue.Close()
 	}
 	pf.groupByOriginQueue.Close()
 	pf.groupByDestinationQueue.Close()
@@ -144,6 +163,8 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 	}
 
 	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_PERIODFILTER:
+		pf.handlePeriodFilterMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF:
 		//TODO: IMPLEMENTAR BROADCAST DE EOF
 	default:
@@ -153,4 +174,23 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 
 func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack func()) {
 	// Implementation for handling raw messages
+}
+
+func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
+	periodFilterMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.PeriodFilter{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	transactionTime := periodFilterMsg.GetTimestamp().AsTime()
+	for _, route := range pf.avgByTypeRoutes {
+		if route.Period.Contains(transactionTime) {
+			//enviar mensaje con campos para avg by type a route.Queue
+		}
+	}
+
+	if pf.scatterGatherPeriod.Contains(transactionTime) {
+		//enviar mensaje con campos para scatter gather a GroupBy queues
+	}
 }
