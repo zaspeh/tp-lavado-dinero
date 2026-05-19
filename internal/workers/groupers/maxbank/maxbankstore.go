@@ -3,7 +3,6 @@ package maxbank
 const (
 	maxIndex        = 0
 	defaultBankName = "Unknown Bank"
-	noBankName      = ""
 )
 
 type MaxBankStore struct {
@@ -20,6 +19,13 @@ func NewBankStore() *MaxBankStore {
 
 func (s *MaxBankStore) UpdateBankName(bankID string, bankName string) {
 	s.bankNames[bankID] = bankName
+}
+
+func (s *MaxBankStore) getBankName(id string) string {
+	if name, ok := s.bankNames[id]; ok {
+		return name
+	}
+	return defaultBankName
 }
 
 func (s *MaxBankStore) UpdateMaxTransaction(bankID string, account string, amount float64, amountStr string) {
@@ -46,5 +52,10 @@ func (s *MaxBankStore) UpdateMaxTransaction(bankID string, account string, amoun
 }
 
 func (s *MaxBankStore) Reader() *Reader {
-	return NewReader(s)
+	return newReader(s)
+}
+
+func (s *MaxBankStore) Flush(bankID string) {
+	delete(s.maxTransactions, bankID)
+	delete(s.bankNames, bankID)
 }

@@ -7,7 +7,7 @@ type Reader struct {
 	currentRecord int
 }
 
-func NewReader(s *MaxBankStore) *Reader {
+func newReader(s *MaxBankStore) *Reader {
 	ids := make([]string, 0, len(s.maxTransactions))
 	for id := range s.maxTransactions {
 		ids = append(ids, id)
@@ -27,7 +27,7 @@ func (r *Reader) Get() ProcessedRecord {
 	records := r.storage.maxTransactions[bankID]
 
 	return ProcessedRecord{
-		BankName:     r.storage.bankNames[bankID], // Este es el "join de id"
+		BankName:     r.storage.getBankName(bankID), // Este es el "join de id"
 		Account:      records[r.currentRecord].Account,
 		AmountString: records[r.currentRecord].AmountString,
 	}
