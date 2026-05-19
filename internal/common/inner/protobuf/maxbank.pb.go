@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.1
-// source: maxbank.proto
+// source: internal/common/inner/protobuf/maxbank.proto
 
 package protobuf
 
@@ -35,7 +35,7 @@ type MaxBank struct {
 
 func (x *MaxBank) Reset() {
 	*x = MaxBank{}
-	mi := &file_maxbank_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *MaxBank) String() string {
 func (*MaxBank) ProtoMessage() {}
 
 func (x *MaxBank) ProtoReflect() protoreflect.Message {
-	mi := &file_maxbank_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *MaxBank) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MaxBank.ProtoReflect.Descriptor instead.
 func (*MaxBank) Descriptor() ([]byte, []int) {
-	return file_maxbank_proto_rawDescGZIP(), []int{0}
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *MaxBank) GetFromBank() string {
@@ -120,7 +120,7 @@ type BankMetadata struct {
 
 func (x *BankMetadata) Reset() {
 	*x = BankMetadata{}
-	mi := &file_maxbank_proto_msgTypes[1]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -132,7 +132,7 @@ func (x *BankMetadata) String() string {
 func (*BankMetadata) ProtoMessage() {}
 
 func (x *BankMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_maxbank_proto_msgTypes[1]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -145,7 +145,7 @@ func (x *BankMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BankMetadata.ProtoReflect.Descriptor instead.
 func (*BankMetadata) Descriptor() ([]byte, []int) {
-	return file_maxbank_proto_rawDescGZIP(), []int{1}
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *BankMetadata) GetBankName() string {
@@ -165,7 +165,7 @@ type TransferSummary struct {
 
 func (x *TransferSummary) Reset() {
 	*x = TransferSummary{}
-	mi := &file_maxbank_proto_msgTypes[2]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -177,7 +177,7 @@ func (x *TransferSummary) String() string {
 func (*TransferSummary) ProtoMessage() {}
 
 func (x *TransferSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_maxbank_proto_msgTypes[2]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -190,7 +190,7 @@ func (x *TransferSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferSummary.ProtoReflect.Descriptor instead.
 func (*TransferSummary) Descriptor() ([]byte, []int) {
-	return file_maxbank_proto_rawDescGZIP(), []int{2}
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TransferSummary) GetAccount() string {
@@ -207,11 +207,115 @@ func (x *TransferSummary) GetAmount() string {
 	return ""
 }
 
-var File_maxbank_proto protoreflect.FileDescriptor
+type MaxBankResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BankName      string                 `protobuf:"bytes,1,opt,name=bank_name,json=bankName,proto3" json:"bank_name,omitempty"`
+	Account       string                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_maxbank_proto_rawDesc = "" +
+func (x *MaxBankResult) Reset() {
+	*x = MaxBankResult{}
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MaxBankResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MaxBankResult) ProtoMessage() {}
+
+func (x *MaxBankResult) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MaxBankResult.ProtoReflect.Descriptor instead.
+func (*MaxBankResult) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *MaxBankResult) GetBankName() string {
+	if x != nil {
+		return x.BankName
+	}
+	return ""
+}
+
+func (x *MaxBankResult) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+func (x *MaxBankResult) GetAmount() string {
+	if x != nil {
+		return x.Amount
+	}
+	return ""
+}
+
+type MaxBankResultBatch struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Results       []*MaxBankResult       `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MaxBankResultBatch) Reset() {
+	*x = MaxBankResultBatch{}
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MaxBankResultBatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MaxBankResultBatch) ProtoMessage() {}
+
+func (x *MaxBankResultBatch) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MaxBankResultBatch.ProtoReflect.Descriptor instead.
+func (*MaxBankResultBatch) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *MaxBankResultBatch) GetResults() []*MaxBankResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+var File_internal_common_inner_protobuf_maxbank_proto protoreflect.FileDescriptor
+
+const file_internal_common_inner_protobuf_maxbank_proto_rawDesc = "" +
 	"\n" +
-	"\rmaxbank.proto\x12\bprotobuf\"\xb8\x01\n" +
+	",internal/common/inner/protobuf/maxbank.proto\x12\bprotobuf\"\xb8\x01\n" +
 	"\aMaxBank\x12\x1b\n" +
 	"\tfrom_bank\x18\x01 \x01(\tR\bfromBank\x12=\n" +
 	"\rbank_metadata\x18\x02 \x01(\v2\x16.protobuf.BankMetadataH\x00R\fbankMetadata\x12F\n" +
@@ -221,42 +325,51 @@ const file_maxbank_proto_rawDesc = "" +
 	"\tbank_name\x18\x01 \x01(\tR\bbankName\"C\n" +
 	"\x0fTransferSummary\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x16\n" +
-	"\x06amount\x18\x02 \x01(\tR\x06amountB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x06amount\x18\x02 \x01(\tR\x06amount\"^\n" +
+	"\rMaxBankResult\x12\x1b\n" +
+	"\tbank_name\x18\x01 \x01(\tR\bbankName\x12\x18\n" +
+	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\x16\n" +
+	"\x06amount\x18\x03 \x01(\tR\x06amount\"G\n" +
+	"\x12MaxBankResultBatch\x121\n" +
+	"\aresults\x18\x01 \x03(\v2\x17.protobuf.MaxBankResultR\aresultsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
-	file_maxbank_proto_rawDescOnce sync.Once
-	file_maxbank_proto_rawDescData []byte
+	file_internal_common_inner_protobuf_maxbank_proto_rawDescOnce sync.Once
+	file_internal_common_inner_protobuf_maxbank_proto_rawDescData []byte
 )
 
-func file_maxbank_proto_rawDescGZIP() []byte {
-	file_maxbank_proto_rawDescOnce.Do(func() {
-		file_maxbank_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_maxbank_proto_rawDesc), len(file_maxbank_proto_rawDesc)))
+func file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP() []byte {
+	file_internal_common_inner_protobuf_maxbank_proto_rawDescOnce.Do(func() {
+		file_internal_common_inner_protobuf_maxbank_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_maxbank_proto_rawDesc), len(file_internal_common_inner_protobuf_maxbank_proto_rawDesc)))
 	})
-	return file_maxbank_proto_rawDescData
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescData
 }
 
-var file_maxbank_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_maxbank_proto_goTypes = []any{
-	(*MaxBank)(nil),         // 0: protobuf.MaxBank
-	(*BankMetadata)(nil),    // 1: protobuf.BankMetadata
-	(*TransferSummary)(nil), // 2: protobuf.TransferSummary
+var file_internal_common_inner_protobuf_maxbank_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_internal_common_inner_protobuf_maxbank_proto_goTypes = []any{
+	(*MaxBank)(nil),            // 0: protobuf.MaxBank
+	(*BankMetadata)(nil),       // 1: protobuf.BankMetadata
+	(*TransferSummary)(nil),    // 2: protobuf.TransferSummary
+	(*MaxBankResult)(nil),      // 3: protobuf.MaxBankResult
+	(*MaxBankResultBatch)(nil), // 4: protobuf.MaxBankResultBatch
 }
-var file_maxbank_proto_depIdxs = []int32{
+var file_internal_common_inner_protobuf_maxbank_proto_depIdxs = []int32{
 	1, // 0: protobuf.MaxBank.bank_metadata:type_name -> protobuf.BankMetadata
 	2, // 1: protobuf.MaxBank.transfer_summary:type_name -> protobuf.TransferSummary
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: protobuf.MaxBankResultBatch.results:type_name -> protobuf.MaxBankResult
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_maxbank_proto_init() }
-func file_maxbank_proto_init() {
-	if File_maxbank_proto != nil {
+func init() { file_internal_common_inner_protobuf_maxbank_proto_init() }
+func file_internal_common_inner_protobuf_maxbank_proto_init() {
+	if File_internal_common_inner_protobuf_maxbank_proto != nil {
 		return
 	}
-	file_maxbank_proto_msgTypes[0].OneofWrappers = []any{
+	file_internal_common_inner_protobuf_maxbank_proto_msgTypes[0].OneofWrappers = []any{
 		(*MaxBank_BankMetadata)(nil),
 		(*MaxBank_TransferSummary)(nil),
 	}
@@ -264,17 +377,17 @@ func file_maxbank_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_maxbank_proto_rawDesc), len(file_maxbank_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_maxbank_proto_rawDesc), len(file_internal_common_inner_protobuf_maxbank_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_maxbank_proto_goTypes,
-		DependencyIndexes: file_maxbank_proto_depIdxs,
-		MessageInfos:      file_maxbank_proto_msgTypes,
+		GoTypes:           file_internal_common_inner_protobuf_maxbank_proto_goTypes,
+		DependencyIndexes: file_internal_common_inner_protobuf_maxbank_proto_depIdxs,
+		MessageInfos:      file_internal_common_inner_protobuf_maxbank_proto_msgTypes,
 	}.Build()
-	File_maxbank_proto = out.File
-	file_maxbank_proto_goTypes = nil
-	file_maxbank_proto_depIdxs = nil
+	File_internal_common_inner_protobuf_maxbank_proto = out.File
+	file_internal_common_inner_protobuf_maxbank_proto_goTypes = nil
+	file_internal_common_inner_protobuf_maxbank_proto_depIdxs = nil
 }

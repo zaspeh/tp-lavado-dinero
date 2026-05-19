@@ -118,5 +118,40 @@ func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry
 }
 
 func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func()) {
+	reader := w.maxBankStorage.Reader()
+
+	var currentBatch []*protobuf.MaxBank
+	var processedBanks []string
+
+	for processedBanks := reader.Get(); reader.HasNext(); reader.Next() {
+		enriched := reader.Get()
+
+		// 1. Transformar y acumular
+		pb := w.toProto(enriched)
+		currentBatch = append(currentBatch, pb)
+
+		// Tracking: Guardamos qué bancos estamos metiendo en este lote
+		processedBanks = append(processedBanks, enriched.BankID)
+
+		// 2. Lógica de Flush (Batching)
+		if w.shouldFlush(currentBatch) {
+			if err := w.send(currentBatch); err != nil {
+				nack() // Si falla la red, NO borramos memoria
+				return
+			}
+
+			// 3. Éxito: Liberar memoria de lo enviado
+			w.storage.Commit(processedBanks)
+
+			// Reset de lotes
+			currentBatch = nil
+			processedBanks = nil
+		}
+
+		reader.Next()
+	}
+
+	// Procesar remanente final...
+	// Enviar EOF original...
 	ack()
 }

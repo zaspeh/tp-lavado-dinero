@@ -7,6 +7,7 @@ type Record struct {
 }
 
 type ProcessedRecord struct {
+	BankID       string
 	BankName     string
 	Account      string
 	AmountString string
