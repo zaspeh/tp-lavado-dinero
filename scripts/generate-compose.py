@@ -81,7 +81,35 @@ def build_worker(svc_name, worker_type, cfg):
     if svc_name == 'bank_router':
         max_bank_count = cfg.get('services', {}).get('max_bank', {}).get('count', 1)
         env.append(f"MAX_BANK_WORKER_AMOUNT={max_bank_count}")
-        
+    
+    if svc_name == 'period_filter':
+        period_filter_cfg = cfg.get('services', {}).get('period_filter', {})
+
+        env.extend([
+            f"USD_INPUT_QUEUE_NAME={period_filter_cfg.get('usd_input_queue')}",
+            f"RAW_INPUT_QUEUE_NAME={period_filter_cfg.get('raw_input_queue')}",
+
+            f"GROUP_BY_ORIGIN_QUEUE_NAME={period_filter_cfg.get('group_by_origin_queue')}",
+            f"GROUP_BY_DESTINATION_QUEUE_NAME={period_filter_cfg.get('group_by_destination_queue')}",
+
+            f"PAYMENT_TYPE_FILTER_QUEUE_NAME={period_filter_cfg.get('payment_type_queue')}",
+
+            f"AVG_BY_TYPE_PERIOD_1_QUEUE_NAME={period_filter_cfg.get('avg_by_type_period_1_queue')}",
+            f"AVG_BY_TYPE_PERIOD_2_QUEUE_NAME={period_filter_cfg.get('avg_by_type_period_2_queue')}",
+
+            f"AVG_BY_TYPE_PERIOD_1_START={period_filter_cfg.get('avg_by_type_period_1_start')}",
+            f"AVG_BY_TYPE_PERIOD_1_END={period_filter_cfg.get('avg_by_type_period_1_end')}",
+
+            f"AVG_BY_TYPE_PERIOD_2_START={period_filter_cfg.get('avg_by_type_period_2_start')}",
+            f"AVG_BY_TYPE_PERIOD_2_END={period_filter_cfg.get('avg_by_type_period_2_end')}",
+
+            f"SCATTER_GATHER_PERIOD_START={period_filter_cfg.get('scatter_gather_period_start')}",
+            f"SCATTER_GATHER_PERIOD_END={period_filter_cfg.get('scatter_gather_period_end')}",
+
+            f"PAYMENT_TYPE_PERIOD_START={period_filter_cfg.get('payment_type_period_start')}",
+            f"PAYMENT_TYPE_PERIOD_END={period_filter_cfg.get('payment_type_period_end')}",
+        ])
+
     return {
         'build': {
             'context': '.',
@@ -113,7 +141,8 @@ def generate_compose(cfg):
     workers_config = {
         'currency_filter': 'CURRENCY_FILTER',
         'max_bank': 'MAX_BANK',
-        'bank_router': 'BANK_ROUTER'
+        'bank_router': 'BANK_ROUTER',
+        'period_filter': 'PERIOD_FILTER'
     }
     
     for svc_name, worker_type in workers_config.items():

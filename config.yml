@@ -12,6 +12,32 @@ services:
   bank_router:
     count: 1
 
+  period_filter:
+    count: 1
+    usd_input_queue: usd_transactions
+    raw_input_queue: raw_transactions
+
+    group_by_origin_queue: group_by_origin
+    group_by_destination_queue: group_by_destination
+
+    payment_type_queue: payment_type_filter
+
+    avg_by_type_period_1_queue: avg_by_type_p1
+    avg_by_type_period_2_queue: avg_by_type_p2
+
+    avg_by_type_period_1_start: "2024-01-01T00:00:00Z"
+    avg_by_type_period_1_end: "2024-01-08T23:59:59Z"
+
+    avg_by_type_period_2_start: "2024-01-09T00:00:00Z"
+    avg_by_type_period_2_end: "2024-01-17T23:59:59Z"
+
+    scatter_gather_period_start: "2024-01-01T00:00:00Z"
+    scatter_gather_period_end: "2024-01-17T23:59:59Z"
+
+    payment_type_period_start: "2024-01-01T00:00:00Z"
+    payment_type_period_end: "2024-01-17T23:59:59Z"
+
+
 # Puertos y configuraciones específicas para cada servicio
 gateway:
   port: 8080
