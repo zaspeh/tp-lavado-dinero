@@ -6,11 +6,16 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
 	transaction uint8 = iota
-	result
+
+	microtransactionResult
+	maxBankResult
+
 	eof
 	ack
 	nack
@@ -45,7 +50,9 @@ func (p *ExternalProtocol) receiveMsgType() (uint8, error) {
 }
 
 func (p *ExternalProtocol) SendTransaction(transactionMessage message.Transaction) error {
-	p.sendMsgType(transaction)
+	if err := p.sendMsgType(transaction); err != nil {
+		return err
+	}
 	serializeLength := serializer.SerializeUint16(uint16(len(transactionMessage.Record)))
 	serializeString := serializer.SerializeString(transactionMessage.Record)
 	err := p.socket.WriteAll(append(serializeLength, serializeString...))
@@ -55,8 +62,33 @@ func (p *ExternalProtocol) SendTransaction(transactionMessage message.Transactio
 	return nil
 }
 
-func (p *ExternalProtocol) SendResult() error {
+func (p *ExternalProtocol) SendResult() error { // podríamos borrarlo
 	return nil
+}
+
+func (p *ExternalProtocol) SendMicrotransactionResult(result *message.MicrotransactionResult) error {
+	if err := p.sendMsgType(microtransactionResult); err != nil {
+		return err
+	}
+
+	protoResult := &protobuf.MicrotransactionResult{
+		Transactions: result.Transactions,
+	}
+
+	data, err := proto.Marshal(protoResult)
+	if err != nil {
+		return err
+	}
+
+	length := serializer.SerializeUint32(
+		uint32(len(data)),
+	)
+
+	if err := p.socket.WriteAll(length); err != nil {
+		return err
+	}
+
+	return p.socket.WriteAll(data)
 }
 
 func (p *ExternalProtocol) SendEOF() error {
@@ -101,8 +133,52 @@ func (p *ExternalProtocol) ReceiveTransaction() (message.Transaction, error) {
 	return message.NewTransaction(record), nil
 }
 
-func (p *ExternalProtocol) ReceiveResult() error {
-	return nil
+func (p *ExternalProtocol) ReceiveResult() (message.Result, error) {
+	msgType, err := p.receiveMsgType()
+	if err != nil {
+		return nil, err
+	}
+
+	switch msgType {
+
+	case microtransactionResult:
+		return p.receiveMicrotransactionResult()
+
+	case maxBankResult:
+		return p.receiveMaxBankResult()
+
+	default:
+		return nil, ErrInvalidMessageType
+	}
+}
+
+func (p *ExternalProtocol) receiveMicrotransactionResult() (message.Result, error) {
+	lengthBytes, err := p.socket.ReadAll(serializer.Uint32Size)
+	if err != nil {
+		return nil, err
+	}
+
+	length := serializer.DeserializeUint32(lengthBytes)
+
+	data, err := p.socket.ReadAll(int(length))
+	if err != nil {
+		return nil, err
+	}
+
+	protoResult := &protobuf.MicrotransactionResult{}
+
+	if err := proto.Unmarshal(data, protoResult); err != nil {
+		return nil, err
+	}
+
+	return &message.MicrotransactionResult{
+		Transactions: protoResult.Transactions,
+	}, nil
+}
+
+func (p *ExternalProtocol) receiveMaxBankResult() (message.Result, error) {
+	// Dejo como seria la función nomas
+	return nil, nil
 }
 
 func (p *ExternalProtocol) WaitAck() error {

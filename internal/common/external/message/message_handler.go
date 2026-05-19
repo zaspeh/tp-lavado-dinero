@@ -1,6 +1,6 @@
 package message
 
 type MessageHandler interface {
-	HandleTransaction(msg Transaction) error
-	HandleEOF(msg EOF) error
+	HandleTransaction(Transaction) error
+	HandleEOF(EOF) error
 }

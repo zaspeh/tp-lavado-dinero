@@ -4,6 +4,8 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/messagehandler"
 )
 
@@ -82,7 +84,38 @@ func (cc *ClientConnection) HandleEOF(msg message.EOF) error {
 }
 
 func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
 
+	switch moneyLaundry.GetType() {
+
+	case protobuf.MessageType_MICROTRANSACTION_RESULT:
+
+		result, err := serializer.DeserializeTransaction(
+			moneyLaundry.GetPayload(),
+			&protobuf.MicrotransactionResult{},
+		)
+		if err != nil {
+			nack()
+			return
+		}
+		msgResult := &message.MicrotransactionResult{
+			Transactions: result.Transactions,
+		}
+
+		if err := cc.protocol.SendMicrotransactionResult(msgResult); err != nil {
+			nack()
+			return
+		}
+
+		ack()
+
+	default:
+		nack()
+	}
 }
 
 func (cc *ClientConnection) Close() error {

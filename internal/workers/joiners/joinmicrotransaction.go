@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -14,20 +13,19 @@ import (
 )
 
 type JoinMicrotransaction struct {
-	inputQueue  middleware.Middleware
-	outputQueue middleware.Middleware
+	inputQueue         middleware.Middleware
+	resultExchange     *middleware.ExchangeMiddleware
+	clientExchangeName string
 
-	mu sync.Mutex
-
-	results []*protobuf.Microtransaction
+	results map[string][]*protobuf.Microtransaction
 
 	maxBatchTransactions int
 	maxBatchBytes        int
 }
 
 type JoinMicrotransactionConfig struct {
-	InputQueueName  string
-	OutputQueueName string
+	InputQueueName     string
+	ClientExchangeName string
 
 	MomHost string
 	MomPort int
@@ -47,7 +45,7 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 		return nil, err
 	}
 
-	outputQueue, err := middleware.CreateQueueMiddleware(config.OutputQueueName, connSettings)
+	resultExchange, err := middleware.CreateExchangeMiddleware(config.ClientExchangeName, []string{config.ClientExchangeName}, connSettings)
 	if err != nil {
 		inputQueue.Close()
 		return nil, err
@@ -55,8 +53,9 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 
 	return &JoinMicrotransaction{
 		inputQueue:           inputQueue,
-		outputQueue:          outputQueue,
-		results:              make([]*protobuf.Microtransaction, 0),
+		resultExchange:       resultExchange,
+		clientExchangeName:   config.ClientExchangeName,
+		results:              make(map[string][]*protobuf.Microtransaction),
 		maxBatchTransactions: config.MaxBatchTransactions,
 		maxBatchBytes:        config.MaxBatchBytes,
 	}, nil
@@ -84,7 +83,7 @@ func (j *JoinMicrotransaction) handleMessage(msg middleware.Message, ack, nack f
 		j.handleMicrotransactionMessage(moneyLaundry, ack, nack)
 
 	case protobuf.MessageType_EOF:
-		j.handleEOFMessage(ack, nack)
+		j.handleEOFMessage(moneyLaundry, ack, nack)
 
 	default:
 		nack()
@@ -105,7 +104,7 @@ func (j *JoinMicrotransaction) handleSignals() {
 	slog.Info("shutdown signal received")
 
 	j.inputQueue.Close()
-	j.outputQueue.Close()
+	j.resultExchange.Close()
 }
 
 func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
@@ -115,23 +114,17 @@ func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *proto
 		return
 	}
 
-	j.mu.Lock()
-	defer j.mu.Unlock()
-
-	j.results = append(j.results, microtransaction)
+	j.results[moneyLaundry.GetClientID()] = append(j.results[moneyLaundry.GetClientID()], microtransaction)
 
 	ack()
 }
 
-func (j *JoinMicrotransaction) handleEOFMessage(ack, nack func()) {
-	j.mu.Lock()
+func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 
-	results := j.results
+	clientID := moneyLaundry.GetClientID()
+	results := j.results[clientID]
 
-	j.results = make([]*protobuf.Microtransaction, 0)
-
-	j.mu.Unlock()
-
+	delete(j.results, clientID)
 	currentBatch := make([]*protobuf.Microtransaction, 0)
 
 	for _, transaction := range results {
@@ -147,7 +140,7 @@ func (j *JoinMicrotransaction) handleEOFMessage(ack, nack func()) {
 		if len(testBatch) > j.maxBatchTransactions ||
 			size > j.maxBatchBytes {
 
-			if err := j.sendBatch(currentBatch); err != nil {
+			if err := j.sendBatch(clientID, currentBatch); err != nil {
 				nack()
 				return
 			}
@@ -163,7 +156,7 @@ func (j *JoinMicrotransaction) handleEOFMessage(ack, nack func()) {
 	}
 
 	if len(currentBatch) > 0 {
-		if err := j.sendBatch(currentBatch); err != nil {
+		if err := j.sendBatch(clientID, currentBatch); err != nil {
 			nack()
 			return
 		}
@@ -172,7 +165,7 @@ func (j *JoinMicrotransaction) handleEOFMessage(ack, nack func()) {
 	ack()
 }
 
-func (j *JoinMicrotransaction) sendBatch(batch []*protobuf.Microtransaction) error {
+func (j *JoinMicrotransaction) sendBatch(clientID string, batch []*protobuf.Microtransaction) error {
 	result := &protobuf.MicrotransactionResult{
 		Transactions: batch,
 	}
@@ -182,5 +175,5 @@ func (j *JoinMicrotransaction) sendBatch(batch []*protobuf.Microtransaction) err
 		return err
 	}
 
-	return j.outputQueue.Send(*msg)
+	return j.resultExchange.SendWithKey(j.clientExchangeName+"."+clientID, *msg)
 }
