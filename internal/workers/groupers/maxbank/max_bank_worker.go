@@ -16,6 +16,7 @@ type MaxBankWorker struct {
 	inputQueue     middleware.Middleware
 	outputQueue    middleware.Middleware
 	maxBankStorage *MaxBankStore
+	maxBatchWeight int
 }
 
 type MaxBankWorkerConfig struct {
@@ -24,6 +25,7 @@ type MaxBankWorkerConfig struct {
 	InputExchangeName string
 	InputKeys         []string
 	OutputQueueName   string
+	MaxBatchWeight    int
 }
 
 func NewMaxBankWorker(cfg MaxBankWorkerConfig) (*MaxBankWorker, error) {
@@ -119,39 +121,53 @@ func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry
 
 func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func()) {
 	reader := w.maxBankStorage.Reader()
-
-	var currentBatch []*protobuf.MaxBank
+	batch := NewBatch(w.maxBatchWeight)
 	var processedBanks []string
 
-	for processedBanks := reader.Get(); reader.HasNext(); reader.Next() {
-		enriched := reader.Get()
+	for processedRecord := reader.Get(); reader.HasNext(); reader.Next() {
 
-		// 1. Transformar y acumular
-		pb := w.toProto(enriched)
-		currentBatch = append(currentBatch, pb)
+		maxBankResult := &protobuf.MaxBankResult{
+			BankName: processedRecord.BankName,
+			Account:  processedRecord.Account,
+			Amount:   processedRecord.AmountString,
+		}
 
-		// Tracking: Guardamos qué bancos estamos metiendo en este lote
-		processedBanks = append(processedBanks, enriched.BankID)
-
-		// 2. Lógica de Flush (Batching)
-		if w.shouldFlush(currentBatch) {
-			if err := w.send(currentBatch); err != nil {
-				nack() // Si falla la red, NO borramos memoria
+		if batch.IsFull(maxBankResult) {
+			msg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_MAXBANK_RESULT)
+			if err != nil {
+				nack()
+				return
+			}
+			if err := w.outputQueue.Send(*msg); err != nil {
+				nack()
 				return
 			}
 
-			// 3. Éxito: Liberar memoria de lo enviado
-			w.storage.Commit(processedBanks)
-
-			// Reset de lotes
-			currentBatch = nil
-			processedBanks = nil
+			// w.maxBankStorage.Flush(processedBanks)
+			processedBanks = processedBanks[:0]
 		}
 
-		reader.Next()
+		batch.Add(maxBankResult)
+		processedBanks = append(processedBanks, processedRecord.BankID)
 	}
 
-	// Procesar remanente final...
-	// Enviar EOF original...
+	if !batch.isEmpty() {
+		msg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_MAXBANK_RESULT)
+		if err != nil {
+			nack()
+			return
+		}
+		if err := w.outputQueue.Send(*msg); err != nil {
+			nack()
+			return
+		}
+		// w.maxBankStorage.Flush(processedBanks)
+	}
+
+	if err := w.outputQueue.Send(originalMsg); err != nil {
+		nack()
+		return
+	}
+
 	ack()
 }
