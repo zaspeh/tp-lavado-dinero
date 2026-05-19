@@ -8,6 +8,8 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type PeriodFilterWorker struct {
@@ -135,7 +137,18 @@ func (pf *PeriodFilterWorker) handleSignals() {
 }
 
 func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack func()) {
-	// Implementation for handling USD messages
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_EOF:
+		//TODO: IMPLEMENTAR BROADCAST DE EOF
+	default:
+		nack()
+	}
 }
 
 func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack func()) {
