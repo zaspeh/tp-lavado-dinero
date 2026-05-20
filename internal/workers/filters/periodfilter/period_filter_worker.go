@@ -191,7 +191,6 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 	if !pf.scatterGatherPeriod.Contains(periodFilterMsg.GetTimestamp().AsTime()) {
 		return nil
 	}
-	//enviar mensaje con campos para scatter gather a GroupBy queues
 	scatterGatherMsg := &protobuf.ScatterGather{
 		FromBank:  periodFilterMsg.GetFromBank(),
 		ToBank:    periodFilterMsg.GetToBank(),
