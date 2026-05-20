@@ -135,7 +135,11 @@ func (c *Client) receiveResults() error {
 			return err
 		}
 
-		msg.Handle(c.writer)
+		err = msg.Handle(c.writer)
+		if err != nil {
+			slog.Debug("Error while handling result", "err", err)
+			return err
+		}
 
 	}
 	return nil
