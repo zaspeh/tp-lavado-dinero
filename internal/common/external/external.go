@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
@@ -51,7 +52,7 @@ func (p *ExternalProtocol) receiveMsgType() (uint8, error) {
 	return serializer.DeserializeUint8(msgTypeBytes), nil
 }
 
-func (p *ExternalProtocol) SendTransaction(transactionMessage message.Transaction) error {
+func (p *ExternalProtocol) SendTransaction(transactionMessage request.Transaction) error {
 	if err := p.sendMsgType(transaction); err != nil {
 		return err
 	}
@@ -68,7 +69,7 @@ func (p *ExternalProtocol) SendResult() error { // podríamos borrarlo
 	return nil
 }
 
-func (p *ExternalProtocol) SendMicrotransactionResult(result *message.MicrotransactionResult) error {
+func (p *ExternalProtocol) SendMicrotransactionResult(result *result.MicrotransactionResult) error {
 	if err := p.sendMsgType(microtransactionResult); err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func (p *ExternalProtocol) SendMicrotransactionResult(result *message.Microtrans
 	return p.socket.WriteAll(data)
 }
 
-func (p *ExternalProtocol) SendMaxBankResult(results []message.MaxBankResult) error {
+func (p *ExternalProtocol) SendMaxBankResult(results []result.MaxBankResult) error {
 	for _, res := range results {
 		if err := p.sendMsgType(maxBankResult); err != nil {
 			return err
@@ -122,7 +123,7 @@ func (p *ExternalProtocol) SendNack() error {
 }
 
 // Only use on gateway, might need to split protocol.
-func (p *ExternalProtocol) ReceiveMsg() (message.Message, error) {
+func (p *ExternalProtocol) ReceiveMsg() (request.Message, error) {
 	msgType, err := p.receiveMsgType()
 	if err != nil {
 		return nil, err
@@ -131,27 +132,27 @@ func (p *ExternalProtocol) ReceiveMsg() (message.Message, error) {
 	case transaction:
 		return p.ReceiveTransaction()
 	case eof:
-		return message.EOF{}, nil
+		return request.EOF{}, nil
 	default:
 		return nil, ErrInvalidMessageType
 	}
 }
 
-func (p *ExternalProtocol) ReceiveTransaction() (message.Transaction, error) {
+func (p *ExternalProtocol) ReceiveTransaction() (request.Transaction, error) {
 	stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
 	if err != nil {
-		return message.Transaction{}, err
+		return request.Transaction{}, err
 	}
 	stringLength := serializer.DeserializeUint16(stringLengthBytes)
 	stringBytes, err := p.socket.ReadAll(int(stringLength))
 	if err != nil {
-		return message.Transaction{}, err
+		return request.Transaction{}, err
 	}
 	record := serializer.DeserializeString(stringBytes)
-	return message.NewTransaction(record), nil
+	return request.NewTransaction(record), nil
 }
 
-func (p *ExternalProtocol) ReceiveResult() (message.Result, error) {
+func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {
 	msgType, err := p.receiveMsgType()
 	if err != nil {
 		return nil, err
@@ -170,7 +171,7 @@ func (p *ExternalProtocol) ReceiveResult() (message.Result, error) {
 	}
 }
 
-func (p *ExternalProtocol) receiveMicrotransactionResult() (message.Result, error) {
+func (p *ExternalProtocol) receiveMicrotransactionResult() (result.Result, error) {
 	lengthBytes, err := p.socket.ReadAll(serializer.Uint32Size)
 	if err != nil {
 		return nil, err
@@ -189,12 +190,12 @@ func (p *ExternalProtocol) receiveMicrotransactionResult() (message.Result, erro
 		return nil, err
 	}
 
-	return &message.MicrotransactionResult{
+	return &result.MicrotransactionResult{
 		Transactions: protoResult.Transactions,
 	}, nil
 }
 
-func (p *ExternalProtocol) receiveMaxBankResult() (message.Result, error) {
+func (p *ExternalProtocol) receiveMaxBankResult() (result.Result, error) {
 	stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
 	if err != nil {
 		return nil, err
@@ -212,7 +213,7 @@ func (p *ExternalProtocol) receiveMaxBankResult() (message.Result, error) {
 		return nil, fmt.Errorf("invalid max bank result record: expected 3 fields, got %d", len(fields))
 	}
 
-	return message.MaxBankResult{
+	return result.MaxBankResult{
 		BankName: fields[0],
 		Account:  fields[1],
 		Amount:   fields[2],

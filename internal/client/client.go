@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 )
 
@@ -70,7 +70,11 @@ func (c *Client) Run() error {
 		return err
 	}
 
-	//TODO: missing receive results
+	// err := c.receiveResults()
+	// if err != nil {
+	// 	return err
+	// }
+
 	return nil
 }
 
@@ -88,7 +92,7 @@ func (c *Client) processTransactions() error {
 			break
 		}
 		record := scanner.Text()
-		transactionMessage := message.NewTransaction(record)
+		transactionMessage := request.NewTransaction(record)
 		err := c.protocol.SendTransaction(transactionMessage)
 		if err != nil {
 			slog.Debug("Error while sending transaction", "err", err)
@@ -112,6 +116,24 @@ func (c *Client) processTransactions() error {
 		return err
 	}
 
+	return nil
+}
+
+func (c *Client) receiveResults() error {
+	// expectedEOFAmount := 5
+	// for i:=0; i<expectedEOFAmount; i++ {
+	// 	if !c.running.Load() {
+	// 		break
+	// 	}
+	// 	msg, err := c.protocol.ReceiveResult()
+	// 	if err != nil {
+	// 		slog.Debug("Error while receiving result", "err", err)
+	// 		return err
+	// 	}
+
+	// 	// msg.handle(client)
+
+	// }
 	return nil
 }
 

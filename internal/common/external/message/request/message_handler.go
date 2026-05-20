@@ -1,4 +1,4 @@
-package message
+package request
 
 type MessageHandler interface {
 	HandleTransaction(Transaction) error

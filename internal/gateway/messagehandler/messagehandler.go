@@ -9,14 +9,15 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	pb "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
-func TransactionToProto(msg message.Transaction) (*m.Message, error) {
+func TransactionToProto(msg request.Transaction) (*m.Message, error) {
 	reader := csv.NewReader(strings.NewReader(msg.Record))
 
 	fields, err := reader.Read()
@@ -66,16 +67,16 @@ func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
 	return serializer.SerializeProtoMessage(eofMessage, pb.MessageType_EOF)
 }
 
-func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]message.MaxBankResult, error) {
+func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxBankResult, error) {
 	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.MaxBankResultBatch{})
 	if err != nil {
 		return nil, err
 	}
 
 	results := batch.GetResults()
-	externalMessage := make([]message.MaxBankResult, 0, len(results))
+	externalMessage := make([]result.MaxBankResult, 0, len(results))
 	for _, r := range batch.GetResults() {
-		externalMessage = append(externalMessage, message.MaxBankResult{
+		externalMessage = append(externalMessage, result.MaxBankResult{
 			BankName: r.GetBankName(),
 			Account:  r.GetAccount(),
 			Amount:   r.GetAmount(),

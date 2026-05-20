@@ -2,7 +2,8 @@ package clientconnection
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
@@ -61,7 +62,7 @@ func (cc *ClientConnection) Run() error {
 	}
 }
 
-func (cc *ClientConnection) HandleTransaction(msg message.Transaction) error {
+func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 	wrappedMessage, err := messagehandler.TransactionToProto(msg)
 	if err != nil {
 		return err
@@ -75,7 +76,7 @@ func (cc *ClientConnection) HandleTransaction(msg message.Transaction) error {
 	return nil
 }
 
-func (cc *ClientConnection) HandleEOF(msg message.EOF) error {
+func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 	wrappedMessage, err := messagehandler.EOFToProto(cc.id, cc.transactionCounter)
 	if err != nil {
 		return err
@@ -120,7 +121,7 @@ func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
 }
 
 func (cc *ClientConnection) handleMicrotransactionResult(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	result, err := serializer.DeserializeTransaction(
+	microtransactionResult, err := serializer.DeserializeTransaction(
 		moneyLaundry.GetPayload(),
 		&protobuf.MicrotransactionResult{},
 	)
@@ -131,8 +132,8 @@ func (cc *ClientConnection) handleMicrotransactionResult(moneyLaundry *protobuf.
 	}
 
 	// TODO: usar message handler para convertir de proto a external
-	msgResult := &message.MicrotransactionResult{
-		Transactions: result.Transactions,
+	msgResult := &result.MicrotransactionResult{
+		Transactions: microtransactionResult.Transactions,
 	}
 
 	if err := cc.protocol.SendMicrotransactionResult(msgResult); err != nil {
