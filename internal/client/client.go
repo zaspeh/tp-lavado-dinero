@@ -72,10 +72,10 @@ func (c *Client) Run() error {
 		return err
 	}
 
-	// err := c.receiveResults()
-	// if err != nil {
-	// 	return err
-	// }
+	err = c.receiveResults()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
