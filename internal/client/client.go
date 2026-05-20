@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/client/storage"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 )
 
@@ -25,10 +25,10 @@ type ClientConfig struct {
 }
 
 type Client struct {
-	config            ClientConfig
-	running           atomic.Bool
-	receivedEOFAmount int
-	protocol          *external.ExternalProtocol
+	config   ClientConfig
+	running  atomic.Bool
+	protocol *external.ExternalProtocol
+	writer   *storage.ResultCSVWriter
 }
 
 func connectWithRetry(host string, port string) (*socket.Socket, error) {
@@ -54,9 +54,12 @@ func New(config ClientConfig) (*Client, error) {
 		return nil, err
 	}
 
+	writer := storage.NewResultCSVWriter(config.OutputDir)
+
 	client := &Client{
 		config:   config,
 		protocol: external.New(socket),
+		writer:   writer,
 	}
 
 	client.running.Store(true)
@@ -122,8 +125,7 @@ func (c *Client) processTransactions() error {
 }
 
 func (c *Client) receiveResults() error {
-	expectedEOFAmount := 5
-	for c.receivedEOFAmount < expectedEOFAmount {
+	for !c.writer.DoneReceiving() {
 		if !c.running.Load() {
 			break
 		}
@@ -133,22 +135,9 @@ func (c *Client) receiveResults() error {
 			return err
 		}
 
-		msg.Handle(c)
+		msg.Handle(c.writer)
 
 	}
-	return nil
-}
-
-func (c *Client) HandleMicrotransactionResult(msg result.MicrotransactionResult) error {
-	return nil
-}
-
-func (c *Client) HandleMaxBankResult(msg result.MaxBankResult) error {
-	return nil
-}
-
-func (c *Client) HandleEOF(msg result.EOF) error {
-	c.receivedEOFAmount++
 	return nil
 }
 
