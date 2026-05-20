@@ -17,14 +17,14 @@ type MaxBankJoin struct {
 	clientExchangeName string
 }
 
-type JoinMicrotransactionConfig struct {
+type JoinMaxBankConfig struct {
 	InputQueueName     string
 	ClientExchangeName string
 	MomHost            string
 	MomPort            int
 }
 
-func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*MaxBankJoin, error) {
+func NewMaxBankJoin(config JoinMaxBankConfig) (*MaxBankJoin, error) {
 	connSettings := middleware.ConnSettings{
 		Hostname: config.MomHost,
 		Port:     config.MomPort,

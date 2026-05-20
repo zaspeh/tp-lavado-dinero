@@ -125,9 +125,34 @@ func (f *CurrencyFilter) broadcastToQueues(transaction *protobuf.Transaction) er
 		return err
 	}
 
+	//q2
+	//TODO:, no deberia convertir a string
+	frombank := string(transaction.GetFromBank())
+	transferSummary := &protobuf.TransferSummary{
+		Account: transaction.Account,
+		Amount:  transaction.GetAmountPaid(),
+	}
+
+	maxbank := &protobuf.MaxBank{
+		FromBank: frombank,
+		Payload: &protobuf.MaxBank_TransferSummary{
+			TransferSummary: transferSummary,
+		},
+	}
+
+	serializedMaxBankMessage, err := serializer.SerializeProtoMessage(maxbank, protobuf.MessageType_MAXBANK)
+	if err != nil {
+		return err
+	}
+
+	if err := f.bankRouterQueue.Send(*serializedMaxBankMessage); err != nil {
+		return err
+	}
+
 	return nil
 
-	//q2
+	//q3
+
 }
 
 func (f *CurrencyFilter) broadcastEOFMessage(msg middleware.Message, ack, nack func()) {

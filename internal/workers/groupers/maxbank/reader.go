@@ -27,8 +27,9 @@ func (r *Reader) Get() ProcessedRecord {
 	records := r.storage.maxTransactions[bankID]
 
 	return ProcessedRecord{
-		BankID:       bankID,
-		BankName:     r.storage.getBankName(bankID), // Este es el "join de id"
+		BankID: bankID,
+		// BankName:     r.storage.getBankName(bankID), // Este es el "join de id"
+		BankName:     bankID,
 		Account:      records[r.currentRecord].Account,
 		AmountString: records[r.currentRecord].AmountString,
 	}
