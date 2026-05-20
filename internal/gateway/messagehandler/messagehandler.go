@@ -11,6 +11,7 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	pb "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
@@ -63,4 +64,27 @@ func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
 		TotalTransactions: int32(transactionCounter),
 	}
 	return serializer.SerializeProtoMessage(eofMessage, pb.MessageType_EOF)
+}
+
+func ProtoToMaxBankResult(msg m.Message) ([]message.MaxBankResult, error) {
+	moneyLaundering, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.MaxBankResultBatch{})
+	if err != nil {
+		return nil, err
+	}
+
+	results := batch.GetResults()
+	externalMessage := make([]message.MaxBankResult, 0, len(results))
+	for _, r := range batch.GetResults() {
+		externalMessage = append(externalMessage, message.MaxBankResult{
+			BankName: r.GetBankName(),
+			Account:  r.GetAccount(),
+			Amount:   r.GetAmount(),
+		})
+	}
+	return externalMessage, nil
 }
