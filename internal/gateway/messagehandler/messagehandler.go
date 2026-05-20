@@ -66,12 +66,7 @@ func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
 	return serializer.SerializeProtoMessage(eofMessage, pb.MessageType_EOF)
 }
 
-func ProtoToMaxBankResult(msg m.Message) ([]message.MaxBankResult, error) {
-	moneyLaundering, err := serializer.DeserializeMoneyLaundering(msg)
-	if err != nil {
-		return nil, err
-	}
-
+func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]message.MaxBankResult, error) {
 	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.MaxBankResultBatch{})
 	if err != nil {
 		return nil, err

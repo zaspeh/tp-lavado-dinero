@@ -2,6 +2,7 @@ package external
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
@@ -89,6 +90,22 @@ func (p *ExternalProtocol) SendMicrotransactionResult(result *message.Microtrans
 	}
 
 	return p.socket.WriteAll(data)
+}
+
+func (p *ExternalProtocol) SendMaxBankResult(results []message.MaxBankResult) error {
+	for _, res := range results {
+		if err := p.sendMsgType(maxBankResult); err != nil {
+			return err
+		}
+		record := fmt.Sprintf("%s,%s,%s", res.BankName, res.Account, res.Amount)
+		serializeLength := serializer.SerializeUint16(uint16(len(record)))
+		serializeString := serializer.SerializeString(record)
+
+		if err := p.socket.WriteAll(append(serializeLength, serializeString...)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (p *ExternalProtocol) SendEOF() error {

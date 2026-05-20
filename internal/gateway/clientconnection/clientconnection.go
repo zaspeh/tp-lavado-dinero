@@ -9,12 +9,17 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/messagehandler"
 )
 
+const (
+	eofAmountExpected = 5
+)
+
 type ClientConnection struct {
 	id                  string
 	protocol            *external.ExternalProtocol
 	currencyFilterQueue m.Middleware
 	// dateQueue      m.Middleware
 	resultExchange     *m.ExchangeMiddleware
+	EOFamountReceived  int
 	transactionCounter int
 }
 
@@ -91,31 +96,66 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	}
 
 	switch moneyLaundry.GetType() {
-
+	case protobuf.MessageType_EOF:
+		cc.handleEOFFromWorker(ack, nack)
 	case protobuf.MessageType_MICROTRANSACTION_RESULT:
-
-		result, err := serializer.DeserializeTransaction(
-			moneyLaundry.GetPayload(),
-			&protobuf.MicrotransactionResult{},
-		)
-		if err != nil {
-			nack()
-			return
-		}
-		msgResult := &message.MicrotransactionResult{
-			Transactions: result.Transactions,
-		}
-
-		if err := cc.protocol.SendMicrotransactionResult(msgResult); err != nil {
-			nack()
-			return
-		}
-
-		ack()
-
+		cc.handleMicrotransactionResult(moneyLaundry, ack, nack)
+	case protobuf.MessageType_MAXBANK_RESULT:
+		cc.handleMaxBankResult(moneyLaundry, ack, nack)
 	default:
 		nack()
 	}
+}
+
+func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
+	cc.EOFamountReceived++
+	if cc.EOFamountReceived == eofAmountExpected {
+		if err := cc.protocol.SendEOF(); err != nil {
+			cc.EOFamountReceived--
+			nack()
+			return
+		}
+	}
+	ack()
+}
+
+func (cc *ClientConnection) handleMicrotransactionResult(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	result, err := serializer.DeserializeTransaction(
+		moneyLaundry.GetPayload(),
+		&protobuf.MicrotransactionResult{},
+	)
+
+	if err != nil {
+		nack()
+		return
+	}
+
+	// TODO: usar message handler para convertir de proto a external
+	msgResult := &message.MicrotransactionResult{
+		Transactions: result.Transactions,
+	}
+
+	if err := cc.protocol.SendMicrotransactionResult(msgResult); err != nil {
+		nack()
+		return
+	}
+
+	ack()
+}
+
+func (cc *ClientConnection) handleMaxBankResult(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+	externalMsg, err := messagehandler.ProtoToMaxBankResult(moneyLaundering)
+	if err != nil {
+		nack()
+		return
+	}
+
+	if err := cc.protocol.SendMaxBankResult(externalMsg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
 }
 
 func (cc *ClientConnection) Close() error {
