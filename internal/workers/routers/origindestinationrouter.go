@@ -1,6 +1,8 @@
 package routers
 
 import (
+	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,68 +14,93 @@ import (
 )
 
 type OriginDestinationRouter struct {
-	inputQueue                   middleware.Middleware
-	groupByOriginQueue           middleware.Middleware
-	groupByDestinationQueue      middleware.Middleware
-	maxGroupByOriginWorkers      int
-	maxGroupByDestinationWorkers int
+	inputQueue                middleware.Middleware
+	groupByOriginExchange     *middleware.ExchangeMiddleware
+	groupByOriginWorkers      int
+	groupByOriginExchangeKeys []string
+
+	groupByDestinationExchange     *middleware.ExchangeMiddleware
+	groupByDestinationWorkers      int
+	groupByDestinationExchangeKeys []string
 }
 
 type OriginDestinationRouterConfig struct {
-	InputQueueName               string
-	GroupByOriginQueueName       string
-	GroupByDestinationQueueName  string
-	MaxGroupByOriginWorkers      int
-	MaxGroupByDestinationWorkers int
+	InputQueueName                  string
+	GroupByOriginExchangeName       string
+	GroupByDestinationExchangeName  string
+	GroupByOriginWorkersAmount      int
+	GroupByDestinationWorkersAmount int
+	MomHost                         string
+	MomPort                         int
 }
 
-func NewOriginDestinationRouter(config OriginDestinationRouterConfig, connSettings middleware.ConnSettings) (*OriginDestinationRouter, error) {
+func NewOriginDestinationRouter(config OriginDestinationRouterConfig) (*OriginDestinationRouter, error) {
+	connSettings := middleware.ConnSettings{
+		Hostname: config.MomHost,
+		Port:     config.MomPort,
+	}
+
 	inputQueue, err := middleware.CreateQueueMiddleware(config.InputQueueName, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
-	groupByOriginQueue, err := middleware.CreateQueueMiddleware(config.GroupByOriginQueueName, connSettings)
+	groupByOriginKeys := make([]string, config.GroupByOriginWorkersAmount)
+	for i := range groupByOriginKeys {
+		groupByOriginKeys[i] = fmt.Sprintf("%s.%d", config.GroupByOriginExchangeName, i)
+	}
+
+	groupByDestinationKeys := make([]string, config.GroupByDestinationWorkersAmount)
+	for i := range groupByDestinationKeys {
+		groupByDestinationKeys[i] = fmt.Sprintf("%s.%d", config.GroupByDestinationExchangeName, i)
+	}
+
+	groupByOriginExchange, err := middleware.CreateExchangeMiddleware(config.GroupByOriginExchangeName, groupByOriginKeys, connSettings)
 	if err != nil {
+		inputQueue.Close()
 		return nil, err
 	}
 
-	groupByDestinationQueue, err := middleware.CreateQueueMiddleware(config.GroupByDestinationQueueName, connSettings)
+	groupByDestinationExchange, err := middleware.CreateExchangeMiddleware(config.GroupByDestinationExchangeName, groupByDestinationKeys, connSettings)
 	if err != nil {
+		inputQueue.Close()
+		groupByOriginExchange.Close()
 		return nil, err
 	}
 
 	return &OriginDestinationRouter{
-		inputQueue:                   inputQueue,
-		groupByOriginQueue:           groupByOriginQueue,
-		groupByDestinationQueue:      groupByDestinationQueue,
-		maxGroupByOriginWorkers:      config.MaxGroupByOriginWorkers,
-		maxGroupByDestinationWorkers: config.MaxGroupByDestinationWorkers,
+		inputQueue:                     inputQueue,
+		groupByOriginExchange:          groupByOriginExchange,
+		groupByDestinationExchange:     groupByDestinationExchange,
+		groupByOriginWorkers:           config.GroupByOriginWorkersAmount,
+		groupByDestinationWorkers:      config.GroupByDestinationWorkersAmount,
+		groupByOriginExchangeKeys:      groupByOriginKeys,
+		groupByDestinationExchangeKeys: groupByDestinationKeys,
 	}, nil
 }
 
-func (pf *OriginDestinationRouter) Run() error {
-	go pf.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		pf.handleMessage(msg, ack, nack)
+func (odr *OriginDestinationRouter) Run() error {
+	go odr.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		odr.handleMessage(msg, ack, nack)
 	})
 
-	go pf.handleSignals()
+	go odr.handleSignals()
 
 	return nil
 }
 
-func (pf *OriginDestinationRouter) handleSignals() {
+func (odr *OriginDestinationRouter) handleSignals() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	<-signals
 	slog.Info("shutdown signal received")
-	pf.inputQueue.Close()
+	odr.inputQueue.Close()
 
-	pf.groupByOriginQueue.Close()
-	pf.groupByDestinationQueue.Close()
+	odr.groupByOriginExchange.Close()
+	odr.groupByDestinationExchange.Close()
 }
 
-func (pf *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, nack func()) {
+func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, nack func()) {
 	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
 	if err != nil {
 		nack()
@@ -82,7 +109,7 @@ func (pf *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, na
 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_SCATTERGATHER:
-		pf.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
+		odr.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF:
 		//TODO: IMPLEMENTAR BROADCAST DE EOF
 	default:
@@ -90,6 +117,54 @@ func (pf *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, na
 	}
 }
 
-func (pf *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
-	//TODO: IMPLEMENTAR LÓGICA DE RUTEO
+func (odr *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	scatterGatherMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ScatterGather{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	if err := odr.publishToGroupByOrigin(scatterGatherMsg, msg, ack, nack); err != nil {
+		nack()
+		return
+	}
+
+	if err := odr.publishToGroupByDestination(scatterGatherMsg, msg, ack, nack); err != nil {
+		nack()
+		return
+	}
+
+	ack()
+}
+
+func (odr *OriginDestinationRouter) publishToGroupByOrigin(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message, ack, nack func()) error {
+	originBank := scatterGatherMsg.GetFromBank()
+	originAccount := scatterGatherMsg.GetAccount()
+	workerKey := odr.selectOriginWorker(originBank, originAccount)
+	return odr.groupByOriginExchange.SendWithKey(workerKey, msg)
+}
+
+func (odr *OriginDestinationRouter) publishToGroupByDestination(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message, ack, nack func()) error {
+	destinationBank := scatterGatherMsg.GetToBank()
+	destinationAccount := scatterGatherMsg.GetToAccount()
+	workerKey := odr.selectDestinationWorker(destinationBank, destinationAccount)
+	return odr.groupByDestinationExchange.SendWithKey(workerKey, msg)
+}
+
+func (odr *OriginDestinationRouter) selectOriginWorker(bank int32, account string) string {
+	hash := odr.hash(bank, account)
+	return odr.groupByOriginExchangeKeys[hash%uint32(odr.groupByOriginWorkers)]
+}
+
+func (odr *OriginDestinationRouter) selectDestinationWorker(bank int32, account string) string {
+	hash := odr.hash(bank, account)
+	return odr.groupByDestinationExchangeKeys[hash%uint32(odr.groupByDestinationWorkers)]
+}
+
+func (odr *OriginDestinationRouter) hash(bank int32, account string) uint32 {
+	h := fnv.New32a()
+
+	h.Write([]byte(fmt.Sprintf("%d-%s", bank, account)))
+
+	return h.Sum32()
 }
