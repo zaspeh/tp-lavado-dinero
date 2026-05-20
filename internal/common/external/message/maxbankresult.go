@@ -5,3 +5,5 @@ type MaxBankResult struct {
 	Account  string
 	Amount   string
 }
+
+func (m MaxBankResult) IsResult() {}

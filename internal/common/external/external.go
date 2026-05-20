@@ -3,6 +3,7 @@ package external
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
@@ -194,8 +195,28 @@ func (p *ExternalProtocol) receiveMicrotransactionResult() (message.Result, erro
 }
 
 func (p *ExternalProtocol) receiveMaxBankResult() (message.Result, error) {
-	// Dejo como seria la función nomas
-	return nil, nil
+	stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
+	if err != nil {
+		return nil, err
+	}
+
+	length := serializer.DeserializeUint16(stringLengthBytes)
+	stringBytes, err := p.socket.ReadAll(int(length))
+	if err != nil {
+		return nil, err
+	}
+
+	record := serializer.DeserializeString(stringBytes)
+	fields := strings.Split(record, ",")
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("invalid max bank result record: expected 3 fields, got %d", len(fields))
+	}
+
+	return message.MaxBankResult{
+		BankName: fields[0],
+		Account:  fields[1],
+		Amount:   fields[2],
+	}, nil
 }
 
 func (p *ExternalProtocol) WaitAck() error {
