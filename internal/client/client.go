@@ -13,6 +13,7 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 )
 
@@ -120,20 +121,28 @@ func (c *Client) processTransactions() error {
 }
 
 func (c *Client) receiveResults() error {
-	// expectedEOFAmount := 5
-	// for i:=0; i<expectedEOFAmount; i++ {
-	// 	if !c.running.Load() {
-	// 		break
-	// 	}
-	// 	msg, err := c.protocol.ReceiveResult()
-	// 	if err != nil {
-	// 		slog.Debug("Error while receiving result", "err", err)
-	// 		return err
-	// 	}
+	expectedEOFAmount := 5
+	for i := 0; i < expectedEOFAmount; i++ {
+		if !c.running.Load() {
+			break
+		}
+		msg, err := c.protocol.ReceiveResult()
+		if err != nil {
+			slog.Debug("Error while receiving result", "err", err)
+			return err
+		}
 
-	// 	// msg.handle(client)
+		msg.Handle(c)
 
-	// }
+	}
+	return nil
+}
+
+func (c *Client) HandleMicrotransactionResult(msg result.MicrotransactionResult) error {
+	return nil
+}
+
+func (c *Client) HandleMaxBankResult(msg result.MaxBankResult) error {
 	return nil
 }
 
