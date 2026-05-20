@@ -40,7 +40,9 @@ services:
     environment:
     - SERVER_HOST=gateway
     - SERVER_PORT=8080
-    - INPUT_FILE=/data/dataset.csv
+    - INPUT_FILE=/data/dataset.csvOUTPUT_DIR=/results
+    volumes:
+    - ./output/client0:/results
     depends_on:
     - gateway
     networks:
@@ -80,6 +82,33 @@ services:
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
     - MAX_BANK_WORKER_AMOUNT=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  period_filter_0:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+    - WORKER_TYPE=PERIOD_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - USD_INPUT_QUEUE_NAME=usd_transactions
+    - RAW_INPUT_QUEUE_NAME=raw_transactions
+    - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
+    - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_type_filter
+    - AVG_BY_TYPE_PERIOD_1_QUEUE_NAME=avg_by_type_p1
+    - AVG_BY_TYPE_PERIOD_2_QUEUE_NAME=avg_by_type_p2
+    - AVG_BY_TYPE_PERIOD_1_START=2024-01-01T00:00:00Z
+    - AVG_BY_TYPE_PERIOD_1_END=2024-01-08T23:59:59Z
+    - AVG_BY_TYPE_PERIOD_2_START=2024-01-09T00:00:00Z
+    - AVG_BY_TYPE_PERIOD_2_END=2024-01-17T23:59:59Z
+    - SCATTER_GATHER_PERIOD_START=2024-01-01T00:00:00Z
+    - SCATTER_GATHER_PERIOD_END=2024-01-17T23:59:59Z
+    - PAYMENT_TYPE_PERIOD_START=2024-01-01T00:00:00Z
+    - PAYMENT_TYPE_PERIOD_END=2024-01-17T23:59:59Z
     depends_on:
       rabbitmq:
         condition: service_healthy

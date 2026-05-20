@@ -52,7 +52,7 @@ def build_gateway(cfg):
         'networks': ['money_laundering_network']
     }
 
-def build_client(cfg):
+def build_client(cfg, i):
     gateway_port = cfg['gateway']['port']
     
     return {
@@ -64,6 +64,10 @@ def build_client(cfg):
             'SERVER_HOST=gateway',
             f'SERVER_PORT={gateway_port}',
             'INPUT_FILE=/data/dataset.csv'
+            f'OUTPUT_DIR=/results'
+        ],
+        'volumes': [
+            f'./output/client{i}:/results'
         ],
         'depends_on': ['gateway'],
         'networks': ['money_laundering_network']
@@ -135,7 +139,7 @@ def generate_compose(cfg):
     client_count = cfg.get('services', {}).get('client', {}).get('count', 0)
     for i in range(client_count):
         svc_id = f"client_{i}"
-        compose['services'][svc_id] = build_client(cfg)
+        compose['services'][svc_id] = build_client(cfg, i)
         
     workers_config = {
         'currency_filter': 'CURRENCY_FILTER',

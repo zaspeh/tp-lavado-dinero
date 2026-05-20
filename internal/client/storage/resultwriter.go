@@ -71,10 +71,10 @@ func (rw *ResultCSVWriter) HandleEOF(result result.EOF) error {
 	return nil
 }
 
-func (rw *ResultCSVWriter) HandleMaxBankResult(result result.MaxBankResult) error {
+func (rw *ResultCSVWriter) HandleMicrotransactionResult(result result.MicrotransactionResult) error {
 	return nil
 }
 
-func (rw *ResultCSVWriter) HandleMicrotransactionResult(result result.MicrotransactionResult) error {
+func (rw *ResultCSVWriter) HandleMaxBankResult(result result.MaxBankResult) error {
 	return nil
 }
