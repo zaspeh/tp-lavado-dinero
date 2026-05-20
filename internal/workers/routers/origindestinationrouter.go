@@ -1,11 +1,16 @@
 package routers
 
 import (
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 )
 
 type OriginDestinationRouter struct {
-	InputQueue                   middleware.Middleware
+	inputQueue                   middleware.Middleware
 	groupByOriginQueue           middleware.Middleware
 	groupByDestinationQueue      middleware.Middleware
 	maxGroupByOriginWorkers      int
@@ -37,10 +42,35 @@ func NewOriginDestinationRouter(config OriginDestinationRouterConfig, connSettin
 	}
 
 	return &OriginDestinationRouter{
-		InputQueue:                   inputQueue,
+		inputQueue:                   inputQueue,
 		groupByOriginQueue:           groupByOriginQueue,
 		groupByDestinationQueue:      groupByDestinationQueue,
 		maxGroupByOriginWorkers:      config.MaxGroupByOriginWorkers,
 		maxGroupByDestinationWorkers: config.MaxGroupByDestinationWorkers,
 	}, nil
+}
+
+func (pf *OriginDestinationRouter) Run() error {
+	go pf.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		pf.handleMessage(msg, ack, nack)
+	})
+
+	go pf.handleSignals()
+
+	return nil
+}
+
+func (pf *OriginDestinationRouter) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
+	slog.Info("shutdown signal received")
+	pf.inputQueue.Close()
+
+	pf.groupByOriginQueue.Close()
+	pf.groupByDestinationQueue.Close()
+}
+
+func (pf *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, nack func()) {
+	// Implementation for handling USD messages
 }
