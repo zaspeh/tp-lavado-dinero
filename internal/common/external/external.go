@@ -166,6 +166,9 @@ func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {
 	case maxBankResult:
 		return p.receiveMaxBankResult()
 
+	case eof:
+		return result.EOF{}, nil
+
 	default:
 		return nil, ErrInvalidMessageType
 	}

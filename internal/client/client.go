@@ -25,9 +25,10 @@ type ClientConfig struct {
 }
 
 type Client struct {
-	config   ClientConfig
-	running  atomic.Bool
-	protocol *external.ExternalProtocol
+	config            ClientConfig
+	running           atomic.Bool
+	receivedEOFAmount int
+	protocol          *external.ExternalProtocol
 }
 
 func connectWithRetry(host string, port string) (*socket.Socket, error) {
@@ -122,7 +123,7 @@ func (c *Client) processTransactions() error {
 
 func (c *Client) receiveResults() error {
 	expectedEOFAmount := 5
-	for i := 0; i < expectedEOFAmount; i++ {
+	for c.receivedEOFAmount < expectedEOFAmount {
 		if !c.running.Load() {
 			break
 		}
@@ -143,6 +144,11 @@ func (c *Client) HandleMicrotransactionResult(msg result.MicrotransactionResult)
 }
 
 func (c *Client) HandleMaxBankResult(msg result.MaxBankResult) error {
+	return nil
+}
+
+func (c *Client) HandleEOF(msg result.EOF) error {
+	c.receivedEOFAmount++
 	return nil
 }
 
