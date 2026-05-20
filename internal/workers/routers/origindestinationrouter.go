@@ -7,6 +7,8 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type OriginDestinationRouter struct {
@@ -72,5 +74,22 @@ func (pf *OriginDestinationRouter) handleSignals() {
 }
 
 func (pf *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, nack func()) {
-	// Implementation for handling USD messages
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_SCATTERGATHER:
+		pf.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
+	case protobuf.MessageType_EOF:
+		//TODO: IMPLEMENTAR BROADCAST DE EOF
+	default:
+		nack()
+	}
+}
+
+func (pf *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	//TODO: IMPLEMENTAR LÓGICA DE RUTEO
 }
