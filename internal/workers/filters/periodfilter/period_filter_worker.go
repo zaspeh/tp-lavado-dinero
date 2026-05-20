@@ -155,7 +155,7 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 	case protobuf.MessageType_PERIODFILTER:
 		pf.handlePeriodFilterMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF:
-		//TODO: IMPLEMENTAR BROADCAST DE EOF
+		pf.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
@@ -163,6 +163,30 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 
 func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack func()) {
 	// Implementation for handling raw messages
+}
+
+func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
+	// At the moment, we just acknowledge and forward the EOF message to all output queues. Depending on the requirements, we might want to implement more complex logic here.
+	//handling errors
+
+	for _, route := range pf.avgByTypeRoutes {
+		if err := route.Queue.Send(rawMsg); err != nil {
+			nack()
+			return
+		}
+	}
+
+	if err := pf.originDestinationQueue.Send(rawMsg); err != nil {
+		nack()
+		return
+	}
+
+	if err := pf.paymentTypeFilterQueue.Send(rawMsg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
 }
 
 func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
