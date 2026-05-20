@@ -17,8 +17,7 @@ services:
     usd_input_queue: usd_transactions
     raw_input_queue: raw_transactions
 
-    group_by_origin_queue: group_by_origin
-    group_by_destination_queue: group_by_destination
+    origin_destination_router_queue: origin_destination_router
 
     payment_type_queue: payment_type_filter
 

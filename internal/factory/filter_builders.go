@@ -76,12 +76,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	groupByOriginQ, err := getEnvStrict("GROUP_BY_ORIGIN_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	groupByDestinationQ, err := getEnvStrict("GROUP_BY_DESTINATION_QUEUE_NAME")
+	originDestinationRouterQ, err := getEnvStrict("ORIGIN_DESTINATION_ROUTER_QUEUE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +144,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 
 		ScatterGatherPeriod: scatterGatherPeriod,
 
-		GroupByOriginQueueName:      groupByOriginQ,
-		GroupByDestinationQueueName: groupByDestinationQ,
+		OriginDestinationRouterQueueName: originDestinationRouterQ,
 
 		PaymentTypePeriod:          paymentTypePeriod,
 		PaymentTypeFilterQueueName: paymentTypeQ,

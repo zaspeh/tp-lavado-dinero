@@ -89,8 +89,7 @@ def build_worker(svc_name, worker_type, cfg):
             f"USD_INPUT_QUEUE_NAME={period_filter_cfg.get('usd_input_queue')}",
             f"RAW_INPUT_QUEUE_NAME={period_filter_cfg.get('raw_input_queue')}",
 
-            f"GROUP_BY_ORIGIN_QUEUE_NAME={period_filter_cfg.get('group_by_origin_queue')}",
-            f"GROUP_BY_DESTINATION_QUEUE_NAME={period_filter_cfg.get('group_by_destination_queue')}",
+            f"ORIGIN_DESTINATION_ROUTER_QUEUE_NAME={period_filter_cfg.get('origin_destination_router_queue')}",
 
             f"PAYMENT_TYPE_FILTER_QUEUE_NAME={period_filter_cfg.get('payment_type_queue')}",
 

@@ -23,9 +23,8 @@ type PeriodFilterWorker struct {
 
 	avgByTypeRoutes []AvgByTypeRoute
 
-	scatterGatherPeriod     Period
-	groupByOriginQueue      middleware.Middleware
-	groupByDestinationQueue middleware.Middleware
+	scatterGatherPeriod    Period
+	originDestinationQueue middleware.Middleware
 
 	paymentTypePeriod      Period
 	paymentTypeFilterQueue middleware.Middleware
@@ -38,9 +37,8 @@ type PeriodFilterWorkerConfig struct {
 	AvgByTypeQueueNames []string
 	AvgByTypePeriods    []Period
 
-	ScatterGatherPeriod         Period
-	GroupByOriginQueueName      string
-	GroupByDestinationQueueName string
+	ScatterGatherPeriod              Period
+	OriginDestinationRouterQueueName string
 
 	PaymentTypePeriod          Period
 	PaymentTypeFilterQueueName string
@@ -94,19 +92,12 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		createdQueues = append(createdQueues, queue)
 	}
 
-	groupByOriginQueue, err := middleware.CreateQueueMiddleware(config.GroupByOriginQueueName, connSettings)
+	originDestinationQueue, err := middleware.CreateQueueMiddleware(config.OriginDestinationRouterQueueName, connSettings)
 	if err != nil {
 		closeAllQueues()
 		return nil, err
 	}
-	createdQueues = append(createdQueues, groupByOriginQueue)
-
-	groupByDestinationQueue, err := middleware.CreateQueueMiddleware(config.GroupByDestinationQueueName, connSettings)
-	if err != nil {
-		closeAllQueues()
-		return nil, err
-	}
-	createdQueues = append(createdQueues, groupByDestinationQueue)
+	createdQueues = append(createdQueues, originDestinationQueue)
 
 	paymentTypeFilterQueue, err := middleware.CreateQueueMiddleware(config.PaymentTypeFilterQueueName, connSettings)
 	if err != nil {
@@ -116,14 +107,13 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 	createdQueues = append(createdQueues, paymentTypeFilterQueue)
 
 	return &PeriodFilterWorker{
-		usdInputQueue:           usdInputQueue,
-		rawInputQueue:           rawInputQueue,
-		avgByTypeRoutes:         avgByTypeRoutes,
-		scatterGatherPeriod:     config.ScatterGatherPeriod,
-		groupByOriginQueue:      groupByOriginQueue,
-		groupByDestinationQueue: groupByDestinationQueue,
-		paymentTypePeriod:       config.PaymentTypePeriod,
-		paymentTypeFilterQueue:  paymentTypeFilterQueue,
+		usdInputQueue:          usdInputQueue,
+		rawInputQueue:          rawInputQueue,
+		avgByTypeRoutes:        avgByTypeRoutes,
+		scatterGatherPeriod:    config.ScatterGatherPeriod,
+		originDestinationQueue: originDestinationQueue,
+		paymentTypePeriod:      config.PaymentTypePeriod,
+		paymentTypeFilterQueue: paymentTypeFilterQueue,
 	}, nil
 }
 
@@ -150,8 +140,7 @@ func (pf *PeriodFilterWorker) handleSignals() {
 	for _, route := range pf.avgByTypeRoutes {
 		route.Queue.Close()
 	}
-	pf.groupByOriginQueue.Close()
-	pf.groupByDestinationQueue.Close()
+	pf.originDestinationQueue.Close()
 	pf.paymentTypeFilterQueue.Close()
 }
 
@@ -215,11 +204,7 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 		return err
 	}
 
-	if err := pf.groupByOriginQueue.Send(*serializedMsg); err != nil {
-		return err
-	}
-
-	if err := pf.groupByDestinationQueue.Send(*serializedMsg); err != nil {
+	if err := pf.originDestinationQueue.Send(*serializedMsg); err != nil {
 		return err
 	}
 
