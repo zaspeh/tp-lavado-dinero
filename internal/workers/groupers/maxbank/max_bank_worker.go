@@ -20,10 +20,10 @@ type MaxBankWorker struct {
 }
 
 type MaxBankWorkerConfig struct {
+	ID                string
 	MomHost           string
 	MomPort           int
 	InputExchangeName string
-	InputKeys         []string
 	OutputQueueName   string
 	MaxBatchWeight    int
 }
@@ -34,7 +34,8 @@ func NewMaxBankWorker(cfg MaxBankWorkerConfig) (*MaxBankWorker, error) {
 		Port:     cfg.MomPort,
 	}
 
-	inputExchange, err := middleware.CreateExchangeMiddleware(cfg.InputExchangeName, cfg.InputKeys, connSettings)
+	inputKeys := []string{cfg.InputExchangeName + "." + cfg.ID}
+	inputExchange, err := middleware.CreateExchangeMiddleware(cfg.InputExchangeName, inputKeys, connSettings)
 	if err != nil {
 		return nil, err
 	}
