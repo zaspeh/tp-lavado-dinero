@@ -66,15 +66,23 @@ func (rw *ResultCSVWriter) DoneReceiving() bool {
 	return rw.receivedEOFAmount >= expectedEOFAmount
 }
 
-func (rw *ResultCSVWriter) HandleEOF(result result.EOF) error {
+func (rw *ResultCSVWriter) HandleEOF(msg result.EOF) error {
+	// podria convenir para cerrar el archivo correspondiente
 	rw.receivedEOFAmount++
 	return nil
 }
 
-func (rw *ResultCSVWriter) HandleMicrotransactionResult(result result.MicrotransactionResult) error {
+func (rw *ResultCSVWriter) HandleMicrotransactionResult(msg result.MicrotransactionResult) error {
 	return nil
 }
 
-func (rw *ResultCSVWriter) HandleMaxBankResult(result result.MaxBankResult) error {
-	return nil
+func (rw *ResultCSVWriter) HandleMaxBankResult(msg result.MaxBankResult) error {
+	record := []string{msg.BankName, msg.Account, msg.Amount}
+	err := rw.q2Writer.Write(record)
+	if err != nil {
+		return err
+	}
+
+	rw.q2Writer.Flush()
+	return rw.q2Writer.Error()
 }
