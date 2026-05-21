@@ -1,46 +1,58 @@
-# Cantidad de instancias para cada tipo de servicio
-services:
-  client:
-    count: 1
-    
-  currency_filter:
-    count: 1
-    
-  max_bank:
-    count: 1
-    
-  bank_router:
-    count: 1
-
-  period_filter:
-    count: 1
-    usd_input_queue: usd_transactions
-    raw_input_queue: raw_transactions
-
-    origin_destination_router_queue: origin_destination_router
-
-    payment_type_queue: payment_type_filter
-
-    avg_by_type_period_1_queue: avg_by_type_p1
-    avg_by_type_period_2_queue: avg_by_type_p2
-
-    avg_by_type_period_1_start: "2024-01-01T00:00:00Z"
-    avg_by_type_period_1_end: "2024-01-08T23:59:59Z"
-
-    avg_by_type_period_2_start: "2024-01-09T00:00:00Z"
-    avg_by_type_period_2_end: "2024-01-17T23:59:59Z"
-
-    scatter_gather_period_start: "2024-01-01T00:00:00Z"
-    scatter_gather_period_end: "2024-01-17T23:59:59Z"
-
-    payment_type_period_start: "2024-01-01T00:00:00Z"
-    payment_type_period_end: "2024-01-17T23:59:59Z"
-
-
-# Puertos y configuraciones específicas para cada servicio
+# Infraestructura Core
 gateway:
   port: 8080
   
 rabbitmq:
   amqp_port: 5672
   management_port: 15672
+
+# Nodos de la aplicación
+services:
+  client:
+    count: 1
+    datasets_dir: ./datasets
+    output_dir: ./outputs     
+    
+  currency_filter:
+    count: 1
+    worker_type: CURRENCY_FILTER
+    
+  max_bank:
+    count: 1
+    worker_type: MAX_BANK
+    env:
+      INPUT_QUEUE_NAME: max_bank_input
+      OUTPUT_QUEUE_NAME: max_bank_join_input
+      MAX_BATCH_WEIGHT: 8000 
+
+  max_bank_join:
+    count: 1
+    worker_type: MAX_BANK_JOIN
+    env:
+      INPUT_QUEUE_NAME: max_bank_join_input
+      CLIENT_EXCHANGE_NAME: client_results_exchange
+    
+  bank_router:
+    count: 1
+    worker_type: BANK_ROUTER
+    env:
+      MAX_BANK_WORKER_AMOUNT: 1
+
+  period_filter:
+    count: 1
+    worker_type: PERIOD_FILTER
+    env:
+      USD_INPUT_QUEUE_NAME: usd_transactions
+      RAW_INPUT_QUEUE_NAME: raw_transactions
+      ORIGIN_DESTINATION_ROUTER_QUEUE_NAME: origin_destination_router
+      PAYMENT_TYPE_FILTER_QUEUE_NAME: payment_type_filter
+      AVG_BY_TYPE_PERIOD_1_QUEUE_NAME: avg_by_type_p1
+      AVG_BY_TYPE_PERIOD_2_QUEUE_NAME: avg_by_type_p2
+      AVG_BY_TYPE_PERIOD_1_START: "2024-01-01T00:00:00Z"
+      AVG_BY_TYPE_PERIOD_1_END: "2024-01-08T23:59:59Z"
+      AVG_BY_TYPE_PERIOD_2_START: "2024-01-09T00:00:00Z"
+      AVG_BY_TYPE_PERIOD_2_END: "2024-01-17T23:59:59Z"
+      SCATTER_GATHER_PERIOD_START: "2024-01-01T00:00:00Z"
+      SCATTER_GATHER_PERIOD_END: "2024-01-17T23:59:59Z"
+      PAYMENT_TYPE_PERIOD_START: "2024-01-01T00:00:00Z"
+      PAYMENT_TYPE_PERIOD_END: "2024-01-17T23:59:59Z"

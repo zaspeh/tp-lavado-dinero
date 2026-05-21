@@ -54,71 +54,54 @@ def build_gateway(cfg):
 
 def build_client(cfg, i):
     gateway_port = cfg['gateway']['port']
+    client_cfg = cfg['services']['client']
     
+    host_datasets = client_cfg.get('datasets_dir', './datasets')
+    host_output_base = client_cfg.get('output_dir_base', './outputs')
+
     return {
         'build': {
             'context': '.',
             'dockerfile': 'docker/client.Dockerfile'
         },
         'environment': [
+            f'ID={i}',
             'SERVER_HOST=gateway',
             f'SERVER_PORT={gateway_port}',
-            'INPUT_FILE=/data/dataset.csv'
-            f'OUTPUT_DIR=/results'
+            f'INPUT_FILE_TRANSACTIONS=/datasets/client_{i}_transactions.csv',
+            f'INPUT_FILE_ACCOUNTS=/datasets/client_{i}_accounts.csv',
+            'OUTPUT_DIR=/outputs' 
         ],
         'volumes': [
-            f'./output/client{i}:/results'
+            f'{host_datasets}:/datasets',
+            f'{host_output_base}/client_{i}:/outputs'
         ],
         'depends_on': ['gateway'],
         'networks': ['money_laundering_network']
     }
 
-def build_worker(svc_name, worker_type, cfg):
+def build_worker(svc_name, cfg, i):
     amqp_port = cfg['rabbitmq']['amqp_port']
+    svc_config = cfg['services'][svc_name]
+    worker_type = svc_config.get('worker_type', 'UNKNOWN')
     
-    env = [
+    env_list = [
+        f"ID={i}",
         f"WORKER_TYPE={worker_type}",
         "MOM_HOST=rabbitmq",
         f"MOM_PORT={amqp_port}"
     ]
     
-    if svc_name == 'bank_router':
-        max_bank_count = cfg.get('services', {}).get('max_bank', {}).get('count', 1)
-        env.append(f"MAX_BANK_WORKER_AMOUNT={max_bank_count}")
-    
-    if svc_name == 'period_filter':
-        period_filter_cfg = cfg.get('services', {}).get('period_filter', {})
-
-        env.extend([
-            f"USD_INPUT_QUEUE_NAME={period_filter_cfg.get('usd_input_queue')}",
-            f"RAW_INPUT_QUEUE_NAME={period_filter_cfg.get('raw_input_queue')}",
-
-            f"ORIGIN_DESTINATION_ROUTER_QUEUE_NAME={period_filter_cfg.get('origin_destination_router_queue')}",
-
-            f"PAYMENT_TYPE_FILTER_QUEUE_NAME={period_filter_cfg.get('payment_type_queue')}",
-
-            f"AVG_BY_TYPE_PERIOD_1_QUEUE_NAME={period_filter_cfg.get('avg_by_type_period_1_queue')}",
-            f"AVG_BY_TYPE_PERIOD_2_QUEUE_NAME={period_filter_cfg.get('avg_by_type_period_2_queue')}",
-
-            f"AVG_BY_TYPE_PERIOD_1_START={period_filter_cfg.get('avg_by_type_period_1_start')}",
-            f"AVG_BY_TYPE_PERIOD_1_END={period_filter_cfg.get('avg_by_type_period_1_end')}",
-
-            f"AVG_BY_TYPE_PERIOD_2_START={period_filter_cfg.get('avg_by_type_period_2_start')}",
-            f"AVG_BY_TYPE_PERIOD_2_END={period_filter_cfg.get('avg_by_type_period_2_end')}",
-
-            f"SCATTER_GATHER_PERIOD_START={period_filter_cfg.get('scatter_gather_period_start')}",
-            f"SCATTER_GATHER_PERIOD_END={period_filter_cfg.get('scatter_gather_period_end')}",
-
-            f"PAYMENT_TYPE_PERIOD_START={period_filter_cfg.get('payment_type_period_start')}",
-            f"PAYMENT_TYPE_PERIOD_END={period_filter_cfg.get('payment_type_period_end')}",
-        ])
+    if 'env' in svc_config:
+        for key, value in svc_config['env'].items():
+            env_list.append(f"{key}={value}")
 
     return {
         'build': {
             'context': '.',
             'dockerfile': 'docker/worker.Dockerfile'
         },
-        'environment': env,
+        'environment': env_list,
         'depends_on': {
             'rabbitmq': {'condition': 'service_healthy'}
         },
@@ -136,23 +119,15 @@ def generate_compose(cfg):
     compose['services']['rabbitmq'] = build_rabbitmq(cfg)
     compose['services']['gateway'] = build_gateway(cfg)
     
-    client_count = cfg.get('services', {}).get('client', {}).get('count', 0)
-    for i in range(client_count):
-        svc_id = f"client_{i}"
-        compose['services'][svc_id] = build_client(cfg, i)
+    for svc_name, svc_data in cfg.get('services', {}).items():
+        count = svc_data.get('count', 0)
         
-    workers_config = {
-        'currency_filter': 'CURRENCY_FILTER',
-        'max_bank': 'MAX_BANK',
-        'bank_router': 'BANK_ROUTER',
-        'period_filter': 'PERIOD_FILTER'
-    }
-    
-    for svc_name, worker_type in workers_config.items():
-        count = cfg.get('services', {}).get(svc_name, {}).get('count', 0)
-        for i in range(count):
-            svc_id = f"{svc_name}_{i}"
-            compose['services'][svc_id] = build_worker(svc_name, worker_type, cfg)
+        if svc_name == 'client':
+            for i in range(count):
+                compose['services'][f"client_{i}"] = build_client(cfg, i)
+        else:
+            for i in range(count):
+                compose['services'][f"{svc_name}_{i}"] = build_worker(svc_name, cfg, i)
             
     return compose
 

@@ -37,12 +37,16 @@ services:
     build:
       context: .
       dockerfile: docker/client.Dockerfile
+    container_name: client_0
     environment:
     - SERVER_HOST=gateway
     - SERVER_PORT=8080
-    - INPUT_FILE=/data/dataset.csvOUTPUT_DIR=/results
+    - INPUT_FILE_TRANSACTIONS=/datasets/client_0_transactions.csv
+    - INPUT_FILE_ACCOUNTS=/datasets/client_0_accounts.csv
+    - OUTPUT_DIR=/outputs
     volumes:
-    - ./output/client0:/results
+    - ./datasets:/datasets
+    - ./outputs/client_0:/outputs
     depends_on:
     - gateway
     networks:
@@ -55,6 +59,7 @@ services:
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
+    - ID=0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -68,6 +73,26 @@ services:
     - WORKER_TYPE=MAX_BANK
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
+    - ID=0
+    - INPUT_QUEUE_NAME=max_bank_input
+    - OUTPUT_QUEUE_NAME=max_bank_join_input
+    - MAX_BATCH_WEIGHT=8000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  max_bank_join_0:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    environment:
+    - WORKER_TYPE=MAX_BANK_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - ID=0
+    - INPUT_QUEUE_NAME=max_bank_join_input
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -81,6 +106,7 @@ services:
     - WORKER_TYPE=BANK_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
+    - ID=0
     - MAX_BANK_WORKER_AMOUNT=1
     depends_on:
       rabbitmq:
@@ -95,6 +121,7 @@ services:
     - WORKER_TYPE=PERIOD_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
+    - ID=0
     - USD_INPUT_QUEUE_NAME=usd_transactions
     - RAW_INPUT_QUEUE_NAME=raw_transactions
     - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
