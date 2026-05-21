@@ -7,6 +7,8 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type GroupByOriginWorker struct {
@@ -71,5 +73,44 @@ func (gbow *GroupByOriginWorker) handleSignals() {
 }
 
 func (gbow *GroupByOriginWorker) handleMessage(msg middleware.Message, ack, nack func()) {
-	//TODO:implementar manejo mensajes
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_SCATTERGATHER:
+		gbow.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
+	case protobuf.MessageType_EOF_:
+		gbow.handleEOFMessage(moneyLaundry, msg, ack, nack)
+	default:
+		nack()
+	}
+}
+
+func (gbow *GroupByOriginWorker) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	scatterGatherMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ScatterGather{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	origin := Account{
+		Bank:    scatterGatherMsg.GetFromBank(),
+		Account: scatterGatherMsg.GetAccount(),
+	}
+
+	destination := Account{
+		Bank:    scatterGatherMsg.GetToBank(),
+		Account: scatterGatherMsg.GetToAccount(),
+	}
+
+	gbow.originsStore.Add(origin, destination)
+
+	ack()
+}
+
+func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	//TODO
 }
