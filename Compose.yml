@@ -20,12 +20,14 @@ services:
   gateway:
     build:
       context: .
-      dockerfile: docker/gateway.Dockerfile
+      dockerfile: cmd/gateway/Dockerfile
     environment:
     - SERVER_HOST=0.0.0.0
     - SERVER_PORT=8080
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
+    - OUTPUT_QUEUE_NAME=currency_filter_input_queue
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
     ports:
     - 8080:8080
     depends_on:
@@ -36,9 +38,9 @@ services:
   client_0:
     build:
       context: .
-      dockerfile: docker/client.Dockerfile
-    container_name: client_0
+      dockerfile: cmd/client/Dockerfile
     environment:
+    - ID=0
     - SERVER_HOST=gateway
     - SERVER_PORT=8080
     - INPUT_FILE_TRANSACTIONS=/datasets/client_0_transactions.csv
@@ -54,12 +56,34 @@ services:
   currency_filter_0:
     build:
       context: .
-      dockerfile: docker/worker.Dockerfile
+      dockerfile: cmd/worker/Dockerfile
     environment:
+    - ID=0
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
+    - INPUT_QUEUE_NAME=currency_filter_input_queue
+    - MICROTRANSACTION_FILTER_QUEUE_NAME=microtransaction_filter_input_queue
+    - BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
+    - PERIOD_FILTER_QUEUE_NAME=period_filter_input_queue
+    - CURRENCY_TO_FILTER=USD
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  bank_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    environment:
     - ID=0
+    - WORKER_TYPE=BANK_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - INPUT_QUEUE_NAME=bank_router_input_queue
+    - MAX_BANK_EXCHANGE_NAME=max_bank_input_exchange
+    - MAX_BANK_WORKER_AMOUNT=1
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -68,13 +92,13 @@ services:
   max_bank_0:
     build:
       context: .
-      dockerfile: docker/worker.Dockerfile
+      dockerfile: cmd/worker/Dockerfile
     environment:
+    - ID=0
     - WORKER_TYPE=MAX_BANK
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
-    - ID=0
-    - INPUT_QUEUE_NAME=max_bank_input
+    - INPUT_EXCHANGE_NAME=max_bank_input_exchange
     - OUTPUT_QUEUE_NAME=max_bank_join_input
     - MAX_BATCH_WEIGHT=8000
     depends_on:
@@ -85,57 +109,14 @@ services:
   max_bank_join_0:
     build:
       context: .
-      dockerfile: docker/worker.Dockerfile
+      dockerfile: cmd/worker/Dockerfile
     environment:
+    - ID=0
     - WORKER_TYPE=MAX_BANK_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
-    - ID=0
     - INPUT_QUEUE_NAME=max_bank_join_input
     - CLIENT_EXCHANGE_NAME=client_results_exchange
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-    - money_laundering_network
-  bank_router_0:
-    build:
-      context: .
-      dockerfile: docker/worker.Dockerfile
-    environment:
-    - WORKER_TYPE=BANK_ROUTER
-    - MOM_HOST=rabbitmq
-    - MOM_PORT=5672
-    - ID=0
-    - MAX_BANK_WORKER_AMOUNT=1
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-    - money_laundering_network
-  period_filter_0:
-    build:
-      context: .
-      dockerfile: docker/worker.Dockerfile
-    environment:
-    - WORKER_TYPE=PERIOD_FILTER
-    - MOM_HOST=rabbitmq
-    - MOM_PORT=5672
-    - ID=0
-    - USD_INPUT_QUEUE_NAME=usd_transactions
-    - RAW_INPUT_QUEUE_NAME=raw_transactions
-    - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
-    - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_type_filter
-    - AVG_BY_TYPE_PERIOD_1_QUEUE_NAME=avg_by_type_p1
-    - AVG_BY_TYPE_PERIOD_2_QUEUE_NAME=avg_by_type_p2
-    - AVG_BY_TYPE_PERIOD_1_START=2024-01-01T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_1_END=2024-01-08T23:59:59Z
-    - AVG_BY_TYPE_PERIOD_2_START=2024-01-09T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_2_END=2024-01-17T23:59:59Z
-    - SCATTER_GATHER_PERIOD_START=2024-01-01T00:00:00Z
-    - SCATTER_GATHER_PERIOD_END=2024-01-17T23:59:59Z
-    - PAYMENT_TYPE_PERIOD_START=2024-01-01T00:00:00Z
-    - PAYMENT_TYPE_PERIOD_END=2024-01-17T23:59:59Z
     depends_on:
       rabbitmq:
         condition: service_healthy

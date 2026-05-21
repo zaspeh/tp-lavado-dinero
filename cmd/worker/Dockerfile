@@ -8,8 +8,10 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY internal/common/inner ./internal/common/inner
-COPY internal/workers ./internal/workers
+# COPY internal/common/inner ./internal/common/inner
+# COPY internal/factory ./internal/factory
+# COPY internal/workers ./internal/workers
+COPY internal ./internal
 COPY cmd/worker ./cmd/worker
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /build/bin/worker ./cmd/worker

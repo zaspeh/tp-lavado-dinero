@@ -38,13 +38,13 @@ def build_gateway(cfg):
     return {
         'build': {
             'context': '.',
-            'dockerfile': 'docker/gateway.Dockerfile'
+            'dockerfile': 'cmd/gateway/Dockerfile'
         },
         'environment': [
             'SERVER_HOST=0.0.0.0',
             f'SERVER_PORT={gateway_port}',
             'MOM_HOST=rabbitmq',
-            f'MOM_PORT={amqp_port}'
+            f'MOM_PORT={amqp_port}',
             f'OUTPUT_QUEUE_NAME={output_queue_name}',
             f'CLIENT_EXCHANGE_NAME={client_exchange_name}'
         ],
@@ -65,7 +65,7 @@ def build_client(cfg, i):
     return {
         'build': {
             'context': '.',
-            'dockerfile': 'docker/client.Dockerfile'
+            'dockerfile': 'cmd/client/Dockerfile'
         },
         'environment': [
             f'ID={i}',
@@ -102,7 +102,7 @@ def build_worker(svc_name, cfg, i):
     return {
         'build': {
             'context': '.',
-            'dockerfile': 'docker/worker.Dockerfile'
+            'dockerfile': 'cmd/worker/Dockerfile'
         },
         'environment': env_list,
         'depends_on': {

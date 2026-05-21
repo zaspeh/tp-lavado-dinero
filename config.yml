@@ -51,7 +51,7 @@ services:
     
 
   period_filter:
-    count: 1
+    count: 0
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -70,7 +70,7 @@ services:
       PAYMENT_TYPE_PERIOD_END: "2024-01-17T23:59:59Z"
   
   origin_destination_router:
-    count: 1
+    count: 0
     worker_type: ORIGIN_DESTINATION_ROUTER
 
     env:
