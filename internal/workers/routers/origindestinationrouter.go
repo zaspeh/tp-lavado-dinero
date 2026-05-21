@@ -111,7 +111,7 @@ func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, n
 	case protobuf.MessageType_SCATTERGATHER:
 		odr.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF:
-		//TODO: IMPLEMENTAR BROADCAST DE EOF
+		odr.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
@@ -167,4 +167,22 @@ func (odr *OriginDestinationRouter) hash(bank int32, account string) uint32 {
 	h.Write([]byte(fmt.Sprintf("%d-%s", bank, account)))
 
 	return h.Sum32()
+}
+
+func (odr *OriginDestinationRouter) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	for _, key := range odr.groupByOriginExchangeKeys {
+		if err := odr.groupByOriginExchange.SendWithKey(key, msg); err != nil {
+			nack()
+			return
+		}
+	}
+
+	for _, key := range odr.groupByDestinationExchangeKeys {
+		if err := odr.groupByDestinationExchange.SendWithKey(key, msg); err != nil {
+			nack()
+			return
+		}
+	}
+
+	ack()
 }
