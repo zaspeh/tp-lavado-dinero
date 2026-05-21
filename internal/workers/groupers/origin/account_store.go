@@ -17,3 +17,7 @@ func (as *AccountStore) Add(origin Account, destination Account) {
 
 	as.data[origin][destination] = struct{}{}
 }
+
+func (as *AccountStore) GetData() map[Account]map[Account]struct{} {
+	return as.data
+}

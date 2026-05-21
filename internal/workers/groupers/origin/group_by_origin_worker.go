@@ -112,21 +112,67 @@ func (gbow *GroupByOriginWorker) handleScatterGatherMessage(moneyLaundry *protob
 }
 
 func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
-	/*for origin, destinations := range gbow.originsStore.GetData() {
-	originBank := origin.GetBank()
-	originAccount := origin.GetAccount()
+	batch := NewBatch(gbow.maxBatchWeight)
 
-	if len(destinations) < 5 {
-		continue
-	}
+	for origin, destinations := range gbow.originsStore.GetData() {
+		originBank := origin.GetBank()
+		originAccount := origin.GetAccount()
 
-	for _, destination := range destinations {
-		scatterGatherMsg := &protobuf.ScatterGather{
-			FromBank:   originBank,
-			Account:    originAccount,
-			ToBank:     destination.GetBank(),
-			ToAccount:  destination.GetAccount(),
+		if len(destinations) < 5 {
+			continue
 		}
 
-		gbow.outputQueue.Send(serializer.SerializeProtoMessage(scatterGatherMsg, protobuf.MessageType_ESCATTERGATHER))*/
+		group := &protobuf.GroupedAccounts{
+			BaseAccount: &protobuf.Account{
+				Bank:    originBank,
+				Account: originAccount,
+			},
+		}
+
+		for destination := range destinations {
+
+			group.RelatedAccounts = append(group.RelatedAccounts, &protobuf.Account{
+				Bank:    destination.GetBank(),
+				Account: destination.GetAccount(),
+			})
+		}
+
+		if batch.IsFull(group) {
+			serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
+			if err != nil {
+				nack()
+				return
+			}
+
+			if err := gbow.outputQueue.Send(*serializedMsg); err != nil {
+				nack()
+				return
+			}
+		}
+
+		if !batch.Add(group) {
+			nack()
+			return
+		}
+	}
+
+	if !batch.IsEmpty() {
+		serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
+		if err != nil {
+			nack()
+			return
+		}
+
+		if err := gbow.outputQueue.Send(*serializedMsg); err != nil {
+			nack()
+			return
+		}
+	}
+
+	if err := gbow.outputQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
 }

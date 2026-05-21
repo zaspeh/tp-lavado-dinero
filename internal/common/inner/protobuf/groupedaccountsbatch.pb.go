@@ -23,7 +23,7 @@ const (
 
 type Account struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Bank          uint32                 `protobuf:"varint,1,opt,name=bank,proto3" json:"bank,omitempty"`
+	Bank          int32                  `protobuf:"varint,1,opt,name=bank,proto3" json:"bank,omitempty"`
 	Account       string                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -59,7 +59,7 @@ func (*Account) Descriptor() ([]byte, []int) {
 	return file_tp_lavado_dinero_internal_common_inner_protobuf_groupedaccountsbatch_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Account) GetBank() uint32 {
+func (x *Account) GetBank() int32 {
 	if x != nil {
 		return x.Bank
 	}
@@ -175,7 +175,7 @@ const file_tp_lavado_dinero_internal_common_inner_protobuf_groupedaccountsbatch_
 	"\n" +
 	"Jtp-lavado-dinero/internal/common/inner/protobuf/groupedaccountsbatch.proto\x12\bprotobuf\"7\n" +
 	"\aAccount\x12\x12\n" +
-	"\x04bank\x18\x01 \x01(\rR\x04bank\x12\x18\n" +
+	"\x04bank\x18\x01 \x01(\x05R\x04bank\x12\x18\n" +
 	"\aaccount\x18\x02 \x01(\tR\aaccount\"\x85\x01\n" +
 	"\x0fGroupedAccounts\x124\n" +
 	"\fbase_account\x18\x01 \x01(\v2\x11.protobuf.AccountR\vbaseAccount\x12<\n" +

@@ -5,7 +5,7 @@ package protobuf;
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 message Account {
-  uint32 bank = 1;
+  int32 bank = 1;
   string account = 2;
 }
 
