@@ -56,3 +56,16 @@ services:
       SCATTER_GATHER_PERIOD_END: "2024-01-17T23:59:59Z"
       PAYMENT_TYPE_PERIOD_START: "2024-01-01T00:00:00Z"
       PAYMENT_TYPE_PERIOD_END: "2024-01-17T23:59:59Z"
+  
+  origin_destination_router:
+    count: 1
+    worker_type: ORIGIN_DESTINATION_ROUTER
+
+    env:
+      INPUT_QUEUE_NAME: origin_destination_router
+
+      GROUP_BY_ORIGIN_EXCHANGE_NAME: group_by_origin
+      GROUP_BY_DESTINATION_EXCHANGE_NAME: group_by_destination
+
+      GROUP_BY_ORIGIN_WORKER_AMOUNT: 1
+      GROUP_BY_DESTINATION_WORKER_AMOUNT: 1
