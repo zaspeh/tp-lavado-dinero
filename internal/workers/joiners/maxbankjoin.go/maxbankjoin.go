@@ -71,6 +71,8 @@ func (j *MaxBankJoin) handleMessage(msg middleware.Message, ack, nack func()) {
 		j.sendMessage(msg, ack, nack)
 
 	case protobuf.MessageType_EOF_:
+		// Unicamente para loggeo
+		slog.Info("Received EOF message in MaxBankJoin, forwarding to client exchange")
 		j.sendMessage(msg, ack, nack)
 
 	default:

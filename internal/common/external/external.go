@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
@@ -32,6 +33,7 @@ var (
 
 type ExternalProtocol struct {
 	socket *socket.Socket
+	mu     sync.Mutex
 }
 
 func New(socket *socket.Socket) *ExternalProtocol {
@@ -71,6 +73,9 @@ func (p *ExternalProtocol) SendResult() error { // podríamos borrarlo
 }
 
 func (p *ExternalProtocol) SendMicrotransactionResult(result *result.MicrotransactionResult) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	slog.Info("sending result to client")
 	if err := p.sendMsgType(microtransactionResult); err != nil {
 		return err
@@ -97,6 +102,8 @@ func (p *ExternalProtocol) SendMicrotransactionResult(result *result.Microtransa
 }
 
 func (p *ExternalProtocol) SendMaxBankResult(results []result.MaxBankResult) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	for _, res := range results {
 		if err := p.sendMsgType(maxBankResult); err != nil {
 			return err
@@ -113,14 +120,23 @@ func (p *ExternalProtocol) SendMaxBankResult(results []result.MaxBankResult) err
 }
 
 func (p *ExternalProtocol) SendEOF() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	return p.sendMsgType(eof)
 }
 
 func (p *ExternalProtocol) SendAck() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	return p.sendMsgType(ack)
 }
 
 func (p *ExternalProtocol) SendNack() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	return p.sendMsgType(nack)
 }
 

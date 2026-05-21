@@ -114,12 +114,12 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	case protobuf.MessageType_MAXBANK_RESULT:
 		cc.handleMaxBankResult(moneyLaundry, ack, nack)
 	default:
+		slog.Warn("received message with unknown type", "type", moneyLaundry.GetType())
 		nack()
 	}
 }
 
 func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
-	slog.Info("Received EOF from worker", "clientID", cc.id)
 	cc.EOFamountReceived++
 	slog.Info(
 		"received EOF from worker",
@@ -171,7 +171,6 @@ func (cc *ClientConnection) handleMaxBankResult(moneyLaundering *protobuf.MoneyL
 		nack()
 		return
 	}
-
 	ack()
 }
 

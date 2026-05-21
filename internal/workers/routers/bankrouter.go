@@ -93,6 +93,10 @@ func (br *BankRouter) handleMessage(msg middleware.Message, ack, nack func()) {
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_MAXBANK:
 		br.handleMaxBankMessage(moneyLaundry, msg, ack, nack)
+	case protobuf.MessageType_EOF_:
+		// Unicamente para loggeo
+		slog.Info("Received EOF message in BankRouter")
+		br.handleMaxBankMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}

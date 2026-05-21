@@ -25,6 +25,23 @@ services:
       BANK_ROUTER_QUEUE_NAME: bank_router_input_queue
       PERIOD_FILTER_QUEUE_NAME: period_filter_input_queue
       CURRENCY_TO_FILTER: "US Dollar"
+
+  microtransaction_filter:
+    count: 0
+    worker_type: AMOUNT_FILTER
+    env:
+      INPUT_QUEUE_NAME: microtransaction_filter_input_queue
+      OUTPUT_QUEUE_NAME: microtransaction_join_input_queue
+      AMOUNT_TO_FILTER: 50
+
+  microtransaction_join:
+    count: 0
+    worker_type: MICROTRANSACTION_JOIN
+    env:
+      INPUT_QUEUE_NAME: microtransaction_join_input_queue
+      CLIENT_EXCHANGE_NAME: client_results_exchange
+      MAX_BATCH_TRANSACTIONS: 100
+      MAX_BATCH_BYTES: 8000
     
   bank_router:
     count: 1
@@ -91,20 +108,3 @@ services:
       OUTPUT_QUEUE_NAME: grouped_origin_accounts
 
       MAX_BATCH_WEIGHT: 8000
-
-  microtransaction_filter:
-    count: 1
-    worker_type: AMOUNT_FILTER
-    env:
-      INPUT_QUEUE_NAME: microtransaction_filter_input_queue
-      OUTPUT_QUEUE_NAME: microtransaction_join_input_queue
-      AMOUNT_TO_FILTER: 50
-
-  microtransaction_join:
-    count: 1
-    worker_type: MICROTRANSACTION_JOIN
-    env:
-      INPUT_QUEUE_NAME: microtransaction_join_input_queue
-      CLIENT_EXCHANGE_NAME: client_results_exchange
-      MAX_BATCH_TRANSACTIONS: 100
-      MAX_BATCH_BYTES: 8000

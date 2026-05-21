@@ -58,12 +58,6 @@ func TransactionToProto(clientID string, msg request.Transaction) (*m.Message, e
 	)
 	*/
 
-	slog.Info(
-		"building transaction",
-		"clientID",
-		clientID,
-	)
-
 	transaction := &pb.Transaction{
 		ClientID:        clientID,
 		Timestamp:       timestamppb.New(timestamp),
@@ -93,6 +87,7 @@ func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxB
 	if err != nil {
 		return nil, err
 	}
+	slog.Info("ProtoToMaxBankResult", "results_count", len(batch.GetResults()))
 
 	results := batch.GetResults()
 	externalMessage := make([]result.MaxBankResult, 0, len(results))

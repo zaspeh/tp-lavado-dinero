@@ -9,19 +9,17 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 )
 
-const expectedEOFAmount = 5
-
 type ResultCSVWriter struct {
-	receivedEOFAmount int
-	outputDir         string
-	q1File            *os.File
-	q1Writer          *csv.Writer
-	q2File            *os.File
-	q2Writer          *csv.Writer
+	doneReceiving bool
+	outputDir     string
+	q1File        *os.File
+	q1Writer      *csv.Writer
+	q2File        *os.File
+	q2Writer      *csv.Writer
 }
 
 func NewResultCSVWriter(outputDir string) *ResultCSVWriter {
-	return &ResultCSVWriter{outputDir: outputDir}
+	return &ResultCSVWriter{outputDir: outputDir, doneReceiving: false}
 }
 
 func (rw *ResultCSVWriter) Open() error {
@@ -64,12 +62,11 @@ func (rw *ResultCSVWriter) Close() {
 }
 
 func (rw *ResultCSVWriter) DoneReceiving() bool {
-	return rw.receivedEOFAmount >= expectedEOFAmount
+	return rw.doneReceiving
 }
 
 func (rw *ResultCSVWriter) HandleEOF(msg result.EOF) error {
-	// podria convenir para cerrar el archivo correspondiente
-	rw.receivedEOFAmount++
+	rw.doneReceiving = true
 	return nil
 }
 

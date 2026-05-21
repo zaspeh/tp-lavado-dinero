@@ -50,6 +50,7 @@ func NewMaxBankWorker(cfg MaxBankWorkerConfig) (*MaxBankWorker, error) {
 		inputQueue:     inputExchange,
 		outputQueue:    outputQueue,
 		maxBankStorage: NewBankStore(),
+		maxBatchWeight: cfg.MaxBatchWeight,
 	}, nil
 }
 
@@ -122,12 +123,13 @@ func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry
 }
 
 func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func()) {
+	slog.Info("Received EOF message in MaxBankWorker, processing stored data")
 	reader := w.maxBankStorage.Reader()
 	batch := NewBatch(w.maxBatchWeight)
 	var processedBanks []string
 
-	for processedRecord := reader.Get(); reader.HasNext(); reader.Next() {
-
+	for reader.HasNext() {
+		processedRecord := reader.Get()
 		maxBankResult := &protobuf.MaxBankResult{
 			BankName: processedRecord.BankName,
 			Account:  processedRecord.Account,
@@ -151,6 +153,7 @@ func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func
 
 		batch.Add(maxBankResult)
 		processedBanks = append(processedBanks, processedRecord.BankID)
+		reader.Next()
 	}
 
 	if !batch.isEmpty() {

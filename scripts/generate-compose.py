@@ -40,6 +40,7 @@ def build_gateway(cfg):
             'context': '.',
             'dockerfile': 'cmd/gateway/Dockerfile'
         },
+        'container_name': 'gateway',
         'environment': [
             'SERVER_HOST=0.0.0.0',
             f'SERVER_PORT={gateway_port}',
@@ -67,6 +68,7 @@ def build_client(cfg, i):
             'context': '.',
             'dockerfile': 'cmd/client/Dockerfile'
         },
+        'container_name': f'client_{i}',
         'environment': [
             f'ID={i}',
             'SERVER_HOST=gateway',
@@ -104,6 +106,7 @@ def build_worker(svc_name, cfg, i):
             'context': '.',
             'dockerfile': 'cmd/worker/Dockerfile'
         },
+        'container_name': f'{svc_name}_{i}',
         'environment': env_list,
         'depends_on': {
             'rabbitmq': {'condition': 'service_healthy'}
