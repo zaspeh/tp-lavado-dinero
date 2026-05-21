@@ -1,5 +1,8 @@
 # Infraestructura Core
 gateway:
+  env:
+    OUTPUT_QUEUE_NAME: currency_filter_input_queue
+    CLIENT_EXCHANGE_NAME: client_results_exchange
   port: 8080
   
 rabbitmq:

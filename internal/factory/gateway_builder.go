@@ -5,12 +5,12 @@ import (
 )
 
 func buildGateway() (*gateway.Gateway, error) {
-	USDQueueName, err := getEnvStrict("USD_QUEUE")
+	USDQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
 	if err != nil {
 		return nil, err
 	}
 
-	outputQueueName, err := getEnvStrict("CLIENT_EXCHANGE")
+	outputQueueName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
