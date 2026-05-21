@@ -1,6 +1,11 @@
 package origin
 
 import (
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 )
 
@@ -44,4 +49,27 @@ func NewGroupByOriginWorker(config GroupByOriginWorkerConfig) (*GroupByOriginWor
 		originsStore:   newAccountStore(),
 		maxBatchWeight: config.MaxBatchWeight,
 	}, nil
+}
+
+func (gbow *GroupByOriginWorker) Run() error {
+	go gbow.handleSignals()
+
+	gbow.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		gbow.handleMessage(msg, ack, nack)
+	})
+
+	return nil
+}
+
+func (gbow *GroupByOriginWorker) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
+	slog.Info("shutdown signal received")
+	gbow.inputExchange.Close()
+	gbow.outputQueue.Close()
+}
+
+func (gbow *GroupByOriginWorker) handleMessage(msg middleware.Message, ack, nack func()) {
+	//TODO:implementar manejo mensajes
 }
