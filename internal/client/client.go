@@ -99,6 +99,11 @@ func (c *Client) processTransactions() error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+
+	if scanner.Scan() {
+		slog.Debug("Header skipped", "header", scanner.Text())
+	}
+
 	for scanner.Scan() {
 		if !c.running.Load() {
 			break

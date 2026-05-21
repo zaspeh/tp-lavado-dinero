@@ -39,7 +39,7 @@ func TransactionToProto(msg request.Transaction) (*m.Message, error) {
 		return nil, err
 	}
 
-	timestamp, err := time.Parse("2003-08-27 15:04:05", fields[0])
+	timestamp, err := time.Parse("2006/01/02 15:04", fields[0])
 	if err != nil {
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
