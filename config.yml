@@ -81,3 +81,13 @@ services:
 
       GROUP_BY_ORIGIN_WORKER_AMOUNT: 1
       GROUP_BY_DESTINATION_WORKER_AMOUNT: 1
+  
+  group_by_origin:
+    count: 0
+    worker_type: GROUP_BY_ORIGIN
+
+    env:
+      INPUT_EXCHANGE_NAME: group_by_origin
+      OUTPUT_QUEUE_NAME: grouped_origin_accounts
+
+      MAX_BATCH_WEIGHT: 8000
