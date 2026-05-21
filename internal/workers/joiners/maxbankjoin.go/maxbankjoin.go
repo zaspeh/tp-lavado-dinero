@@ -49,11 +49,12 @@ func NewMaxBankJoin(config JoinMaxBankConfig) (*MaxBankJoin, error) {
 }
 
 func (j *MaxBankJoin) Run() error {
-	go j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	go j.handleSignals()
+
+	j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
 	})
 
-	go j.handleSignals()
 	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
 	return nil
 }
