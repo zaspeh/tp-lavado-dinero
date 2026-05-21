@@ -80,11 +80,12 @@ func NewOriginDestinationRouter(config OriginDestinationRouterConfig) (*OriginDe
 }
 
 func (odr *OriginDestinationRouter) Run() error {
-	go odr.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		odr.handleMessage(msg, ack, nack)
-	})
 
 	go odr.handleSignals()
+
+	odr.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		odr.handleMessage(msg, ack, nack)
+	})
 
 	return nil
 }

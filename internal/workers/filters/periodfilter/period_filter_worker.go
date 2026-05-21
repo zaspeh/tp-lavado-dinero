@@ -118,14 +118,16 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 }
 
 func (pf *PeriodFilterWorker) Run() error {
-	go pf.usdInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		pf.handleUSDMessage(msg, ack, nack)
-	})
+	go pf.handleSignals()
+
 	go pf.rawInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		pf.handleRawMessage(msg, ack, nack)
 	})
 
-	go pf.handleSignals()
+	pf.usdInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		pf.handleUSDMessage(msg, ack, nack)
+	})
+
 	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
 	return nil
 }
