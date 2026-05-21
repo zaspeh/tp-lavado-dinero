@@ -112,5 +112,21 @@ func (gbow *GroupByOriginWorker) handleScatterGatherMessage(moneyLaundry *protob
 }
 
 func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
-	//TODO
+	/*for origin, destinations := range gbow.originsStore.GetData() {
+	originBank := origin.GetBank()
+	originAccount := origin.GetAccount()
+
+	if len(destinations) < 5 {
+		continue
+	}
+
+	for _, destination := range destinations {
+		scatterGatherMsg := &protobuf.ScatterGather{
+			FromBank:   originBank,
+			Account:    originAccount,
+			ToBank:     destination.GetBank(),
+			ToAccount:  destination.GetAccount(),
+		}
+
+		gbow.outputQueue.Send(serializer.SerializeProtoMessage(scatterGatherMsg, protobuf.MessageType_ESCATTERGATHER))*/
 }

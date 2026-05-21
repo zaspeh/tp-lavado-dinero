@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+message Account {
+  uint32 bank = 1;
+  string account = 2;
+}
+
+message GroupedAccounts {
+  Account base_account = 1;
+  repeated Account related_accounts = 2;
+}
+
+message GroupedAccountsBatch {
+  repeated GroupedAccounts groups = 1;
+}
