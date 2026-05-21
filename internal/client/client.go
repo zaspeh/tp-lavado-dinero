@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"fmt"
 	"log/slog"
 	"math"
 	"net"
@@ -77,15 +78,21 @@ func (c *Client) Run() error {
 
 	go c.handleSignals()
 
+	slog.Info("starting processTransactions")
+
 	err := c.processTransactions()
 	if err != nil {
 		return err
 	}
 
+	slog.Info("starting receiveResults")
+
 	err = c.receiveResults()
 	if err != nil {
 		return err
 	}
+
+	slog.Info("finished receiveResults")
 
 	return nil
 }
@@ -133,6 +140,13 @@ func (c *Client) processTransactions() error {
 		return err
 	}
 
+	err = c.protocol.WaitAck()
+	if err != nil {
+		return err
+	}
+
+	slog.Info("EOF ack received")
+
 	return nil
 }
 
@@ -146,6 +160,12 @@ func (c *Client) receiveResults() error {
 			slog.Debug("Error while receiving result", "err", err)
 			return err
 		}
+
+		slog.Info(
+			"result received",
+			"type",
+			fmt.Sprintf("%T", msg),
+		)
 
 		err = msg.Handle(c.writer)
 		if err != nil {

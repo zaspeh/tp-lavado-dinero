@@ -66,7 +66,7 @@ services:
     - MICROTRANSACTION_FILTER_QUEUE_NAME=microtransaction_filter_input_queue
     - BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
     - PERIOD_FILTER_QUEUE_NAME=period_filter_input_queue
-    - CURRENCY_TO_FILTER=USD
+    - CURRENCY_TO_FILTER=US Dollar
     depends_on:
       rabbitmq:
         condition: service_healthy

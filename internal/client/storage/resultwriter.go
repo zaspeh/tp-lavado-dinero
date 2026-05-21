@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 )
@@ -73,7 +74,25 @@ func (rw *ResultCSVWriter) HandleEOF(msg result.EOF) error {
 }
 
 func (rw *ResultCSVWriter) HandleMicrotransactionResult(msg result.MicrotransactionResult) error {
-	return nil
+	for _, t := range msg.Transactions {
+
+		record := []string{
+			t.GetClientID(),
+			strconv.Itoa(int(t.GetFromBank())),
+			strconv.Itoa(int(t.GetToBank())),
+			t.GetAccount(),
+			t.GetToAccount(),
+			t.GetAmountPaid(),
+		}
+
+		if err := rw.q1Writer.Write(record); err != nil {
+			return err
+		}
+	}
+
+	rw.q1Writer.Flush()
+
+	return rw.q1Writer.Error()
 }
 
 func (rw *ResultCSVWriter) HandleMaxBankResult(msg result.MaxBankResult) error {

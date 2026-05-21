@@ -109,6 +109,11 @@ func (j *JoinMicrotransaction) handleSignals() {
 }
 
 func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	slog.Info(
+		"join received microtransaction",
+		"client", moneyLaundry.GetClientID(),
+	)
+
 	microtransaction, err := serializer.DeserializeTransaction(moneyLaundry.Payload, &protobuf.Microtransaction{})
 	if err != nil {
 		nack()
@@ -117,10 +122,20 @@ func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *proto
 
 	j.results[moneyLaundry.GetClientID()] = append(j.results[moneyLaundry.GetClientID()], microtransaction)
 
+	slog.Info(
+		"join acking microtransaction",
+		"client", moneyLaundry.GetClientID(),
+	)
+
 	ack()
 }
 
 func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	slog.Info(
+		"join received EOF",
+		"client", moneyLaundry.GetClientID(),
+	)
+
 	clientID := moneyLaundry.GetClientID()
 	results := j.results[clientID]
 
@@ -170,6 +185,11 @@ func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaun
 		}
 	}
 
+	if err := j.sendEOF(clientID); err != nil {
+		nack()
+		return
+	}
+
 	ack()
 }
 
@@ -185,5 +205,21 @@ func (j *JoinMicrotransaction) sendBatch(clientID string, batch []*protobuf.Micr
 		return err
 	}
 
-	return j.resultExchange.SendWithKey(j.clientExchangeName+"."+clientID, *msg)
+	return j.resultExchange.Send(*msg) // más adelante tener en cuenta el clientID
+}
+
+func (j *JoinMicrotransaction) sendEOF(clientID string) error {
+	eof := &protobuf.EOF{
+		ClientID: clientID,
+	}
+
+	msg, err := serializer.SerializeProtoMessage(
+		eof,
+		protobuf.MessageType_EOF_,
+	)
+	if err != nil {
+		return err
+	}
+
+	return j.resultExchange.Send(*msg)
 }

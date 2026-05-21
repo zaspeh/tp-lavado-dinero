@@ -1,6 +1,8 @@
 package filters
 
 import (
+	"log/slog"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
@@ -94,8 +96,11 @@ func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLa
 		return
 	}
 
+	slog.Info("transaction received", "currency", transaction.GetPaymentCurrency(), "client", transaction.GetClientID())
+
 	if transaction.GetPaymentCurrency() == f.currencyToFilter {
-		err := f.broadcastToQueues(transaction)
+		slog.Info("USD transaction detected")
+		err := f.broadcastToQueues(moneyLaundry.GetClientID(), transaction)
 		if err != nil {
 			nack()
 			return
@@ -105,25 +110,30 @@ func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLa
 	ack()
 }
 
-func (f *CurrencyFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
+func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobuf.Transaction) error {
 	//q1
-	// microtransaction := &protobuf.Microtransaction{
-	// 	FromBank:   transaction.GetFromBank(),
-	// 	ToBank:     transaction.GetToBank(),
-	// 	Account:    transaction.GetAccount(),
-	// 	ToAccount:  transaction.GetToAccount(),
-	// 	AmountPaid: transaction.GetAmountPaid(),
-	// }
+	microtransaction := &protobuf.Microtransaction{
+		ClientID:   clientID,
+		FromBank:   transaction.GetFromBank(),
+		ToBank:     transaction.GetToBank(),
+		Account:    transaction.GetAccount(),
+		ToAccount:  transaction.GetToAccount(),
+		AmountPaid: transaction.GetAmountPaid(),
+	}
 
-	// serializedMessage, err := serializer.SerializeProtoMessage(microtransaction, protobuf.MessageType_MICROTRANSACTION)
+	serializedMessage, err := serializer.SerializeProtoMessageWithClientID(
+		transaction.GetClientID(),
+		microtransaction,
+		protobuf.MessageType_MICROTRANSACTION,
+	)
 
-	// if err != nil {
-	// 	return err
-	// }
+	if err != nil {
+		return err
+	}
 
-	// if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
-	// 	return err
-	// }
+	if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
+		return err
+	}
 
 	//q2
 	//TODO:, no deberia convertir a string
@@ -156,6 +166,12 @@ func (f *CurrencyFilter) broadcastToQueues(transaction *protobuf.Transaction) er
 }
 
 func (f *CurrencyFilter) broadcastEOFMessage(msg middleware.Message, ack, nack func()) {
+	moneyLaundry, _ := serializer.DeserializeMoneyLaundering(msg)
+	slog.Info(
+		"broadcasting EOF",
+		"clientID",
+		moneyLaundry.GetClientID(),
+	)
 	if err := f.microtransactionFilterQueue.Send(msg); err != nil {
 		nack()
 		return

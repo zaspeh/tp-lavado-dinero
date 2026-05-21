@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	eofAmountExpected = 5
+	eofAmountExpected = 1
 )
 
 type ClientConnection struct {
@@ -66,7 +66,8 @@ func (cc *ClientConnection) Run() error {
 }
 
 func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
-	wrappedMessage, err := messagehandler.TransactionToProto(msg)
+
+	wrappedMessage, err := messagehandler.TransactionToProto(cc.id, msg)
 	if err != nil {
 		return err
 	}
@@ -120,7 +121,12 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
 	slog.Info("Received EOF from worker", "clientID", cc.id)
 	cc.EOFamountReceived++
+	slog.Info(
+		"received EOF from worker",
+		"count", cc.EOFamountReceived,
+	)
 	if cc.EOFamountReceived == eofAmountExpected {
+		slog.Info("sending EOF to client")
 		if err := cc.protocol.SendEOF(); err != nil {
 			cc.EOFamountReceived--
 			nack()

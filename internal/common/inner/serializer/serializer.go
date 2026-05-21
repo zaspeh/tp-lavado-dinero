@@ -19,6 +19,26 @@ func serializeMoneyLaundering(moneyLaundering *protobuf.MoneyLaundry) (*middlewa
 	}, nil
 }
 
+func SerializeProtoMessageWithClientID[T proto.Message](
+	clientID string,
+	transaction T,
+	messageType protobuf.MessageType,
+) (*middleware.Message, error) {
+
+	marshalledTransaction, err := proto.Marshal(transaction)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling transaction: %w", err)
+	}
+
+	moneyLaundering := &protobuf.MoneyLaundry{
+		ClientID: clientID,
+		Type:     messageType,
+		Payload:  marshalledTransaction,
+	}
+
+	return serializeMoneyLaundering(moneyLaundering)
+}
+
 func DeserializeMoneyLaundering(message middleware.Message) (*protobuf.MoneyLaundry, error) {
 	moneyLaundering := &protobuf.MoneyLaundry{}
 	if err := proto.Unmarshal(message.Body, moneyLaundering); err != nil {

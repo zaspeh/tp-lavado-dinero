@@ -3,6 +3,7 @@ package messagehandler
 import (
 	"encoding/csv"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
-func TransactionToProto(msg request.Transaction) (*m.Message, error) {
+func TransactionToProto(clientID string, msg request.Transaction) (*m.Message, error) {
 	reader := csv.NewReader(strings.NewReader(msg.Record))
 
 	fields, err := reader.Read()
@@ -43,15 +44,35 @@ func TransactionToProto(msg request.Transaction) (*m.Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
+	/* debug csv parsing
+	slog.Info(
+		"parsed csv",
+		"f0", fields[0],
+		"f1", fields[1],
+		"f2", fields[2],
+		"f3", fields[3],
+		"f4", fields[4],
+		"f5", fields[5],
+		"f6", fields[6],
+		"f7", fields[7],
+	)
+	*/
+
+	slog.Info(
+		"building transaction",
+		"clientID",
+		clientID,
+	)
 
 	transaction := &pb.Transaction{
+		ClientID:        clientID,
 		Timestamp:       timestamppb.New(timestamp),
 		FromBank:        int32(fromBank),
 		ToBank:          int32(toBank),
 		Account:         fields[2],
 		ToAccount:       fields[4],
-		PaymentCurrency: fields[5],
-		AmountPaid:      fields[6],
+		PaymentCurrency: fields[6], // ojo con esto
+		AmountPaid:      fields[5], // ojo con esto
 		PaymentFormat:   fields[7],
 	}
 
@@ -64,7 +85,7 @@ func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
 		ClientID:          clientID,
 		TotalTransactions: int32(transactionCounter),
 	}
-	return serializer.SerializeProtoMessage(eofMessage, pb.MessageType_EOF_)
+	return serializer.SerializeProtoMessageWithClientID(clientID, eofMessage, pb.MessageType_EOF_)
 }
 
 func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxBankResult, error) {

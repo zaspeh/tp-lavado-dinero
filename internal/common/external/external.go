@@ -172,7 +172,10 @@ func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {
 		return result.EOF{}, nil
 
 	default:
-		return nil, ErrInvalidMessageType
+		return nil, fmt.Errorf(
+			"protocol error: invalid message type %d",
+			msgType,
+		)
 	}
 }
 
