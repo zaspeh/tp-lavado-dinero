@@ -60,3 +60,17 @@ func buildPeriodFromEnv(startKey, endKey string) (periodfilter.Period, error) {
 		EndDate:   endTime,
 	}, nil
 }
+
+func getEnvFloatStrict(key string) (float64, error) {
+	valStr, err := getEnvStrict(key)
+	if err != nil {
+		return 0, err
+	}
+
+	val, err := strconv.ParseFloat(valStr, 64)
+	if err != nil {
+		return 0, NewEnvNotNumericError(key)
+	}
+
+	return val, nil
+}

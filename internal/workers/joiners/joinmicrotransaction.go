@@ -62,11 +62,12 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 }
 
 func (j *JoinMicrotransaction) Run() error {
-	go j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	go j.handleSignals()
+
+	j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
 	})
 
-	go j.handleSignals()
 	//TODO: REVISAR SI HAY FORMA DE DEVOLVER ERRORES
 	return nil
 }
@@ -120,11 +121,18 @@ func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *proto
 }
 
 func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-
 	clientID := moneyLaundry.GetClientID()
 	results := j.results[clientID]
 
+	slog.Info("processing EOF", "client_id", clientID)
+
+	if len(results) == 0 {
+		ack()
+		return
+	}
+
 	delete(j.results, clientID)
+
 	currentBatch := make([]*protobuf.Microtransaction, 0)
 
 	for _, transaction := range results {
@@ -166,6 +174,8 @@ func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaun
 }
 
 func (j *JoinMicrotransaction) sendBatch(clientID string, batch []*protobuf.Microtransaction) error {
+	slog.Info("sending microtransaction batch", "client_id", clientID, "batch_size", len(batch))
+
 	result := &protobuf.MicrotransactionResult{
 		Transactions: batch,
 	}

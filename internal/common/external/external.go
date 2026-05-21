@@ -3,6 +3,7 @@ package external
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
@@ -70,6 +71,7 @@ func (p *ExternalProtocol) SendResult() error { // podríamos borrarlo
 }
 
 func (p *ExternalProtocol) SendMicrotransactionResult(result *result.MicrotransactionResult) error {
+	slog.Info("sending result to client")
 	if err := p.sendMsgType(microtransactionResult); err != nil {
 		return err
 	}

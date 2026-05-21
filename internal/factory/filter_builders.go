@@ -157,5 +157,38 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 }
 
 func buildAmountFilterWorker() (workers.Worker, error) {
-	return nil, nil
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
+	if err != nil {
+		return nil, err
+	}
+
+	config := filters.AmountFilterConfig{
+		InputQueueName:  inputQueueName,
+		OutputQueueName: outputQueueName,
+		MomHost:         host,
+		MomPort:         port,
+		AmountToFilter:  amountToFilter,
+	}
+
+	return filters.NewAmountFilter(config)
 }

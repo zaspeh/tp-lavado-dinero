@@ -76,12 +76,17 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 	}
 
 	cc.transactionCounter++
-	return nil
+
+	return cc.protocol.SendAck()
 }
 
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 	slog.Info("Received EOF from client", "clientID", cc.id)
-	wrappedMessage, err := messagehandler.EOFToProto(cc.id, cc.transactionCounter)
+
+	wrappedMessage, err := messagehandler.EOFToProto(
+		cc.id,
+		cc.transactionCounter,
+	)
 	if err != nil {
 		return err
 	}
@@ -90,7 +95,7 @@ func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 		return err
 	}
 
-	return nil
+	return cc.protocol.SendAck()
 }
 
 func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {

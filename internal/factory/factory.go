@@ -22,6 +22,10 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildPeriodFilterWorker()
 	case "GROUP_BY_ORIGIN":
 		return buildGroupByOriginWorker()
+	case "MICROTRANSACTION_JOIN":
+		return buildMicrotransactionJoinWorker()
+	case "AMOUNT_FILTER":
+		return buildAmountFilterWorker()
 	default:
 		return nil, nil
 	}
