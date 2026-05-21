@@ -124,12 +124,12 @@ func (odr *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *pro
 		return
 	}
 
-	if err := odr.publishToGroupByOrigin(scatterGatherMsg, msg, ack, nack); err != nil {
+	if err := odr.publishToGroupByOrigin(scatterGatherMsg, msg); err != nil {
 		nack()
 		return
 	}
 
-	if err := odr.publishToGroupByDestination(scatterGatherMsg, msg, ack, nack); err != nil {
+	if err := odr.publishToGroupByDestination(scatterGatherMsg, msg); err != nil {
 		nack()
 		return
 	}
@@ -137,14 +137,14 @@ func (odr *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *pro
 	ack()
 }
 
-func (odr *OriginDestinationRouter) publishToGroupByOrigin(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message, ack, nack func()) error {
+func (odr *OriginDestinationRouter) publishToGroupByOrigin(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message) error {
 	originBank := scatterGatherMsg.GetFromBank()
 	originAccount := scatterGatherMsg.GetAccount()
 	workerKey := odr.selectOriginWorker(originBank, originAccount)
 	return odr.groupByOriginExchange.SendWithKey(workerKey, msg)
 }
 
-func (odr *OriginDestinationRouter) publishToGroupByDestination(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message, ack, nack func()) error {
+func (odr *OriginDestinationRouter) publishToGroupByDestination(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message) error {
 	destinationBank := scatterGatherMsg.GetToBank()
 	destinationAccount := scatterGatherMsg.GetToAccount()
 	workerKey := odr.selectDestinationWorker(destinationBank, destinationAccount)
