@@ -20,6 +20,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildOriginDestinationRouterWorker()
 	case "PERIOD_FILTER":
 		return buildPeriodFilterWorker()
+	case "GROUP_BY_ORIGIN":
+		return buildGroupByOriginWorker()
 	default:
 		return nil, nil
 	}
