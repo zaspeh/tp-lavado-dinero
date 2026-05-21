@@ -3,7 +3,6 @@ package external
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"sync"
 
@@ -75,8 +74,6 @@ func (p *ExternalProtocol) SendResult() error { // podríamos borrarlo
 func (p *ExternalProtocol) SendMicrotransactionResult(result *result.MicrotransactionResult) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-
-	slog.Info("sending result to client")
 	if err := p.sendMsgType(microtransactionResult); err != nil {
 		return err
 	}

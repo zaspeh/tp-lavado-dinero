@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 )
@@ -28,18 +27,29 @@ func (rw *ResultCSVWriter) Open() error {
 	}
 
 	var err error
-	rw.q1File, err = os.OpenFile(filepath.Join(rw.outputDir, "q1_result.csv"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	rw.q1File, err = os.OpenFile(filepath.Join(rw.outputDir, "q1_result.csv"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	rw.q1Writer = csv.NewWriter(rw.q1File)
+	err = rw.q1Writer.Write([]string{"account", "to_account", "amount"})
+	if err != nil {
+		rw.q1File.Close()
+		return err
+	}
 
-	rw.q2File, err = os.OpenFile(filepath.Join(rw.outputDir, "q2_result.csv"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	rw.q2File, err = os.OpenFile(filepath.Join(rw.outputDir, "q2_result.csv"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		rw.q1File.Close()
 		return err
 	}
 	rw.q2Writer = csv.NewWriter(rw.q2File)
+	err = rw.q2Writer.Write([]string{"bank_name", "account", "amount"})
+	if err != nil {
+		rw.q1File.Close()
+		rw.q2File.Close()
+		return err
+	}
 
 	return nil
 }
@@ -74,9 +84,6 @@ func (rw *ResultCSVWriter) HandleMicrotransactionResult(msg result.Microtransact
 	for _, t := range msg.Transactions {
 
 		record := []string{
-			t.GetClientID(),
-			strconv.Itoa(int(t.GetFromBank())),
-			strconv.Itoa(int(t.GetToBank())),
 			t.GetAccount(),
 			t.GetToAccount(),
 			t.GetAmountPaid(),

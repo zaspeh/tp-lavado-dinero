@@ -75,6 +75,43 @@ services:
         condition: service_healthy
     networks:
     - money_laundering_network
+  microtransaction_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_filter_0
+    environment:
+    - ID=0
+    - WORKER_TYPE=AMOUNT_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - INPUT_QUEUE_NAME=microtransaction_filter_input_queue
+    - OUTPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - AMOUNT_TO_FILTER=50
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  microtransaction_join_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_join_0
+    environment:
+    - ID=0
+    - WORKER_TYPE=MICROTRANSACTION_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - INPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
+    - MAX_BATCH_TRANSACTIONS=100
+    - MAX_BATCH_BYTES=8000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
   bank_router_0:
     build:
       context: .

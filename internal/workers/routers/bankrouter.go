@@ -118,8 +118,13 @@ func (br *BankRouter) handleMaxBankMessage(moneyLaundryMsg *protobuf.MoneyLaundr
 	ack()
 }
 
-func (br *BankRouter) selectWorkerKey(bankName string) string {
+func (br *BankRouter) selectWorkerKey(bankID int32) string {
 	h := fnv.New32a()
-	h.Write([]byte(bankName))
+	h.Write([]byte{
+		byte(bankID),
+		byte(bankID >> 8),
+		byte(bankID >> 16),
+		byte(bankID >> 24),
+	})
 	return br.maxBankExchangeKeys[h.Sum32()%uint32(br.maxWorkersAmount)]
 }

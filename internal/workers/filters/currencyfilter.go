@@ -136,8 +136,7 @@ func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobu
 	}
 
 	//q2
-	//TODO:, no deberia convertir a string
-	frombank := string(transaction.GetFromBank())
+	frombank := transaction.GetFromBank()
 	transferSummary := &protobuf.TransferSummary{
 		Account: transaction.Account,
 		Amount:  transaction.GetAmountPaid(),

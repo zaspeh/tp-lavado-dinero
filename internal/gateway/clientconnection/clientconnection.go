@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	eofAmountExpected = 1
+	eofAmountExpected = 2
 )
 
 type ClientConnection struct {

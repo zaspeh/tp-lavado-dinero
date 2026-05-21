@@ -23,7 +23,7 @@ const (
 
 type MaxBank struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
-	FromBank string                 `protobuf:"bytes,1,opt,name=from_bank,json=fromBank,proto3" json:"from_bank,omitempty"`
+	FromBank int32                  `protobuf:"varint,1,opt,name=from_bank,json=fromBank,proto3" json:"from_bank,omitempty"`
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*MaxBank_BankMetadata
@@ -63,11 +63,11 @@ func (*MaxBank) Descriptor() ([]byte, []int) {
 	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *MaxBank) GetFromBank() string {
+func (x *MaxBank) GetFromBank() int32 {
 	if x != nil {
 		return x.FromBank
 	}
-	return ""
+	return 0
 }
 
 func (x *MaxBank) GetPayload() isMaxBank_Payload {
@@ -317,7 +317,7 @@ const file_internal_common_inner_protobuf_maxbank_proto_rawDesc = "" +
 	"\n" +
 	",internal/common/inner/protobuf/maxbank.proto\x12\bprotobuf\"\xb8\x01\n" +
 	"\aMaxBank\x12\x1b\n" +
-	"\tfrom_bank\x18\x01 \x01(\tR\bfromBank\x12=\n" +
+	"\tfrom_bank\x18\x01 \x01(\x05R\bfromBank\x12=\n" +
 	"\rbank_metadata\x18\x02 \x01(\v2\x16.protobuf.BankMetadataH\x00R\fbankMetadata\x12F\n" +
 	"\x10transfer_summary\x18\x03 \x01(\v2\x19.protobuf.TransferSummaryH\x00R\x0ftransferSummaryB\t\n" +
 	"\apayload\"+\n" +

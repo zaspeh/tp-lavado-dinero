@@ -6,29 +6,29 @@ const (
 )
 
 type MaxBankStore struct {
-	bankNames       map[string]string
-	maxTransactions map[string][]Record
+	bankNames       map[int32]string
+	maxTransactions map[int32][]Record
 }
 
 func NewBankStore() *MaxBankStore {
 	return &MaxBankStore{
-		bankNames:       make(map[string]string),
-		maxTransactions: make(map[string][]Record),
+		bankNames:       make(map[int32]string),
+		maxTransactions: make(map[int32][]Record),
 	}
 }
 
-func (s *MaxBankStore) UpdateBankName(bankID string, bankName string) {
+func (s *MaxBankStore) UpdateBankName(bankID int32, bankName string) {
 	s.bankNames[bankID] = bankName
 }
 
-func (s *MaxBankStore) getBankName(id string) string {
+func (s *MaxBankStore) getBankName(id int32) string {
 	if name, ok := s.bankNames[id]; ok {
 		return name
 	}
 	return defaultBankName
 }
 
-func (s *MaxBankStore) UpdateMaxTransaction(bankID string, account string, amount float64, amountStr string) {
+func (s *MaxBankStore) UpdateMaxTransaction(bankID int32, account string, amount float64, amountStr string) {
 	current, ok := s.maxTransactions[bankID]
 
 	// Nuevo maximo
@@ -55,7 +55,7 @@ func (s *MaxBankStore) Reader() *Reader {
 	return newReader(s)
 }
 
-func (s *MaxBankStore) Flush(bankID string) {
+func (s *MaxBankStore) Flush(bankID int32) {
 	delete(s.maxTransactions, bankID)
 	delete(s.bankNames, bankID)
 }
