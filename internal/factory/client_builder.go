@@ -15,7 +15,7 @@ func buildClient() (*client.Client, error) {
 		return nil, err
 	}
 
-	inputFile, err := getEnvStrict("INPUT_FILE")
+	inputFile, err := getEnvStrict("INPUT_FILE_TRANSACTIONS")
 	if err != nil {
 		return nil, err
 	}
