@@ -16,6 +16,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildMaxBankWorker()
 	case "MAX_BANK_JOIN":
 		return buildMaxBankJoinWorker()
+	case "ORIGIN_DESTINATION_ROUTER":
+		return buildOriginDestinationRouterWorker()
 	default:
 		return nil, nil
 	}
