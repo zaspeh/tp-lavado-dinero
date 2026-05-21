@@ -69,7 +69,7 @@ func (j *MaxBankJoin) handleMessage(msg middleware.Message, ack, nack func()) {
 	case protobuf.MessageType_MAXBANK_RESULT:
 		j.sendMessage(msg, ack, nack)
 
-	case protobuf.MessageType_EOF:
+	case protobuf.MessageType_EOF_:
 		j.sendMessage(msg, ack, nack)
 
 	default:

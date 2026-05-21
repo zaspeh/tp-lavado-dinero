@@ -82,7 +82,7 @@ func (j *JoinMicrotransaction) handleMessage(msg middleware.Message, ack, nack f
 	case protobuf.MessageType_MICROTRANSACTION:
 		j.handleMicrotransactionMessage(moneyLaundry, ack, nack)
 
-	case protobuf.MessageType_EOF:
+	case protobuf.MessageType_EOF_:
 		j.handleEOFMessage(moneyLaundry, ack, nack)
 
 	default:

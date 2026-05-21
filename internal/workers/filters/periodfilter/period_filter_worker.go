@@ -154,7 +154,7 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_PERIODFILTER:
 		pf.handlePeriodFilterMessage(moneyLaundry, msg, ack, nack)
-	case protobuf.MessageType_EOF:
+	case protobuf.MessageType_EOF_:
 		pf.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()

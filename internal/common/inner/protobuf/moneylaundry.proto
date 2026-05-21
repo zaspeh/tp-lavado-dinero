@@ -5,7 +5,7 @@ package protobuf;
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 enum MessageType {
-    EOF = 0;
+    EOF_ = 0;
     TRANSACTION = 1;
     MICROTRANSACTION = 2;
     MAXBANK = 3;

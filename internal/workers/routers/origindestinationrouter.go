@@ -110,7 +110,7 @@ func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, n
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_SCATTERGATHER:
 		odr.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
-	case protobuf.MessageType_EOF:
+	case protobuf.MessageType_EOF_:
 		odr.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()

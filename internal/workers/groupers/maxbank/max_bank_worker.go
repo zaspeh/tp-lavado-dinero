@@ -82,7 +82,7 @@ func (w *MaxBankWorker) handleMessage(msg middleware.Message, ack, nack func()) 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_MAXBANK:
 		w.handleMaxBankMessage(moneyLaundry, msg, ack, nack)
-	case protobuf.MessageType_EOF:
+	case protobuf.MessageType_EOF_:
 		w.handleEOF(msg, ack, nack)
 	default:
 		nack()

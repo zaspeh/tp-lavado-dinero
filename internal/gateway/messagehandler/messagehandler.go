@@ -64,7 +64,7 @@ func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
 		ClientID:          clientID,
 		TotalTransactions: int32(transactionCounter),
 	}
-	return serializer.SerializeProtoMessage(eofMessage, pb.MessageType_EOF)
+	return serializer.SerializeProtoMessage(eofMessage, pb.MessageType_EOF_)
 }
 
 func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxBankResult, error) {

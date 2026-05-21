@@ -77,7 +77,7 @@ func (f *CurrencyFilter) Run() error {
 		case protobuf.MessageType_TRANSACTION:
 			f.handleTransactionMessage(moneyLaundry, ack, nack)
 
-		case protobuf.MessageType_EOF:
+		case protobuf.MessageType_EOF_:
 			f.broadcastEOFMessage(msg, ack, nack)
 		default:
 			nack()
@@ -107,23 +107,23 @@ func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLa
 
 func (f *CurrencyFilter) broadcastToQueues(transaction *protobuf.Transaction) error {
 	//q1
-	microtransaction := &protobuf.Microtransaction{
-		FromBank:   transaction.GetFromBank(),
-		ToBank:     transaction.GetToBank(),
-		Account:    transaction.GetAccount(),
-		ToAccount:  transaction.GetToAccount(),
-		AmountPaid: transaction.GetAmountPaid(),
-	}
+	// microtransaction := &protobuf.Microtransaction{
+	// 	FromBank:   transaction.GetFromBank(),
+	// 	ToBank:     transaction.GetToBank(),
+	// 	Account:    transaction.GetAccount(),
+	// 	ToAccount:  transaction.GetToAccount(),
+	// 	AmountPaid: transaction.GetAmountPaid(),
+	// }
 
-	serializedMessage, err := serializer.SerializeProtoMessage(microtransaction, protobuf.MessageType_MICROTRANSACTION)
+	// serializedMessage, err := serializer.SerializeProtoMessage(microtransaction, protobuf.MessageType_MICROTRANSACTION)
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
-		return err
-	}
+	// if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
+	// 	return err
+	// }
 
 	//q2
 	//TODO:, no deberia convertir a string

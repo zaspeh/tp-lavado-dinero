@@ -62,7 +62,7 @@ func (af *AmountFilter) Run() error {
 		case protobuf.MessageType_MICROTRANSACTION:
 			af.handleMicrotransactionMessage(moneyLaundering, msg, ack, nack)
 
-		case protobuf.MessageType_EOF:
+		case protobuf.MessageType_EOF_:
 			if err := af.outputQueue.Send(msg); err != nil {
 				nack()
 				return

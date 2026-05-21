@@ -101,7 +101,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_EOF:
+	case protobuf.MessageType_EOF_:
 		cc.handleEOFFromWorker(ack, nack)
 	case protobuf.MessageType_MICROTRANSACTION_RESULT:
 		cc.handleMicrotransactionResult(moneyLaundry, ack, nack)
