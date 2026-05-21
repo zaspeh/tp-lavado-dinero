@@ -6,7 +6,7 @@ import (
 )
 
 func buildMaxBankWorker() (workers.Worker, error) {
-	inputExchangeName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}

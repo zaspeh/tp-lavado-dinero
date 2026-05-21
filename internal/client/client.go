@@ -55,6 +55,11 @@ func New(config ClientConfig) (*Client, error) {
 	}
 
 	writer := storage.NewResultCSVWriter(config.OutputDir)
+	err = writer.Open()
+	if err != nil {
+		socket.Close()
+		return nil, err
+	}
 
 	client := &Client{
 		config:   config,
@@ -68,6 +73,8 @@ func New(config ClientConfig) (*Client, error) {
 
 func (c *Client) Run() error {
 	defer c.protocol.Close()
+	defer c.writer.Close()
+
 	go c.handleSignals()
 
 	err := c.processTransactions()

@@ -16,12 +16,26 @@ services:
   currency_filter:
     count: 1
     worker_type: CURRENCY_FILTER
+    env:
+      INPUT_QUEUE_NAME: currency_filter_input_queue
+      MICROTRANSACTION_FILTER_QUEUE_NAME: microtransaction_filter_input_queue
+      BANK_ROUTER_QUEUE_NAME: bank_router_input_queue
+      PERIOD_FILTER_QUEUE_NAME: period_filter_input_queue
+      CURRENCY_TO_FILTER: USD
     
+  bank_router:
+    count: 1
+    worker_type: BANK_ROUTER
+    env:
+      INPUT_QUEUE_NAME: bank_router_input_queue
+      MAX_BANK_EXCHANGE_NAME: max_bank_input_exchange
+      MAX_BANK_WORKER_AMOUNT: 1
+
   max_bank:
     count: 1
     worker_type: MAX_BANK
     env:
-      INPUT_QUEUE_NAME: max_bank_input
+      INPUT_EXCHANGE_NAME: max_bank_input_exchange
       OUTPUT_QUEUE_NAME: max_bank_join_input
       MAX_BATCH_WEIGHT: 8000 
 
@@ -32,17 +46,12 @@ services:
       INPUT_QUEUE_NAME: max_bank_join_input
       CLIENT_EXCHANGE_NAME: client_results_exchange
     
-  bank_router:
-    count: 1
-    worker_type: BANK_ROUTER
-    env:
-      MAX_BANK_WORKER_AMOUNT: 1
 
   period_filter:
     count: 1
     worker_type: PERIOD_FILTER
     env:
-      USD_INPUT_QUEUE_NAME: usd_transactions
+      USD_INPUT_QUEUE_NAME: period_filter_input_queue
       RAW_INPUT_QUEUE_NAME: raw_transactions
       ORIGIN_DESTINATION_ROUTER_QUEUE_NAME: origin_destination_router
       PAYMENT_TYPE_FILTER_QUEUE_NAME: payment_type_filter

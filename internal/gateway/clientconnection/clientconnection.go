@@ -1,6 +1,8 @@
 package clientconnection
 
 import (
+	"log/slog"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
@@ -29,8 +31,9 @@ func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSett
 	if err != nil {
 		return nil, err
 	}
-
-	exchangeRoutingKey := []string{clientExchangeName + "." + id}
+	// TODO: descomentar cuando el sistema sea multicliente
+	// exchangeRoutingKey := []string{clientExchangeName + "." + id}
+	exchangeRoutingKey := []string{clientExchangeName}
 	resultExchange, err := m.CreateExchangeMiddleware(clientExchangeName, exchangeRoutingKey, connSettings)
 	if err != nil {
 		currencyFilterQueue.Close()
@@ -77,6 +80,7 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 }
 
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
+	slog.Info("Received EOF from client", "clientID", cc.id)
 	wrappedMessage, err := messagehandler.EOFToProto(cc.id, cc.transactionCounter)
 	if err != nil {
 		return err
@@ -109,6 +113,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 }
 
 func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
+	slog.Info("Received EOF from worker", "clientID", cc.id)
 	cc.EOFamountReceived++
 	if cc.EOFamountReceived == eofAmountExpected {
 		if err := cc.protocol.SendEOF(); err != nil {
