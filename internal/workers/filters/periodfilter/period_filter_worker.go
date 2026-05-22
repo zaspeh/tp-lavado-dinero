@@ -192,7 +192,7 @@ func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack
 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_TRANSACTION:
-		pf.handleTransactionMessage(moneyLaundry, msg, ack, nack)
+		pf.handleTransactionMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		pf.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
@@ -258,24 +258,23 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 	ack()
 }
 
-func (pf *PeriodFilterWorker) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
-	transactionMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.Transaction{})
+func (pf *PeriodFilterWorker) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	transactionMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ToConvertTransaction{})
 	if err != nil {
 		nack()
 		return
 	}
 
 	if !pf.paymentTypePeriod.Contains(transactionMsg.GetTimestamp().AsTime()) {
-
+		ack()
+		return
 	}
 
-	// if err := publishToPaymentTypeQueue(transactionMsg), err != nil {
-	// 	nack()
-	// 	return
-	// }
-
+	if err := pf.publishToPaymentTypeQueue(transactionMsg); err != nil {
+		nack()
+		return
+	}
 	ack()
-
 }
 
 func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *protobuf.PeriodFilter) error {
@@ -317,4 +316,18 @@ func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protob
 	}
 
 	return pf.paymentTypeRouterQueue.Send(*serializedMsg)
+}
+
+func (pf *PeriodFilterWorker) publishToPaymentTypeQueue(transactionMsg *protobuf.ToConvertTransaction) error {
+	filteredPeriodMsg := &protobuf.ToConvertPeriodFiltered{
+		AmountPaid:      transactionMsg.GetAmountPaid(),
+		PaymentCurrency: transactionMsg.GetPaymentCurrency(),
+		PaymentFormat:   transactionMsg.GetPaymentFormat(),
+	}
+	serializedMsg, err := serializer.SerializeProtoMessage(filteredPeriodMsg, protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED)
+	if err != nil {
+		return err
+	}
+
+	return pf.paymentTypeFilterQueue.Send(*serializedMsg)
 }
