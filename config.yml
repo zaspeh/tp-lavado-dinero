@@ -141,13 +141,6 @@ services:
 
       OUTPUT_QUEUE_NAME: avg_by_type_join_input
 
-  payment_format_filter:
-    count: 1
-    worker_type: FORMAT_FILTER
-    env:
-      INPUT_QUEUE_NAME: payment_format_filter_input
-      OUTPUT_QUEUE_NAME: conversion_format_input
-      VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   payment_type_router:
     count: 1
@@ -167,3 +160,19 @@ services:
       CLIENT_EXCHANGE_NAME: client_results_exchange
 
       EXPECTED_EOFS: 1
+      
+  payment_format_filter:
+    count: 1
+    worker_type: FORMAT_FILTER
+    env:
+      INPUT_QUEUE_NAME: payment_format_filter_input
+      OUTPUT_QUEUE_NAME: conversion_format_input
+      VALID_PAYMENT_FORMATS: "Wire,ACH"
+
+  currency_converter:
+    count: 1
+    worker_type: CURRENCY_CONVERTER
+    env:
+      INPUT_QUEUE_NAME: conversion_format_input
+      OUTPUT_QUEUE_NAME: currency_filter_input
+      EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD

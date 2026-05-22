@@ -34,6 +34,10 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildAvgByTypeWorker()
 	case "AVG_BY_TYPE_JOIN":
 		return buildAvgByTypeJoinWorker()
+	case "FORMAT_FILTER":
+		return buildFormatFilterWorker()
+	case "CURRENCY_CONVERTER":
+		return buildCurrencyConverterWorker()
 	default:
 		return nil, nil
 	}
