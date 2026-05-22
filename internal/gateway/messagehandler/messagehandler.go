@@ -43,19 +43,6 @@ func TransactionToProto(clientID string, msg request.Transaction) (*m.Message, e
 	if err != nil {
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
-	/* debug csv parsing
-	slog.Info(
-		"parsed csv",
-		"f0", fields[0],
-		"f1", fields[1],
-		"f2", fields[2],
-		"f3", fields[3],
-		"f4", fields[4],
-		"f5", fields[5],
-		"f6", fields[6],
-		"f7", fields[7],
-	)
-	*/
 
 	transaction := &pb.Transaction{
 		ClientID:        clientID,

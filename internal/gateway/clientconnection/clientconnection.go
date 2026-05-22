@@ -101,6 +101,10 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 		return err
 	}
 
+	if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
+		return err
+	}
+
 	cc.transactionCounter++
 
 	return cc.protocol.SendAck()
@@ -118,6 +122,10 @@ func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 	}
 
 	if err := cc.currencyFilterQueue.Send(*wrappedMessage); err != nil {
+		return err
+	}
+
+	if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
 		return err
 	}
 
