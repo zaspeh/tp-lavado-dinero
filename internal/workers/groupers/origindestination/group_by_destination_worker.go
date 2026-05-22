@@ -7,6 +7,8 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type GroupByDestinationWorker struct {
@@ -71,5 +73,44 @@ func (gbdw *GroupByDestinationWorker) handleSignals() {
 }
 
 func (gbdw *GroupByDestinationWorker) handleMessage(msg middleware.Message, ack, nack func()) {
-	//TODO: IMPLEMENTAR LOGICA DE AGRUPAMIENTO POR DESTINO
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_SCATTERGATHER:
+		gbdw.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
+	case protobuf.MessageType_EOF_:
+		gbdw.handleEOFMessage(moneyLaundry, msg, ack, nack)
+	default:
+		nack()
+	}
+}
+
+func (gbdw *GroupByDestinationWorker) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	scatterGatherMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ScatterGather{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	origin := Account{
+		Bank:    scatterGatherMsg.GetFromBank(),
+		Account: scatterGatherMsg.GetAccount(),
+	}
+
+	destination := Account{
+		Bank:    scatterGatherMsg.GetToBank(),
+		Account: scatterGatherMsg.GetToAccount(),
+	}
+
+	gbdw.destinationsStore.Add(destination, origin)
+
+	ack()
+}
+
+func (gbdw *GroupByDestinationWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	// TODO: IMPLEMENTAR LÓGICA DE ENVÍO DE LOS LOTES AL SIGUIENTE WORKER
 }
