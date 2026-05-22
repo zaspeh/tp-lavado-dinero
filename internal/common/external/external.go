@@ -19,6 +19,7 @@ const (
 
 	microtransactionResult
 	maxBankResult
+	convertedMicroPaymentResult
 
 	eof
 	ack
@@ -117,7 +118,17 @@ func (p *ExternalProtocol) SendMaxBankResult(results []result.MaxBankResult) err
 }
 
 func (p *ExternalProtocol) SendConvertedMicroPaymentResult(result *result.ConvertedMicroPaymentResult) error {
-	return nil
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if err := p.sendMsgType(convertedMicroPaymentResult); err != nil {
+		return err
+	}
+
+	count := result.Count
+	//TODO: revisar si se puede usar uint en proto y evitar esta conversión
+	serializeCount := serializer.SerializeUint32(uint32(count))
+	return p.socket.WriteAll(serializeCount)
+
 }
 
 func (p *ExternalProtocol) SendEOF() error {
@@ -178,16 +189,14 @@ func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {
 	}
 
 	switch msgType {
-
 	case microtransactionResult:
 		return p.receiveMicrotransactionResult()
-
 	case maxBankResult:
 		return p.receiveMaxBankResult()
-
 	case eof:
 		return result.EOF{}, nil
-
+	case convertedMicroPaymentResult:
+		return p.receiveConvertedMicroPaymentResult()
 	default:
 		return nil, fmt.Errorf(
 			"protocol error: invalid message type %d",
@@ -242,6 +251,20 @@ func (p *ExternalProtocol) receiveMaxBankResult() (result.Result, error) {
 		BankName: fields[0],
 		Account:  fields[1],
 		Amount:   fields[2],
+	}, nil
+}
+
+func (p *ExternalProtocol) receiveConvertedMicroPaymentResult() (result.Result, error) {
+	countBytes, err := p.socket.ReadAll(serializer.Uint32Size)
+	if err != nil {
+		return nil, err
+	}
+
+	count := serializer.DeserializeUint32(countBytes)
+
+	// TODO: revisar si se puede usar uint en proto y evitar esta conversión
+	return &result.ConvertedMicroPaymentResult{
+		Count: int64(count),
 	}, nil
 }
 
