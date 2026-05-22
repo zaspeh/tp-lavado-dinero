@@ -112,9 +112,15 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	avgByTypeWorkerAmount, err := getEnvIntStrict("AVG_BY_TYPE_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
 	config := routers.PaymentTypeRouterConfig{
 		InputQueueName:          inputQueue,
 		PaymentTypeExchangeName: exchangeName,
+		AvgByTypeWorkerAmount:   avgByTypeWorkerAmount,
 		MomHost:                 host,
 		MomPort:                 port,
 	}

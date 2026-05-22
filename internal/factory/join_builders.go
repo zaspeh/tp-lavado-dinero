@@ -79,3 +79,40 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 
 	return joiners.NewJoinMicrotransaction(config)
 }
+
+func buildAvgByTypeJoinWorker() (workers.Worker, error) {
+	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	clientExchangeName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOFS")
+	if err != nil {
+		return nil, err
+	}
+
+	config := joiners.AvgByTypeJoinConfig{
+		InputQueueName:     inputQueueName,
+		ClientExchangeName: clientExchangeName,
+		MomHost:            host,
+		MomPort:            port,
+		ExpectedEOFs:       expectedEOFs,
+	}
+
+	return joiners.NewAvgByTypeJoin(config)
+}

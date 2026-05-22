@@ -230,3 +230,42 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 
 	return formatfilter.NewFormatFilterWorker(config)
 }
+
+func buildAvgByTypeWorker() (workers.Worker, error) {
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
+	config := filters.AvgByTypeFilterConfig{
+		ID: id,
+
+		InputExchangeName: inputExchangeName,
+		OutputQueueName:   outputQueueName,
+
+		MomHost: host,
+		MomPort: port,
+	}
+
+	return filters.NewAvgByTypeFilter(config)
+}

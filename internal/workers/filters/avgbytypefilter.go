@@ -12,55 +12,54 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
+const eofRoutingKey = "eof"
+
 type AvgByTypeStats struct {
 	Sum   float64
 	Count int
 }
 
 type AvgByTypeFilter struct {
-	inputQueue  middleware.Middleware
-	outputQueue middleware.Middleware
+	inputExchange middleware.Middleware
+	outputQueue   middleware.Middleware
 
-	period1Stats map[string]map[string]*AvgByTypeStats
-
+	period1Stats        map[string]map[string]*AvgByTypeStats
 	period2Transactions map[string]map[string][]*protobuf.AvgByTypeTransaction
 }
 
 type AvgByTypeFilterConfig struct {
-	InputQueueName  string
-	OutputQueueName string
+	ID string
+
+	InputExchangeName string
+	OutputQueueName   string
 
 	MomHost string
 	MomPort int
 }
 
 func NewAvgByTypeFilter(config AvgByTypeFilterConfig) (*AvgByTypeFilter, error) {
-
 	connSettings := middleware.ConnSettings{
 		Hostname: config.MomHost,
 		Port:     config.MomPort,
 	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(
-		config.InputQueueName,
-		connSettings,
-	)
+	inputKeys := []string{config.InputExchangeName + "." + config.ID, eofRoutingKey}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputKeys, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
-	outputQueue, err := middleware.CreateQueueMiddleware(
-		config.OutputQueueName,
-		connSettings,
-	)
+	outputQueue, err := middleware.CreateQueueMiddleware(config.OutputQueueName, connSettings)
 	if err != nil {
-		inputQueue.Close()
+		inputExchange.Close()
 		return nil, err
 	}
 
 	return &AvgByTypeFilter{
-		inputQueue:          inputQueue,
-		outputQueue:         outputQueue,
+		inputExchange: inputExchange,
+		outputQueue:   outputQueue,
+
 		period1Stats:        make(map[string]map[string]*AvgByTypeStats),
 		period2Transactions: make(map[string]map[string][]*protobuf.AvgByTypeTransaction),
 	}, nil
@@ -69,7 +68,7 @@ func NewAvgByTypeFilter(config AvgByTypeFilterConfig) (*AvgByTypeFilter, error) 
 func (f *AvgByTypeFilter) Run() error {
 	go f.handleSignals()
 
-	f.inputQueue.StartConsuming(
+	f.inputExchange.StartConsuming(
 		func(msg middleware.Message, ack, nack func()) {
 
 			moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
@@ -234,6 +233,6 @@ func (f *AvgByTypeFilter) handleSignals() {
 
 	slog.Info("shutdown signal received")
 
-	f.inputQueue.Close()
+	f.inputExchange.Close()
 	f.outputQueue.Close()
 }
