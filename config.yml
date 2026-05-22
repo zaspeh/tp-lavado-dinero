@@ -85,7 +85,14 @@ services:
       SCATTER_GATHER_PERIOD_END: "2024-01-17T23:59:59Z"
       PAYMENT_TYPE_PERIOD_START: "2024-01-01T00:00:00Z"
       PAYMENT_TYPE_PERIOD_END: "2024-01-17T23:59:59Z"
-  
+
+  payment_type_router:
+    count: 1
+    worker_type: PAYMENT_TYPE_ROUTER
+    env:
+      INPUT_QUEUE_NAME: payment_type_router_input
+      PAYMENT_TYPE_EXCHANGE_NAME: payment_type_exchange
+
   origin_destination_router:
     count: 0
     worker_type: ORIGIN_DESTINATION_ROUTER

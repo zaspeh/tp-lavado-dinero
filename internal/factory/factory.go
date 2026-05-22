@@ -26,6 +26,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildMicrotransactionJoinWorker()
 	case "AMOUNT_FILTER":
 		return buildAmountFilterWorker()
+	case "PAYMENT_TYPE_ROUTER":
+		return buildPaymentTypeRouterWorker()
 	default:
 		return nil, nil
 	}

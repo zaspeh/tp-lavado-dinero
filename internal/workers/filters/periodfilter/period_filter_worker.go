@@ -28,6 +28,7 @@ type PeriodFilterWorker struct {
 
 	paymentTypePeriod      Period
 	paymentTypeFilterQueue middleware.Middleware
+	paymentTypeRouterQueue middleware.Middleware
 }
 
 type PeriodFilterWorkerConfig struct {
@@ -42,9 +43,9 @@ type PeriodFilterWorkerConfig struct {
 
 	PaymentTypePeriod          Period
 	PaymentTypeFilterQueueName string
-
-	MomHost string
-	MomPort int
+	PaymentTypeRouterQueueName string
+	MomHost                    string
+	MomPort                    int
 }
 
 func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker, error) {
@@ -106,6 +107,13 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 	}
 	createdQueues = append(createdQueues, paymentTypeFilterQueue)
 
+	paymentTypeRouterQueue, err := middleware.CreateQueueMiddleware(config.PaymentTypeRouterQueueName, connSettings)
+	if err != nil {
+		closeAllQueues()
+		return nil, err
+	}
+	createdQueues = append(createdQueues, paymentTypeRouterQueue)
+
 	return &PeriodFilterWorker{
 		usdInputQueue:          usdInputQueue,
 		rawInputQueue:          rawInputQueue,
@@ -114,6 +122,7 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		originDestinationQueue: originDestinationQueue,
 		paymentTypePeriod:      config.PaymentTypePeriod,
 		paymentTypeFilterQueue: paymentTypeFilterQueue,
+		paymentTypeRouterQueue: paymentTypeRouterQueue,
 	}, nil
 }
 
@@ -144,6 +153,7 @@ func (pf *PeriodFilterWorker) handleSignals() {
 	}
 	pf.originDestinationQueue.Close()
 	pf.paymentTypeFilterQueue.Close()
+	pf.paymentTypeRouterQueue.Close()
 }
 
 func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack func()) {
@@ -188,6 +198,11 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 		return
 	}
 
+	if err := pf.paymentTypeRouterQueue.Send(rawMsg); err != nil {
+		nack()
+		return
+	}
+
 	ack()
 }
 
@@ -198,7 +213,7 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 		return
 	}
 
-	err = pf.publishToAvgByTypeRoutes(periodFilterMsg)
+	err = pf.publishToPaymentTypeRouter(rawMsg, periodFilterMsg)
 	if err != nil {
 		nack()
 		return
@@ -236,7 +251,13 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 	return nil
 }
 
-func (pf *PeriodFilterWorker) publishToAvgByTypeRoutes(periodFilterMsg *protobuf.PeriodFilter) error {
-	//enviar mensaje a avgByTypeRoutes correspondientes al periodo
-	return nil
+func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(rawMsg middleware.Message, periodFilterMsg *protobuf.PeriodFilter) error {
+
+	if !pf.paymentTypePeriod.Contains(
+		periodFilterMsg.GetTimestamp().AsTime(),
+	) {
+		return nil
+	}
+
+	return pf.paymentTypeRouterQueue.Send(rawMsg)
 }

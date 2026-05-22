@@ -90,3 +90,34 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 
 	return routers.NewOriginDestinationRouter(config)
 }
+
+func buildPaymentTypeRouterWorker() (workers.Worker, error) {
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueue, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	exchangeName, err := getEnvStrict("PAYMENT_TYPE_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	config := routers.PaymentTypeRouterConfig{
+		InputQueueName:          inputQueue,
+		PaymentTypeExchangeName: exchangeName,
+		MomHost:                 host,
+		MomPort:                 port,
+	}
+
+	return routers.NewPaymentTypeRouter(config)
+}
