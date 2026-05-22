@@ -2,6 +2,7 @@ package routers
 
 import (
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -94,17 +95,46 @@ func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack fu
 }
 
 func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	/*batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.GroupedAccountsBatch{})
+	batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.GroupedAccountsBatch{})
 	if err != nil {
 		nack()
 		return
 	}
 
 	for _, group := range batch.GetGroups() {
+		baseAccount := group.GetBaseAccount()
 
-	*/
+		for _, intermediary := range group.GetRelatedAccounts() {
+
+			match := &protobuf.IntermediaryPair{
+				Intermediary: intermediary,
+				Account:      baseAccount,
+			}
+
+			workerKey := ir.selectWorkerKey(intermediary)
+
+			serializedMsg, err := serializer.SerializeProtoMessage(match, protobuf.MessageType_INTERMEDIARYPAIR)
+			if err != nil {
+				nack()
+				return
+			}
+
+			if err := ir.aggregateByIntermediaryExchange.SendWithKey(workerKey, *serializedMsg); err != nil {
+				nack()
+				return
+			}
+		}
+	}
+	ack()
 }
 
 func (ir *IntermediaryRouter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	//TODO
+}
+
+func (ir *IntermediaryRouter) selectWorkerKey(intermediary *protobuf.Account) string {
+	h := fnv.New32a()
+	h.Write([]byte(fmt.Sprintf("%d-%s", intermediary.GetBank(), intermediary.GetAccount())))
+
+	return ir.aggregateByIntermediaryExchangeKeys[h.Sum32()%uint32(ir.aggregateByIntermediaryWorkers)]
 }
