@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -78,15 +79,54 @@ func (w *FormatFilterWorker) handleMessage(msg middleware.Message, ack, nack fun
 	case protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED:
 		w.handlePeriodFilterdMessage(moneyLaundering, ack, nack)
 	case protobuf.MessageType_EOF_:
-		w.handleEOFMessage(moneyLaundering, ack, nack)
+		w.handleEOFMessage(msg, ack, nack)
 	default:
 		nack()
 	}
 }
 
 func (w *FormatFilterWorker) handlePeriodFilterdMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+	periodFilteredMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ToConvertPeriodFiltered{})
+	if err != nil {
+		nack()
+		return
+	}
 
+	if !w.isAllowedFormat(periodFilteredMsg.GetPaymentFormat()) {
+		nack()
+		return
+	}
+
+	if err := w.sendFormatFilteredMessage(periodFilteredMsg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
 }
 
-func (w *FormatFilterWorker) handleEOFMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+func (w *FormatFilterWorker) isAllowedFormat(format string) bool {
+	return slices.Contains(w.allowedFormats, format)
+}
+
+func (w *FormatFilterWorker) sendFormatFilteredMessage(periodFiltered *protobuf.ToConvertPeriodFiltered) error {
+	formatFilteredMsg := &protobuf.ToConvertTypeFilteredPayment{
+		AmountPaid:      periodFiltered.GetAmountPaid(),
+		PaymentCurrency: periodFiltered.GetPaymentCurrency(),
+	}
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID("x", formatFilteredMsg, protobuf.MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT)
+	if err != nil {
+		return err
+	}
+
+	return w.outputQueue.Send(*serializedMsg)
+}
+
+func (w *FormatFilterWorker) handleEOFMessage(msg middleware.Message, ack, nack func()) {
+	slog.Info("EOF message received")
+	if err := w.outputQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+	ack()
 }
