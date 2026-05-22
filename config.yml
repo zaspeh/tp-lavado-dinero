@@ -131,6 +131,26 @@ services:
       OUTPUT_QUEUE_NAME: grouped_destination_accounts
 
       MAX_BATCH_WEIGHT: 8000
+  
+  origin_intermediary_router:
+    count: 0
+    worker_type: INTERMEDIARY_ROUTER
+
+    env:
+      INPUT_QUEUE_NAME: grouped_origin_accounts
+
+      AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: origin_intermediary_aggregation
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+
+  destination_intermediary_router:
+    count: 0
+    worker_type: INTERMEDIARY_ROUTER
+
+    env:
+      INPUT_QUEUE_NAME: grouped_destination_accounts
+
+      AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: destination_intermediary_aggregation
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
 
   avg_by_type:
     count: 1
