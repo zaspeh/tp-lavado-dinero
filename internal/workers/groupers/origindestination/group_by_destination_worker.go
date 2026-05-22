@@ -1,6 +1,11 @@
 package origindestination
 
 import (
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 )
 
@@ -44,4 +49,27 @@ func NewGroupByDestinationWorker(config GroupByDestinationWorkerConfig) (*GroupB
 		destinationsStore: newAccountStore(),
 		maxBatchWeight:    config.MaxBatchWeight,
 	}, nil
+}
+
+func (gbdw *GroupByDestinationWorker) Run() error {
+	go gbdw.handleSignals()
+
+	gbdw.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		gbdw.handleMessage(msg, ack, nack)
+	})
+
+	return nil
+}
+
+func (gbdw *GroupByDestinationWorker) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
+	slog.Info("shutdown signal received")
+	gbdw.inputExchange.Close()
+	gbdw.outputQueue.Close()
+}
+
+func (gbdw *GroupByDestinationWorker) handleMessage(msg middleware.Message, ack, nack func()) {
+	//TODO: IMPLEMENTAR LOGICA DE AGRUPAMIENTO POR DESTINO
 }
