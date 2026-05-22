@@ -26,6 +26,10 @@ type PeriodFilterWorker struct {
 	scatterGatherPeriod    Period
 	originDestinationQueue middleware.Middleware
 
+	// Q3
+	query3Period1 Period
+	query3Period2 Period
+
 	paymentTypePeriod      Period
 	paymentTypeFilterQueue middleware.Middleware
 	paymentTypeRouterQueue middleware.Middleware
@@ -40,6 +44,10 @@ type PeriodFilterWorkerConfig struct {
 
 	ScatterGatherPeriod              Period
 	OriginDestinationRouterQueueName string
+
+	// Q3
+	Query3Period1 Period
+	Query3Period2 Period
 
 	PaymentTypePeriod          Period
 	PaymentTypeFilterQueueName string
@@ -120,6 +128,8 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		avgByTypeRoutes:        avgByTypeRoutes,
 		scatterGatherPeriod:    config.ScatterGatherPeriod,
 		originDestinationQueue: originDestinationQueue,
+		query3Period1:          config.Query3Period1,
+		query3Period2:          config.Query3Period2,
 		paymentTypePeriod:      config.PaymentTypePeriod,
 		paymentTypeFilterQueue: paymentTypeFilterQueue,
 		paymentTypeRouterQueue: paymentTypeRouterQueue,
@@ -226,10 +236,17 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 		return
 	}
 
-	err = pf.publishToPaymentTypeRouter(rawMsg, periodFilterMsg)
-	if err != nil {
-		nack()
-		return
+	timestamp := periodFilterMsg.GetTimestamp().AsTime()
+
+	// filtro por periodo Q3
+	if pf.query3Period1.Contains(timestamp) || pf.query3Period2.Contains(timestamp) {
+
+		err := pf.publishToPaymentTypeRouter(periodFilterMsg, moneyLaundry.GetClientID())
+
+		if err != nil {
+			nack()
+			return
+		}
 	}
 
 	err = pf.publishScatterGatherMessage(periodFilterMsg)
@@ -284,13 +301,20 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 	return nil
 }
 
-func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(rawMsg middleware.Message, periodFilterMsg *protobuf.PeriodFilter) error {
+func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string) error {
 
-	if !pf.paymentTypePeriod.Contains(
-		periodFilterMsg.GetTimestamp().AsTime(),
-	) {
-		return nil
+	avgByTypeTransaction := &protobuf.AvgByTypeTransaction{
+		ClientID:      clientID,
+		Account:       periodFilterMsg.GetAccount(),
+		AmountPaid:    periodFilterMsg.GetAmountPaid(),
+		PaymentFormat: periodFilterMsg.GetPaymentFormat(),
+		Timestamp:     periodFilterMsg.GetTimestamp(),
 	}
 
-	return pf.paymentTypeRouterQueue.Send(rawMsg)
+	serializedMsg, err := serializer.SerializeProtoMessage(avgByTypeTransaction, protobuf.MessageType_AVGBYTYPETRANSACTION)
+	if err != nil {
+		return err
+	}
+
+	return pf.paymentTypeRouterQueue.Send(*serializedMsg)
 }
