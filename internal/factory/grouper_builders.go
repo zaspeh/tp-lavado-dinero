@@ -3,7 +3,7 @@ package factory
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/groupers/maxbank"
-	origin "github.com/zaspeh/tp-lavado-dinero/internal/workers/groupers/origindestination"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/groupers/origindestination"
 )
 
 func buildMaxBankWorker() (workers.Worker, error) {
@@ -81,7 +81,7 @@ func buildGroupByOriginWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	config := origin.GroupByOriginWorkerConfig{
+	config := origindestination.GroupByOriginWorkerConfig{
 		ID:                id,
 		MomHost:           host,
 		MomPort:           port,
@@ -90,5 +90,49 @@ func buildGroupByOriginWorker() (workers.Worker, error) {
 		MaxBatchWeight:    maxBatchWeight,
 	}
 
-	return origin.NewGroupByOriginWorker(config)
+	return origindestination.NewGroupByOriginWorker(config)
+}
+
+func buildGroupByDestinationWorker() (workers.Worker, error) {
+
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
+	config := origindestination.GroupByDestinationWorkerConfig{
+		ID:                id,
+		MomHost:           host,
+		MomPort:           port,
+		InputExchangeName: inputExchangeName,
+		OutputQueueName:   outputQueueName,
+		MaxBatchWeight:    maxBatchWeight,
+	}
+
+	return origindestination.NewGroupByDestinationWorker(config)
 }
