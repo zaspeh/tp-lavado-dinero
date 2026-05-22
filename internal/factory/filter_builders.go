@@ -3,6 +3,7 @@ package factory
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/formatfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 )
 
@@ -191,4 +192,41 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 	}
 
 	return filters.NewAmountFilter(config)
+}
+
+func buildFormatFilterWorker() (workers.Worker, error) {
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	allowedFormats, err := getEnvStringSliceStrict("VALID_PAYMENT_FORMATS")
+	if err != nil {
+		return nil, err
+	}
+
+	config := formatfilter.FormatFilterConfig{
+		InputQueueName:  inputQueueName,
+		OutputQueueName: outputQueueName,
+		MomHost:         host,
+		MomPort:         port,
+		AllowedFormats:  allowedFormats,
+	}
+
+	return formatfilter.NewFormatFilterWorker(config)
 }

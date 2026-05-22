@@ -3,6 +3,7 @@ package factory
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
@@ -73,4 +74,13 @@ func getEnvFloatStrict(key string) (float64, error) {
 	}
 
 	return val, nil
+}
+
+func getEnvStringSliceStrict(key string) ([]string, error) {
+	valStr, err := getEnvStrict(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(valStr, ","), nil
 }
