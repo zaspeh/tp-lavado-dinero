@@ -1,4 +1,4 @@
-package conversionjoingo
+package conversionjoin
 
 import (
 	"log/slog"

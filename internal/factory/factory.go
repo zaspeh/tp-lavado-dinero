@@ -40,6 +40,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildCurrencyConverterWorker()
 	case "AMOUNT_CONVERTED_FILTER":
 		return buildAmountConvertedFilterWorker()
+	case "CONVERSION_JOIN":
+		return buildConvertedMicroPaymentJoinWorker()
 	default:
 		return nil, nil
 	}

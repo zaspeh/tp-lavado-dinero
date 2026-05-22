@@ -3,6 +3,7 @@ package factory
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/conversionjoin.go"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/maxbankjoin.go"
 )
 
@@ -115,4 +116,35 @@ func buildAvgByTypeJoinWorker() (workers.Worker, error) {
 	}
 
 	return joiners.NewAvgByTypeJoin(config)
+}
+
+func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	clientExchangeName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	config := conversionjoin.ConversionJoinConfig{
+		InputQueueName:     inputQueueName,
+		ClientExchangeName: clientExchangeName,
+		MomHost:            host,
+		MomPort:            port,
+	}
+
+	return conversionjoin.NewConversionJoin(config)
 }

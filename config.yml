@@ -184,3 +184,10 @@ services:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
       OUTPUT_QUEUE_NAME: conversion_join_input_queue
       AMOUNT_TO_FILTER: 1.00
+
+  converter_join:
+    count: 1
+    worker_type: CONVERSION_JOIN
+    env:
+      INPUT_QUEUE_NAME: conversion_join_input_queue
+      CLIENT_EXCHANGE_NAME: client_results_exchange
