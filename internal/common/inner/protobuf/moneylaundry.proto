@@ -22,6 +22,9 @@ enum MessageType {
     MAXBANK_RESULT = 13;
     CONVERTED_MICRO_PAYMENT_RESULT = 14;
     AVGBYTYPE_RESULT = 15;
+
+    AVGBYTYPE_FIRST_PERIOD = 16;
+    AVGBYTYPE_SECOND_PERIOD = 17;
 }
 
 message MoneyLaundry {

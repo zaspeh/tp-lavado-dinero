@@ -40,6 +40,8 @@ const (
 	MessageType_MAXBANK_RESULT                   MessageType = 13
 	MessageType_CONVERTED_MICRO_PAYMENT_RESULT   MessageType = 14
 	MessageType_AVGBYTYPE_RESULT                 MessageType = 15
+	MessageType_AVGBYTYPE_FIRST_PERIOD           MessageType = 16
+	MessageType_AVGBYTYPE_SECOND_PERIOD          MessageType = 17
 )
 
 // Enum value maps for MessageType.
@@ -61,6 +63,8 @@ var (
 		13: "MAXBANK_RESULT",
 		14: "CONVERTED_MICRO_PAYMENT_RESULT",
 		15: "AVGBYTYPE_RESULT",
+		16: "AVGBYTYPE_FIRST_PERIOD",
+		17: "AVGBYTYPE_SECOND_PERIOD",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                             0,
@@ -79,6 +83,8 @@ var (
 		"MAXBANK_RESULT":                   13,
 		"CONVERTED_MICRO_PAYMENT_RESULT":   14,
 		"AVGBYTYPE_RESULT":                 15,
+		"AVGBYTYPE_FIRST_PERIOD":           16,
+		"AVGBYTYPE_SECOND_PERIOD":          17,
 	}
 )
 
@@ -177,7 +183,7 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload*\x89\x03\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload*\xc2\x03\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -195,7 +201,9 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\x17MICROTRANSACTION_RESULT\x10\f\x12\x12\n" +
 	"\x0eMAXBANK_RESULT\x10\r\x12\"\n" +
 	"\x1eCONVERTED_MICRO_PAYMENT_RESULT\x10\x0e\x12\x14\n" +
-	"\x10AVGBYTYPE_RESULT\x10\x0fB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x10AVGBYTYPE_RESULT\x10\x0f\x12\x1a\n" +
+	"\x16AVGBYTYPE_FIRST_PERIOD\x10\x10\x12\x1b\n" +
+	"\x17AVGBYTYPE_SECOND_PERIOD\x10\x11B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
