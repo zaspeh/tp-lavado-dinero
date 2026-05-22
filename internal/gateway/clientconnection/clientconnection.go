@@ -151,6 +151,8 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 		cc.handleMicrotransactionResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_MAXBANK_RESULT:
 		cc.handleMaxBankResult(moneyLaundry, ack, nack)
+	case protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT:
+		cc.handleConvertedMicroPaymentResult(moneyLaundry, ack, nack)
 	default:
 		slog.Warn("received message with unknown type", "type", moneyLaundry.GetType())
 		nack()
@@ -206,6 +208,20 @@ func (cc *ClientConnection) handleMaxBankResult(moneyLaundering *protobuf.MoneyL
 	}
 
 	if err := cc.protocol.SendMaxBankResult(externalMsg); err != nil {
+		nack()
+		return
+	}
+	ack()
+}
+
+func (cc *ClientConnection) handleConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+	externalMsg, err := messagehandler.ProtoToConvertedMicroPaymentResult(moneyLaundering)
+	if err != nil {
+		nack()
+		return
+	}
+
+	if err := cc.protocol.SendConvertedMicroPaymentResult(externalMsg); err != nil {
 		nack()
 		return
 	}

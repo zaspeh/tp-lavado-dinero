@@ -113,3 +113,14 @@ func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxB
 	}
 	return externalMessage, nil
 }
+
+func ProtoToConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry) (*result.ConvertedMicroPaymentResult, error) {
+	deserializeMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ConvertedMicroPaymentResult{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &result.ConvertedMicroPaymentResult{
+		Count: deserializeMsg.GetCount(),
+	}, nil
+}

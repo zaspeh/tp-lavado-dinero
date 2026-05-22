@@ -116,6 +116,10 @@ func (p *ExternalProtocol) SendMaxBankResult(results []result.MaxBankResult) err
 	return nil
 }
 
+func (p *ExternalProtocol) SendConvertedMicroPaymentResult(result *result.ConvertedMicroPaymentResult) error {
+	return nil
+}
+
 func (p *ExternalProtocol) SendEOF() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
