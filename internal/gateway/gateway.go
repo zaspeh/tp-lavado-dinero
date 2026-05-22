@@ -13,7 +13,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/clientregistry"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
-	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 )
@@ -24,6 +23,7 @@ type GatewayConfig struct {
 	MomHost            string
 	MomPort            int
 	CurrencyQueueName  string
+	RawDataQueueName   string
 	ClientExchangeName string
 }
 
@@ -85,14 +85,21 @@ func (gateway *Gateway) handleSignals() {
 }
 
 func (gateway *Gateway) handleIncomingConnection(conn net.Conn) {
-	connSettings := m.ConnSettings{
-		Hostname: gateway.config.MomHost,
-		Port:     gateway.config.MomPort,
-	}
 	socket := socket.New(conn)
 	protocol := external.New(socket)
 	clientId := gateway.generateClientId()
-	client, err := clientconnection.New(clientId, protocol, connSettings, gateway.config.CurrencyQueueName, gateway.config.ClientExchangeName)
+
+	config := clientconnection.ClientConnectionConfig{
+		ID:                      clientId,
+		Protocol:                protocol,
+		MOMHostName:             gateway.config.MomHost,
+		MOMPort:                 gateway.config.MomPort,
+		CurrencyFilterQueueName: gateway.config.CurrencyQueueName,
+		ClientExchangeName:      gateway.config.ClientExchangeName,
+		RawDataQueueName:        gateway.config.RawDataQueueName,
+	}
+
+	client, err := clientconnection.New(config)
 	if err != nil {
 		slog.Error("failed to create client connection", "error", err)
 		protocol.Close()

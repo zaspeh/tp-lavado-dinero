@@ -13,38 +13,63 @@ import (
 )
 
 const (
+	// TODO CAMBIAR A ENV VAR DESPUES
 	eofAmountExpected = 2
 )
+
+type ClientConnectionConfig struct {
+	ID                      string
+	Protocol                *external.ExternalProtocol
+	MOMHostName             string
+	MOMPort                 int
+	CurrencyFilterQueueName string
+	RawDataQueueName        string
+	ClientExchangeName      string
+}
 
 type ClientConnection struct {
 	id                  string
 	protocol            *external.ExternalProtocol
 	currencyFilterQueue m.Middleware
-	// dateQueue      m.Middleware
-	resultExchange     *m.ExchangeMiddleware
-	EOFamountReceived  int
-	transactionCounter int
+	rawDataQueue        m.Middleware
+	resultExchange      *m.ExchangeMiddleware
+	EOFamountReceived   int
+	transactionCounter  int
 }
 
-func New(id string, protocol *external.ExternalProtocol, connSettings m.ConnSettings, currencyQueueName string, clientExchangeName string) (*ClientConnection, error) {
-	currencyFilterQueue, err := m.CreateQueueMiddleware(currencyQueueName, connSettings)
+func New(config ClientConnectionConfig) (*ClientConnection, error) {
+	connSettings := m.ConnSettings{
+		Hostname: config.MOMHostName,
+		Port:     config.MOMPort,
+	}
+
+	currencyFilterQueue, err := m.CreateQueueMiddleware(config.CurrencyFilterQueueName, connSettings)
 	if err != nil {
 		return nil, err
 	}
+
 	// TODO: descomentar cuando el sistema sea multicliente
 	// exchangeRoutingKey := []string{clientExchangeName + "." + id}
-	exchangeRoutingKey := []string{clientExchangeName}
-	resultExchange, err := m.CreateExchangeMiddleware(clientExchangeName, exchangeRoutingKey, connSettings)
+	exchangeRoutingKey := []string{config.ClientExchangeName}
+	resultExchange, err := m.CreateExchangeMiddleware(config.ClientExchangeName, exchangeRoutingKey, connSettings)
 	if err != nil {
 		currencyFilterQueue.Close()
 		return nil, err
 	}
 
+	rawDataQueue, err := m.CreateQueueMiddleware(config.RawDataQueueName, connSettings)
+	if err != nil {
+		currencyFilterQueue.Close()
+		resultExchange.Close()
+		return nil, err
+	}
+
 	return &ClientConnection{
-		id:                  id,
-		protocol:            protocol,
+		id:                  config.ID,
+		protocol:            config.Protocol,
 		currencyFilterQueue: currencyFilterQueue,
 		resultExchange:      resultExchange,
+		rawDataQueue:        rawDataQueue,
 		transactionCounter:  0,
 	}, nil
 }
@@ -60,13 +85,13 @@ func (cc *ClientConnection) Run() error {
 			return err
 		}
 		if err = message.Handle(cc); err != nil {
+			// TODO: podria ser un NACK envez de cerrar comunicacion.
 			return err
 		}
 	}
 }
 
 func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
-
 	wrappedMessage, err := messagehandler.TransactionToProto(cc.id, msg)
 	if err != nil {
 		return err

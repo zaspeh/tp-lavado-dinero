@@ -15,6 +15,11 @@ func buildGateway() (*gateway.Gateway, error) {
 		return nil, err
 	}
 
+	rawDataQueueName, err := getEnvStrict("RAW_DATA_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
 	serverHost, err := getEnvStrict("SERVER_HOST")
 	if err != nil {
 		return nil, err
@@ -38,6 +43,7 @@ func buildGateway() (*gateway.Gateway, error) {
 	config := gateway.GatewayConfig{
 		CurrencyQueueName:  USDQueueName,
 		ClientExchangeName: outputQueueName,
+		RawDataQueueName:   rawDataQueueName,
 		ServerHost:         serverHost,
 		ServerPort:         serverPort,
 		MomHost:            momHost,

@@ -165,3 +165,49 @@ services:
         condition: service_healthy
     networks:
     - money_laundering_network
+  period_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: period_filter_0
+    environment:
+    - ID=0
+    - WORKER_TYPE=PERIOD_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - USD_INPUT_QUEUE_NAME=period_filter_input_queue
+    - RAW_INPUT_QUEUE_NAME=raw_transactions
+    - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
+    - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_type_filter
+    - AVG_BY_TYPE_PERIOD_1_QUEUE_NAME=avg_by_type_p1
+    - AVG_BY_TYPE_PERIOD_2_QUEUE_NAME=avg_by_type_p2
+    - AVG_BY_TYPE_PERIOD_1_START=2024-01-01T00:00:00Z
+    - AVG_BY_TYPE_PERIOD_1_END=2024-01-08T23:59:59Z
+    - AVG_BY_TYPE_PERIOD_2_START=2024-01-09T00:00:00Z
+    - AVG_BY_TYPE_PERIOD_2_END=2024-01-17T23:59:59Z
+    - SCATTER_GATHER_PERIOD_START=2024-01-01T00:00:00Z
+    - SCATTER_GATHER_PERIOD_END=2024-01-17T23:59:59Z
+    - PAYMENT_TYPE_PERIOD_START=2022-09-01T00:00:00Z
+    - PAYMENT_TYPE_PERIOD_END=2022-09-05T23:59:59Z
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  payment_type_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: payment_type_router_0
+    environment:
+    - ID=0
+    - WORKER_TYPE=PAYMENT_TYPE_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - INPUT_QUEUE_NAME=payment_type_router_input
+    - PAYMENT_TYPE_EXCHANGE_NAME=payment_type_exchange
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network

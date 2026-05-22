@@ -3,6 +3,7 @@ gateway:
   env:
     OUTPUT_QUEUE_NAME: currency_filter_input_queue
     CLIENT_EXCHANGE_NAME: client_results_exchange
+    RAW_DATA_QUEUE_NAME: raw_transactions
   port: 8080
   
 rabbitmq:
@@ -68,7 +69,7 @@ services:
     
 
   period_filter:
-    count: 0
+    count: 1
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -83,9 +84,8 @@ services:
       AVG_BY_TYPE_PERIOD_2_END: "2024-01-17T23:59:59Z"
       SCATTER_GATHER_PERIOD_START: "2024-01-01T00:00:00Z"
       SCATTER_GATHER_PERIOD_END: "2024-01-17T23:59:59Z"
-      PAYMENT_TYPE_PERIOD_START: "2024-01-01T00:00:00Z"
-      PAYMENT_TYPE_PERIOD_END: "2024-01-17T23:59:59Z"
-
+      PAYMENT_TYPE_PERIOD_START: "2022-09-01T00:00:00Z"
+      PAYMENT_TYPE_PERIOD_END: "2022-09-05T23:59:59Z"
   payment_type_router:
     count: 1
     worker_type: PAYMENT_TYPE_ROUTER
