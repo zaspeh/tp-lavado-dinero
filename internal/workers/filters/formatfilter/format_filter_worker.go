@@ -7,6 +7,8 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type FormatFilterConfig struct {
@@ -51,12 +53,7 @@ func (w *FormatFilterWorker) Run() error {
 	go w.handleSignals()
 
 	w.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		// Aquí iría la lógica para procesar el mensaje y filtrar por formato
-		// Por ejemplo:
-		// 1. Deserializar el mensaje
-		// 2. Verificar si el formato del pago está en w.allowedFormats
-		// 3. Si es válido, enviar el mensaje a w.outputQueue
-		// 4. Acknowledge o Nack dependiendo del resultado
+		w.handleMessage(msg, ack, nack)
 	})
 	return nil
 }
@@ -68,5 +65,28 @@ func (w *FormatFilterWorker) handleSignals() {
 	slog.Info("shutdown signal received")
 	w.inputQueue.Close()
 	w.outputQueue.Close()
+}
 
+func (w *FormatFilterWorker) handleMessage(msg middleware.Message, ack, nack func()) {
+	moneyLaundering, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundering.GetType() {
+	case protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED:
+		w.handlePeriodFilterdMessage(moneyLaundering, ack, nack)
+	case protobuf.MessageType_EOF_:
+		w.handleEOFMessage(moneyLaundering, ack, nack)
+	default:
+		nack()
+	}
+}
+
+func (w *FormatFilterWorker) handlePeriodFilterdMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+
+}
+
+func (w *FormatFilterWorker) handleEOFMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
 }
