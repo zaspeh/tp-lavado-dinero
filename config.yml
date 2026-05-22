@@ -115,3 +115,13 @@ services:
       OUTPUT_QUEUE_NAME: grouped_origin_accounts
 
       MAX_BATCH_WEIGHT: 8000
+
+  group_by_destination:
+    count: 0
+    worker_type: GROUP_BY_DESTINATION
+
+    env:
+      INPUT_EXCHANGE_NAME: group_by_destination
+      OUTPUT_QUEUE_NAME: grouped_destination_accounts
+
+      MAX_BATCH_WEIGHT: 8000
