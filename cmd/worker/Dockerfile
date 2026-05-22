@@ -5,8 +5,12 @@ LABEL intermediateStageToBeDeleted=true
 
 WORKDIR /build
 
+# Para certificados y llamar la api externa
+RUN apk add --no-cache ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
+
+
 
 # COPY internal/common/inner ./internal/common/inner
 # COPY internal/factory ./internal/factory
@@ -19,5 +23,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /build/bin/worker ./cmd/worker
 # ETAPA DE EJECUCION
 FROM busybox:latest
 WORKDIR /app
+
+# Agregamos la ca-certificates para que el worker pueda hacer llamadas a la api externa
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
 COPY --from=builder /build/bin/worker /app/worker
 ENTRYPOINT ["/app/worker"]

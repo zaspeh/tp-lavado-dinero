@@ -192,7 +192,7 @@ func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_TRANSACTION:
+	case protobuf.MessageType_TO_CONVERT_TRANSACTION:
 		pf.handleTransactionMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		// funcionalidad a revisar, hay problemas de EOF
@@ -347,6 +347,7 @@ func (pf *PeriodFilterWorker) publishToPaymentTypeQueue(transactionMsg *protobuf
 }
 
 func (pf *PeriodFilterWorker) handleEOFMessageFromRaw(msg middleware.Message, ack, nack func()) {
+	slog.Info("Received EOF from raw input")
 	if err := pf.paymentTypeFilterQueue.Send(msg); err != nil {
 		nack()
 		return

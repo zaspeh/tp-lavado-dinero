@@ -35,6 +35,7 @@ def build_gateway(cfg):
     amqp_port = cfg['rabbitmq']['amqp_port']
     output_queue_name = cfg['gateway']['env'].get('OUTPUT_QUEUE_NAME')
     client_exchange_name = cfg['gateway']['env'].get('CLIENT_EXCHANGE_NAME')
+    raw_input_queue_name = cfg['gateway']['env'].get('RAW_DATA_QUEUE_NAME')
     return {
         'build': {
             'context': '.',
@@ -47,7 +48,8 @@ def build_gateway(cfg):
             'MOM_HOST=rabbitmq',
             f'MOM_PORT={amqp_port}',
             f'OUTPUT_QUEUE_NAME={output_queue_name}',
-            f'CLIENT_EXCHANGE_NAME={client_exchange_name}'
+            f'CLIENT_EXCHANGE_NAME={client_exchange_name}',
+            f'RAW_DATA_QUEUE_NAME={raw_input_queue_name}'
         ],
         'ports': [f"{gateway_port}:{gateway_port}"],
         'depends_on': {

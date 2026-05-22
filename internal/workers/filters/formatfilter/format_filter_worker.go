@@ -93,7 +93,7 @@ func (w *FormatFilterWorker) handlePeriodFilterdMessage(moneyLaundering *protobu
 	}
 
 	if !w.isAllowedFormat(periodFilteredMsg.GetPaymentFormat()) {
-		nack()
+		ack()
 		return
 	}
 

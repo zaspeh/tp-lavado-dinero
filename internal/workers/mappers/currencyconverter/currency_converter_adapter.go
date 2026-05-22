@@ -37,13 +37,13 @@ func NewCurrencyConverter(url string) (*CurrencyConverter, error) {
 	}
 	defer resp.Body.Close()
 
-	var apiRates []APIExchangeRate
-	if err := json.NewDecoder(resp.Body).Decode(&apiRates); err != nil {
+	var apiResponse []APIExchangeRate
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
 		return nil, err
 	}
 
 	finalRates := make(map[string]float64)
-	for _, r := range apiRates {
+	for _, r := range apiResponse {
 		if longName, ok := isoToLongName[r.Quote]; ok {
 			finalRates[longName] = r.Rate
 		}
@@ -51,7 +51,7 @@ func NewCurrencyConverter(url string) (*CurrencyConverter, error) {
 
 	// Casos especiales que no estan en la api, ver que hacer con bitcoin
 	finalRates["US Dollar"] = 1.0
-	finalRates["Bitcoin"] = 78.33
+	finalRates["Bitcoin"] = 1.0 / 78.33
 
 	return &CurrencyConverter{Rates: finalRates}, nil
 }
