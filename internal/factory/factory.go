@@ -38,6 +38,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildFormatFilterWorker()
 	case "CURRENCY_CONVERTER":
 		return buildCurrencyConverterWorker()
+	case "AMOUNT_CONVERTED_FILTER":
+		return buildAmountConvertedFilterWorker()
 	default:
 		return nil, nil
 	}

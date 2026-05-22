@@ -174,5 +174,13 @@ services:
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
-      OUTPUT_QUEUE_NAME: currency_filter_input
+      OUTPUT_QUEUE_NAME: filtered_currency_conversion_input
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
+
+  amount_converted_filter:
+    count: 1
+    worker_type: AMOUNT_CONVERTED_FILTER
+    env:
+      INPUT_QUEUE_NAME: filtered_currency_conversion_input
+      OUTPUT_QUEUE_NAME: conversion_join_input_queue
+      AMOUNT_TO_FILTER: 1.00
