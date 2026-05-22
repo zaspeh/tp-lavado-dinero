@@ -25,8 +25,8 @@ func TransactionToProto(clientID string, msg request.Transaction) (*m.Message, e
 		return nil, fmt.Errorf("error parsing csv: %w", err)
 	}
 
-	if len(fields) < 8 {
-		return nil, fmt.Errorf("invalid record: expected 8 fields, got %d", len(fields))
+	if len(fields) < 10 {
+		return nil, fmt.Errorf("invalid record: expected 10 fields, got %d", len(fields))
 	}
 
 	fromBank, err := strconv.Atoi(fields[1])
@@ -66,6 +66,34 @@ func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
 		TotalTransactions: int32(transactionCounter),
 	}
 	return serializer.SerializeProtoMessageWithClientID(clientID, eofMessage, pb.MessageType_EOF_)
+}
+
+func TransactionToConvertionTransaction(clientID string, msg request.Transaction) (*m.Message, error) {
+	reader := csv.NewReader(strings.NewReader(msg.Record))
+
+	fields, err := reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing csv: %w", err)
+	}
+
+	// son 11 campos, el ultimo es is laundering que no nos importa
+	if len(fields) < 10 {
+		return nil, fmt.Errorf("invalid record: expected 10 fields, got %d", len(fields))
+	}
+
+	timestamp, err := time.Parse("2006/01/02 15:04", fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid timestamp: %w", err)
+	}
+
+	convertionTransaction := &pb.ToConvertTransaction{
+		Timestamp:       timestamppb.New(timestamp),
+		AmountPaid:      fields[7],
+		PaymentCurrency: fields[8],
+		PaymentFormat:   fields[9],
+	}
+
+	return serializer.SerializeProtoMessageWithClientID(clientID, convertionTransaction, pb.MessageType_TO_CONVERT_TRANSACTION)
 }
 
 func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxBankResult, error) {

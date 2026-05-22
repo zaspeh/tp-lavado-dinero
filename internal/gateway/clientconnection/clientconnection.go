@@ -101,6 +101,11 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 		return err
 	}
 
+	wrappedMessage, err = messagehandler.TransactionToConvertionTransaction(cc.id, msg)
+	if err != nil {
+		return err
+	}
+
 	if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
 		return err
 	}
