@@ -204,7 +204,7 @@ func (x *ToConvertTypeFilteredPayment) GetPaymentCurrency() string {
 
 type ConvertedAmount struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Amount        string                 `protobuf:"bytes,1,opt,name=amount,proto3" json:"amount,omitempty"`
+	Amount        float64                `protobuf:"fixed64,1,opt,name=amount,proto3" json:"amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -239,11 +239,11 @@ func (*ConvertedAmount) Descriptor() ([]byte, []int) {
 	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ConvertedAmount) GetAmount() string {
+func (x *ConvertedAmount) GetAmount() float64 {
 	if x != nil {
 		return x.Amount
 	}
-	return ""
+	return 0
 }
 
 type ConvertedMicroPaymentResult struct {
@@ -311,7 +311,7 @@ const file_internal_common_inner_protobuf_conversion_proto_rawDesc = "" +
 	"amountPaid\x12)\n" +
 	"\x10payment_currency\x18\x02 \x01(\tR\x0fpaymentCurrency\")\n" +
 	"\x0fConvertedAmount\x12\x16\n" +
-	"\x06amount\x18\x01 \x01(\tR\x06amount\"3\n" +
+	"\x06amount\x18\x01 \x01(\x01R\x06amount\"3\n" +
 	"\x1bConvertedMicroPaymentResult\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x03R\x05countB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 

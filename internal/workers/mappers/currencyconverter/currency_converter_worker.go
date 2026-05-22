@@ -111,11 +111,21 @@ func (w *CurrencyConverterWorker) handleConvertMessage(moneyLaundering *protobuf
 		nack()
 		return
 	}
+
 	ack()
 }
 
 func (w *CurrencyConverterWorker) sendConvertedMessage(convertedAmount float64) error {
-	return nil
+	convertedMsg := &protobuf.ConvertedAmount{
+		Amount: convertedAmount,
+	}
+
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID("x", convertedMsg, protobuf.MessageType_CONVERTED_AMOUNT)
+	if err != nil {
+		return err
+	}
+
+	return w.outputQueue.Send(*serializedMsg)
 }
 
 func (w *CurrencyConverterWorker) handleEOFMessage(msg middleware.Message, ack, nack func()) {

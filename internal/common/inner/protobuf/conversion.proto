@@ -25,7 +25,7 @@ message ToConvertTypeFilteredPayment {
 }
 
 message ConvertedAmount {
-    string amount = 1;
+    double amount = 1;
 }
 
 message ConvertedMicroPaymentResult {
