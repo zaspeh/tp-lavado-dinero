@@ -2,6 +2,10 @@ package routers
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 )
@@ -11,10 +15,6 @@ type IntermediaryRouter struct {
 	aggregateByIntermediaryExchange     *middleware.ExchangeMiddleware
 	aggregateByIntermediaryWorkers      int
 	aggregateByIntermediaryExchangeKeys []string
-
-	groupByDestinationExchange     *middleware.ExchangeMiddleware
-	groupByDestinationWorkers      int
-	groupByDestinationExchangeKeys []string
 }
 
 type IntermediaryRouterConfig struct {
@@ -53,4 +53,27 @@ func NewIntermediaryRouter(config IntermediaryRouterConfig) (*IntermediaryRouter
 		aggregateByIntermediaryWorkers:      config.AggregateByIntermediaryAmount,
 		aggregateByIntermediaryExchangeKeys: aggregateByIntermediaryKeys,
 	}, nil
+}
+
+func (ir *IntermediaryRouter) Run() error {
+	go ir.handleSignals()
+
+	ir.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		ir.handleMessage(msg, ack, nack)
+	})
+
+	return nil
+}
+
+func (ir *IntermediaryRouter) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
+	slog.Info("shutdown signal received")
+	ir.inputQueue.Close()
+	ir.aggregateByIntermediaryExchange.Close()
+}
+
+func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack func()) {
+	//TODO
 }
