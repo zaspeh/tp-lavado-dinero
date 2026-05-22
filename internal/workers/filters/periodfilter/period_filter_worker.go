@@ -249,16 +249,16 @@ func (pf *PeriodFilterWorker) handleTransactionMessage(moneyLaundry *protobuf.Mo
 	}
 
 	if !pf.paymentTypePeriod.Contains(transactionMsg.GetTimestamp().AsTime()) {
-		
+
 	}
 
-	if err := publishToPaymentTypeQueue(transactionMsg), err != nil {
-		nack()
-		return
-	}
+	// if err := publishToPaymentTypeQueue(transactionMsg), err != nil {
+	// 	nack()
+	// 	return
+	// }
 
 	ack()
-		
+
 }
 
 func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *protobuf.PeriodFilter) error {
