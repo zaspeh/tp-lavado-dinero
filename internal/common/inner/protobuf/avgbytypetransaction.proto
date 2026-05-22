@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+import "google/protobuf/timestamp.proto";
+
+message AvgByTypeTransaction {
+    string clientID = 1;
+    string account = 2;
+    string amount_paid = 3;
+    string payment_format = 4;
+    google.protobuf.Timestamp timestamp = 5;
+}
