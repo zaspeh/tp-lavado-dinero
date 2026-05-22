@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
@@ -175,7 +176,7 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_PERIODFILTER:
-		pf.handlePeriodFilterMessage(moneyLaundry, msg, ack, nack)
+		pf.handlePeriodFilterMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		pf.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
@@ -230,7 +231,7 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 	ack()
 }
 
-func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
+func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	periodFilterMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.PeriodFilter{})
 	if err != nil {
 		nack()
@@ -240,14 +241,10 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 	timestamp := periodFilterMsg.GetTimestamp().AsTime()
 
 	// filtro por periodo Q3
-	if pf.query3Period1.Contains(timestamp) || pf.query3Period2.Contains(timestamp) {
-
-		err := pf.publishToPaymentTypeRouter(periodFilterMsg, moneyLaundry.GetClientID())
-
-		if err != nil {
-			nack()
-			return
-		}
+	err = pf.checkToPublishToPaymentTypeRouter(periodFilterMsg, moneyLaundry.GetClientID(), timestamp)
+	if err != nil {
+		nack()
+		return
 	}
 
 	err = pf.publishScatterGatherMessage(periodFilterMsg)
@@ -301,16 +298,33 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 	return nil
 }
 
-func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string) error {
+func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, timestamp time.Time) error {
+	if pf.query3Period1.Contains(timestamp) {
+		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD)
+		if err != nil {
+			return err
+		}
+	}
+
+	if pf.query3Period2.Contains(timestamp) {
+		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.MessageType_AVGBYTYPE_SECOND_PERIOD)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, messageType protobuf.MessageType) error {
 
 	avgByTypeTransaction := &protobuf.AvgByTypeTransaction{
 		Account:       periodFilterMsg.GetAccount(),
 		AmountPaid:    periodFilterMsg.GetAmountPaid(),
 		PaymentFormat: periodFilterMsg.GetPaymentFormat(),
-		Timestamp:     periodFilterMsg.GetTimestamp(),
 	}
 
-	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, avgByTypeTransaction, protobuf.MessageType_AVGBYTYPETRANSACTION)
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, avgByTypeTransaction, messageType)
 
 	if err != nil {
 		return err
