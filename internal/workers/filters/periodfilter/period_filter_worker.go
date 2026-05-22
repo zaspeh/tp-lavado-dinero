@@ -303,14 +303,14 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string) error {
 
 	avgByTypeTransaction := &protobuf.AvgByTypeTransaction{
-		ClientID:      clientID,
 		Account:       periodFilterMsg.GetAccount(),
 		AmountPaid:    periodFilterMsg.GetAmountPaid(),
 		PaymentFormat: periodFilterMsg.GetPaymentFormat(),
 		Timestamp:     periodFilterMsg.GetTimestamp(),
 	}
 
-	serializedMsg, err := serializer.SerializeProtoMessage(avgByTypeTransaction, protobuf.MessageType_AVGBYTYPETRANSACTION)
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, avgByTypeTransaction, protobuf.MessageType_AVGBYTYPETRANSACTION)
+
 	if err != nil {
 		return err
 	}

@@ -24,11 +24,10 @@ const (
 
 type AvgByTypeTransaction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClientID      string                 `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
-	Account       string                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
-	AmountPaid    string                 `protobuf:"bytes,3,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
-	PaymentFormat string                 `protobuf:"bytes,4,opt,name=payment_format,json=paymentFormat,proto3" json:"payment_format,omitempty"`
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Account       string                 `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	AmountPaid    string                 `protobuf:"bytes,2,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
+	PaymentFormat string                 `protobuf:"bytes,3,opt,name=payment_format,json=paymentFormat,proto3" json:"payment_format,omitempty"`
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -63,13 +62,6 @@ func (*AvgByTypeTransaction) Descriptor() ([]byte, []int) {
 	return file_internal_common_inner_protobuf_avgbytypetransaction_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AvgByTypeTransaction) GetClientID() string {
-	if x != nil {
-		return x.ClientID
-	}
-	return ""
-}
-
 func (x *AvgByTypeTransaction) GetAccount() string {
 	if x != nil {
 		return x.Account
@@ -102,14 +94,13 @@ var File_internal_common_inner_protobuf_avgbytypetransaction_proto protoreflect.
 
 const file_internal_common_inner_protobuf_avgbytypetransaction_proto_rawDesc = "" +
 	"\n" +
-	"9internal/common/inner/protobuf/avgbytypetransaction.proto\x12\bprotobuf\x1a\x1fgoogle/protobuf/timestamp.proto\"\xce\x01\n" +
-	"\x14AvgByTypeTransaction\x12\x1a\n" +
-	"\bclientID\x18\x01 \x01(\tR\bclientID\x12\x18\n" +
-	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\x1f\n" +
-	"\vamount_paid\x18\x03 \x01(\tR\n" +
+	"9internal/common/inner/protobuf/avgbytypetransaction.proto\x12\bprotobuf\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb2\x01\n" +
+	"\x14AvgByTypeTransaction\x12\x18\n" +
+	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1f\n" +
+	"\vamount_paid\x18\x02 \x01(\tR\n" +
 	"amountPaid\x12%\n" +
-	"\x0epayment_format\x18\x04 \x01(\tR\rpaymentFormat\x128\n" +
-	"\ttimestamp\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestampB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x0epayment_format\x18\x03 \x01(\tR\rpaymentFormat\x128\n" +
+	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestampB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_avgbytypetransaction_proto_rawDescOnce sync.Once
