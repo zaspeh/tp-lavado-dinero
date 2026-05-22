@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 )
@@ -15,6 +16,8 @@ type ResultCSVWriter struct {
 	q1Writer      *csv.Writer
 	q2File        *os.File
 	q2Writer      *csv.Writer
+	q5File        *os.File
+	q5Writer      *csv.Writer
 }
 
 func NewResultCSVWriter(outputDir string) *ResultCSVWriter {
@@ -51,6 +54,21 @@ func (rw *ResultCSVWriter) Open() error {
 		return err
 	}
 
+	rw.q5File, err = os.OpenFile(filepath.Join(rw.outputDir, "q5_result.csv"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		rw.q1File.Close()
+		rw.q2File.Close()
+		return err
+	}
+	rw.q5Writer = csv.NewWriter(rw.q5File)
+	err = rw.q5Writer.Write([]string{"count"})
+	if err != nil {
+		rw.q1File.Close()
+		rw.q2File.Close()
+		rw.q5File.Close()
+		return err
+	}
+
 	return nil
 }
 
@@ -68,6 +86,12 @@ func (rw *ResultCSVWriter) Close() {
 	}
 	if rw.q2File != nil {
 		rw.q2File.Close()
+	}
+	if rw.q5Writer != nil {
+		rw.q5Writer.Flush()
+	}
+	if rw.q5File != nil {
+		rw.q5File.Close()
 	}
 }
 
@@ -108,4 +132,14 @@ func (rw *ResultCSVWriter) HandleMaxBankResult(msg result.MaxBankResult) error {
 
 	rw.q2Writer.Flush()
 	return rw.q2Writer.Error()
+}
+
+func (rw *ResultCSVWriter) HandleConvertedMicroPaymentResult(msg result.ConvertedMicroPaymentResult) error {
+	countStr := strconv.FormatInt(int64(msg.Count), 10)
+	err := rw.q5Writer.Write([]string{countStr})
+	if err != nil {
+		return err
+	}
+	rw.q5Writer.Flush()
+	return rw.q5Writer.Error()
 }
