@@ -17,8 +17,6 @@ type PaymentTypeRouter struct {
 	inputQueue middleware.Middleware
 
 	paymentTypeExchange *middleware.ExchangeMiddleware
-
-	exchangeName string
 }
 
 type PaymentTypeRouterConfig struct {
@@ -51,7 +49,6 @@ func NewPaymentTypeRouter(config PaymentTypeRouterConfig) (*PaymentTypeRouter, e
 	return &PaymentTypeRouter{
 		inputQueue:          inputQueue,
 		paymentTypeExchange: paymentTypeExchange,
-		exchangeName:        config.PaymentTypeExchangeName,
 	}, nil
 }
 
@@ -89,10 +86,7 @@ func (r *PaymentTypeRouter) handleMessage(msg middleware.Message, ack, nack func
 
 func (r *PaymentTypeRouter) handleAvgByTypeTransaction(msg middleware.Message, moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 
-	transaction, err := serializer.DeserializeTransaction(
-		moneyLaundry.GetPayload(),
-		&protobuf.PeriodFilter{},
-	)
+	transaction, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
 	if err != nil {
 		nack()
 		return
@@ -100,7 +94,12 @@ func (r *PaymentTypeRouter) handleAvgByTypeTransaction(msg middleware.Message, m
 
 	paymentFormat := transaction.GetPaymentFormat()
 
-	slog.Info(
+	if paymentFormat == "" {
+		nack()
+		return
+	}
+
+	slog.Debug(
 		"routing payment format",
 		"format", paymentFormat,
 		"clientID", moneyLaundry.GetClientID(),
