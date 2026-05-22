@@ -1,4 +1,4 @@
-package origin
+package origindestination
 
 import (
 	"log/slog"

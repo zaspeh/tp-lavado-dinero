@@ -1,4 +1,4 @@
-package origin
+package origindestination
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"

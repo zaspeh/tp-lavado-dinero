@@ -3,7 +3,7 @@ package factory
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/groupers/maxbank"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/groupers/origin"
+	origin "github.com/zaspeh/tp-lavado-dinero/internal/workers/groupers/origindestination"
 )
 
 func buildMaxBankWorker() (workers.Worker, error) {

@@ -1,4 +1,4 @@
-package origin
+package origindestination
 
 type AccountStore struct {
 	data map[Account]map[Account]struct{}
