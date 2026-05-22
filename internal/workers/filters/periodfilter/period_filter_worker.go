@@ -194,7 +194,8 @@ func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack
 	case protobuf.MessageType_TRANSACTION:
 		pf.handleTransactionMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
-		pf.handleEOFMessage(moneyLaundry, msg, ack, nack)
+		// funcionalidad a revisar, hay problemas de EOF
+		pf.handleEOFMessageFromRaw(msg, ack, nack)
 	default:
 		nack()
 	}
@@ -216,10 +217,10 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 		return
 	}
 
-	if err := pf.paymentTypeFilterQueue.Send(rawMsg); err != nil {
-		nack()
-		return
-	}
+	// if err := pf.paymentTypeFilterQueue.Send(rawMsg); err != nil {
+	// 	nack()
+	// 	return
+	// }
 
 	if err := pf.paymentTypeRouterQueue.Send(rawMsg); err != nil {
 		nack()
@@ -330,4 +331,12 @@ func (pf *PeriodFilterWorker) publishToPaymentTypeQueue(transactionMsg *protobuf
 	}
 
 	return pf.paymentTypeFilterQueue.Send(*serializedMsg)
+}
+
+func (pf *PeriodFilterWorker) handleEOFMessageFromRaw(msg middleware.Message, ack, nack func()) {
+	if err := pf.paymentTypeFilterQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+	ack()
 }
