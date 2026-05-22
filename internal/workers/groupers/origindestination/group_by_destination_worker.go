@@ -112,5 +112,67 @@ func (gbdw *GroupByDestinationWorker) handleScatterGatherMessage(moneyLaundry *p
 }
 
 func (gbdw *GroupByDestinationWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
-	// TODO: IMPLEMENTAR LÓGICA DE ENVÍO DE LOS LOTES AL SIGUIENTE WORKER
+	batch := NewBatch(gbdw.maxBatchWeight)
+
+	for destination, origins := range gbdw.destinationsStore.GetData() {
+		destinationBank := destination.GetBank()
+		destinationAccount := destination.GetAccount()
+
+		if len(origins) < 5 {
+			continue
+		}
+
+		group := &protobuf.GroupedAccounts{
+			BaseAccount: &protobuf.Account{
+				Bank:    destinationBank,
+				Account: destinationAccount,
+			},
+		}
+
+		for origin := range origins {
+
+			group.RelatedAccounts = append(group.RelatedAccounts, &protobuf.Account{
+				Bank:    origin.GetBank(),
+				Account: origin.GetAccount(),
+			})
+		}
+
+		if batch.IsFull(group) {
+			serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
+			if err != nil {
+				nack()
+				return
+			}
+
+			if err := gbdw.outputQueue.Send(*serializedMsg); err != nil {
+				nack()
+				return
+			}
+		}
+
+		if !batch.Add(group) {
+			nack()
+			return
+		}
+	}
+
+	if !batch.IsEmpty() {
+		serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
+		if err != nil {
+			nack()
+			return
+		}
+
+		if err := gbdw.outputQueue.Send(*serializedMsg); err != nil {
+			nack()
+			return
+		}
+	}
+
+	if err := gbdw.outputQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
 }
