@@ -30,28 +30,19 @@ type PaymentTypeRouterConfig struct {
 	MomPort int
 }
 
-func NewPaymentTypeRouter(
-	config PaymentTypeRouterConfig,
-) (*PaymentTypeRouter, error) {
+func NewPaymentTypeRouter(config PaymentTypeRouterConfig) (*PaymentTypeRouter, error) {
 
 	connSettings := middleware.ConnSettings{
 		Hostname: config.MomHost,
 		Port:     config.MomPort,
 	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(
-		config.InputQueueName,
-		connSettings,
-	)
+	inputQueue, err := middleware.CreateQueueMiddleware(config.InputQueueName, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
-	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(
-		config.PaymentTypeExchangeName,
-		[]string{},
-		connSettings,
-	)
+	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(config.PaymentTypeExchangeName, []string{}, connSettings)
 	if err != nil {
 		inputQueue.Close()
 		return nil, err
@@ -76,11 +67,7 @@ func (r *PaymentTypeRouter) Run() error {
 	return nil
 }
 
-func (r *PaymentTypeRouter) handleMessage(
-	msg middleware.Message,
-	ack,
-	nack func(),
-) {
+func (r *PaymentTypeRouter) handleMessage(msg middleware.Message, ack, nack func()) {
 	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
 	if err != nil {
 		nack()
@@ -89,8 +76,8 @@ func (r *PaymentTypeRouter) handleMessage(
 
 	switch moneyLaundry.GetType() {
 
-	case protobuf.MessageType_PERIODFILTER:
-		r.handlePeriodFilterMessage(msg, moneyLaundry, ack, nack)
+	case protobuf.MessageType_AVGBYTYPETRANSACTION:
+		r.handleAvgByTypeTransaction(msg, moneyLaundry, ack, nack)
 
 	case protobuf.MessageType_EOF_:
 		r.handleEOFMessage(msg, ack, nack)
@@ -100,12 +87,7 @@ func (r *PaymentTypeRouter) handleMessage(
 	}
 }
 
-func (r *PaymentTypeRouter) handlePeriodFilterMessage(
-	msg middleware.Message,
-	moneyLaundry *protobuf.MoneyLaundry,
-	ack,
-	nack func(),
-) {
+func (r *PaymentTypeRouter) handleAvgByTypeTransaction(msg middleware.Message, moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 
 	transaction, err := serializer.DeserializeTransaction(
 		moneyLaundry.GetPayload(),
