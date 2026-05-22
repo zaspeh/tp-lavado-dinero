@@ -127,3 +127,41 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 
 	return routers.NewPaymentTypeRouter(config)
 }
+
+func buildIntermediaryRouterWorker() (workers.Worker, error) {
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueue, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	exchangeName, err := getEnvStrict("AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	aggregateByIntermediaryWorkerAmount, err := getEnvIntStrict("AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
+	config := routers.IntermediaryRouterConfig{
+		InputQueueName:                inputQueue,
+		AggregateByIntermediaryName:   exchangeName,
+		AggregateByIntermediaryAmount: aggregateByIntermediaryWorkerAmount,
+		MomHost:                       host,
+		MomPort:                       port,
+	}
+
+	return routers.NewIntermediaryRouter(config)
+
+}

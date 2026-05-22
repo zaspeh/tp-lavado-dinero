@@ -24,6 +24,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildGroupByOriginWorker()
 	case "GROUP_BY_DESTINATION":
 		return buildGroupByDestinationWorker()
+	case "INTERMEDIARY_ROUTER":
+		return buildIntermediaryRouterWorker()
 	case "MICROTRANSACTION_JOIN":
 		return buildMicrotransactionJoinWorker()
 	case "AMOUNT_FILTER":
