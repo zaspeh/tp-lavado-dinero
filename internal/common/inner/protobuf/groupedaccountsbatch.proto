@@ -2,12 +2,9 @@ syntax = "proto3";
 
 package protobuf;
 
-option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+import "account.proto";
 
-message Account {
-  int32 bank = 1;
-  string account = 2;
-}
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 message GroupedAccounts {
   Account base_account = 1;

@@ -8,6 +8,8 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type IntermediaryRouter struct {
@@ -75,5 +77,34 @@ func (ir *IntermediaryRouter) handleSignals() {
 }
 
 func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack func()) {
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_GROUPED_ACCOUNTS_BATCH:
+		ir.handleBatch(moneyLaundry, ack, nack)
+	case protobuf.MessageType_EOF_:
+		ir.handleEOF(moneyLaundry, ack, nack)
+	default:
+		nack()
+	}
+}
+
+func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	/*batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.GroupedAccountsBatch{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	for _, group := range batch.GetGroups() {
+
+	*/
+}
+
+func (ir *IntermediaryRouter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	//TODO
 }

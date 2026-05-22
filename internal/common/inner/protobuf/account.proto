@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+message Account {
+  int32 bank = 1;
+  string account = 2;
+}
