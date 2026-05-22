@@ -103,7 +103,7 @@ func (af *AmountFilterWorker) handleConvertedAmountMessage(moneyLaundering *prot
 
 	amount := convertedAmountMsg.GetAmount()
 	if amount >= af.AmountToFilter {
-		nack()
+		ack()
 		return
 	}
 
