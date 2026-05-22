@@ -129,3 +129,18 @@ services:
       OUTPUT_QUEUE_NAME: grouped_destination_accounts
 
       MAX_BATCH_WEIGHT: 8000
+
+  avg_by_type:
+  count: 1
+  worker_type: AVG_BY_TYPE
+
+  env:
+    INPUT_EXCHANGE_NAME: payment_type_exchange
+
+    PERIOD_1_START: "2022-09-01T00:00:00Z"
+    PERIOD_1_END:   "2022-09-05T23:59:59Z"
+
+    PERIOD_2_START: "2022-09-06T00:00:00Z"
+    PERIOD_2_END:   "2022-09-15T23:59:59Z"
+
+    OUTPUT_QUEUE_NAME: avg_by_type_join_input
