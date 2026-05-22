@@ -88,7 +88,7 @@ func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack fu
 	case protobuf.MessageType_GROUPED_ACCOUNTS_BATCH:
 		ir.handleBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
-		ir.handleEOF(moneyLaundry, ack, nack)
+		ir.handleEOF(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
@@ -128,8 +128,14 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 	ack()
 }
 
-func (ir *IntermediaryRouter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	//TODO
+func (ir *IntermediaryRouter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	for _, key := range ir.aggregateByIntermediaryExchangeKeys {
+		if err := ir.aggregateByIntermediaryExchange.SendWithKey(key, msg); err != nil {
+			nack()
+			return
+		}
+	}
+	ack()
 }
 
 func (ir *IntermediaryRouter) selectWorkerKey(intermediary *protobuf.Account) string {
