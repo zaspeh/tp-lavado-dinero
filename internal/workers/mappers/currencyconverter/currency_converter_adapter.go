@@ -56,8 +56,8 @@ func NewCurrencyConverter(url string) (*CurrencyConverter, error) {
 	return &CurrencyConverter{Rates: finalRates}, nil
 }
 
-func (c *CurrencyConverter) ConvertToUSD(fullName string, amount float64) (float64, error) {
-	rate, ok := c.Rates[fullName]
+func (c *CurrencyConverter) ConvertToUSD(currencyName string, amount float64) (float64, error) {
+	rate, ok := c.Rates[currencyName]
 	if !ok {
 		return 0, ErrorCurrencyNotFound
 	}
