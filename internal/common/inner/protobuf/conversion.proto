@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+import "google/protobuf/timestamp.proto";
+
+message ToConvertTransaction {
+    google.protobuf.Timestamp timestamp = 1;
+    string amount_paid = 2;
+    string payment_currency = 3;
+    string payment_format = 4;
+}
+
+message ToConvertPeriodFiltered {
+    string amount_paid = 1;
+    string payment_currency = 2;
+    string payment_format = 3;
+}
+
+message ToConvertTypeFilteredPayment {
+    string amount_paid = 1;
+    string payment_currency = 2;
+}
+
+message ConvertedAmount {
+    string amount = 1;
+}
+
+message ConvertedMicroPaymentResult {
+    int64 count = 1;
+}

@@ -174,7 +174,20 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 }
 
 func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack func()) {
-	// Implementation for handling raw messages
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_TRANSACTION:
+		pf.handleTransactionMessage(moneyLaundry, msg, ack, nack)
+	case protobuf.MessageType_EOF_:
+		pf.handleEOFMessage(moneyLaundry, msg, ack, nack)
+	default:
+		nack()
+	}
 }
 
 func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
@@ -226,6 +239,26 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 	}
 
 	ack()
+}
+
+func (pf *PeriodFilterWorker) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
+	transactionMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.Transaction{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	if !pf.paymentTypePeriod.Contains(transactionMsg.GetTimestamp().AsTime()) {
+		
+	}
+
+	if err := publishToPaymentTypeQueue(transactionMsg), err != nil {
+		nack()
+		return
+	}
+
+	ack()
+		
 }
 
 func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *protobuf.PeriodFilter) error {
