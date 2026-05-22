@@ -89,6 +89,8 @@ services:
       PAYMENT_TYPE_ROUTER_QUEUE_NAME: payment_type_router_input
       QUERY3_PERIOD_1_START: "2022-09-01T00:00:00Z"
       QUERY3_PERIOD_1_END:   "2022-09-05T23:59:59Z"
+      QUERY3_PERIOD_2_START: "2022-09-06T00:00:00Z"
+      QUERY3_PERIOD_2_END:   "2022-09-15T23:59:59Z"
 
   payment_type_router:
     count: 1
@@ -131,19 +133,13 @@ services:
       MAX_BATCH_WEIGHT: 8000
 
   avg_by_type:
-  count: 1
-  worker_type: AVG_BY_TYPE
+    count: 1
+    worker_type: AVG_BY_TYPE
 
-  env:
-    INPUT_EXCHANGE_NAME: payment_type_exchange
+    env:
+      INPUT_EXCHANGE_NAME: payment_type_exchange
 
-    PERIOD_1_START: "2022-09-01T00:00:00Z"
-    PERIOD_1_END:   "2022-09-05T23:59:59Z"
-
-    PERIOD_2_START: "2022-09-06T00:00:00Z"
-    PERIOD_2_END:   "2022-09-15T23:59:59Z"
-
-    OUTPUT_QUEUE_NAME: avg_by_type_join_input
+      OUTPUT_QUEUE_NAME: avg_by_type_join_input
 
   payment_format_filter:
     count: 1
@@ -152,4 +148,22 @@ services:
       INPUT_QUEUE_NAME: payment_format_filter_input
       OUTPUT_QUEUE_NAME: conversion_format_input
       VALID_PAYMENT_FORMATS: "Wire,ACH"
-  
+
+  payment_type_router:
+    count: 1
+    worker_type: PAYMENT_TYPE_ROUTER
+    env:
+      INPUT_QUEUE_NAME: payment_type_router_input
+      PAYMENT_TYPE_EXCHANGE_NAME: payment_type_exchange
+      AVG_BY_TYPE_WORKER_AMOUNT: 1
+
+  avg_by_type_join:
+    count: 1
+    worker_type: AVG_BY_TYPE_JOIN
+
+    env:
+      INPUT_QUEUE_NAME: avg_by_type_join_input
+
+      CLIENT_EXCHANGE_NAME: client_results_exchange
+
+      EXPECTED_EOFS: 1

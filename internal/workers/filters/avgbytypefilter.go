@@ -1,8 +1,11 @@
 package filters
 
 import (
+	"log/slog"
+	"os"
+	"os/signal"
 	"strconv"
-	"time"
+	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
@@ -15,18 +18,12 @@ type AvgByTypeStats struct {
 }
 
 type AvgByTypeFilter struct {
-	inputExchange middleware.Middleware
-	outputQueue   middleware.Middleware
+	inputQueue  middleware.Middleware
+	outputQueue middleware.Middleware
 
-	period1Start time.Time
-	period1End   time.Time
+	period1Stats map[string]map[string]*AvgByTypeStats
 
-	period2Start time.Time
-	period2End   time.Time
-
-	period1Stats map[string]*AvgByTypeStats
-
-	period2Transactions map[string][]*protobuf.AvgByTypeTransaction
+	period2Transactions map[string]map[string][]*protobuf.AvgByTypeTransaction
 }
 
 type AvgByTypeFilterConfig struct {
@@ -35,96 +32,122 @@ type AvgByTypeFilterConfig struct {
 
 	MomHost string
 	MomPort int
-
-	Period1Start time.Time
-	Period1End   time.Time
-
-	Period2Start time.Time
-	Period2End   time.Time
 }
 
-func (af *AvgByTypeFilter) Run() error {
-	af.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
-		if err != nil {
-			nack()
-			return
-		}
+func NewAvgByTypeFilter(config AvgByTypeFilterConfig) (*AvgByTypeFilter, error) {
 
-		switch moneyLaundry.GetType() {
+	connSettings := middleware.ConnSettings{
+		Hostname: config.MomHost,
+		Port:     config.MomPort,
+	}
 
-		case protobuf.MessageType_AVGBYTYPETRANSACTION:
-			af.handleTransaction(moneyLaundry, ack, nack)
+	inputQueue, err := middleware.CreateQueueMiddleware(
+		config.InputQueueName,
+		connSettings,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-		case protobuf.MessageType_EOF_:
-			af.handleEOF(moneyLaundry, ack, nack)
+	outputQueue, err := middleware.CreateQueueMiddleware(
+		config.OutputQueueName,
+		connSettings,
+	)
+	if err != nil {
+		inputQueue.Close()
+		return nil, err
+	}
 
-		default:
-			nack()
-		}
-	},
+	return &AvgByTypeFilter{
+		inputQueue:          inputQueue,
+		outputQueue:         outputQueue,
+		period1Stats:        make(map[string]map[string]*AvgByTypeStats),
+		period2Transactions: make(map[string]map[string][]*protobuf.AvgByTypeTransaction),
+	}, nil
+}
+
+func (f *AvgByTypeFilter) Run() error {
+	go f.handleSignals()
+
+	f.inputQueue.StartConsuming(
+		func(msg middleware.Message, ack, nack func()) {
+
+			moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+			if err != nil {
+				nack()
+				return
+			}
+
+			switch moneyLaundry.GetType() {
+
+			case protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD:
+				f.handleFirstPeriod(moneyLaundry, ack, nack)
+
+			case protobuf.MessageType_AVGBYTYPE_SECOND_PERIOD:
+				f.handleSecondPeriod(moneyLaundry, ack, nack)
+
+			case protobuf.MessageType_EOF_:
+				f.handleEOF(moneyLaundry, ack, nack)
+
+			default:
+				nack()
+			}
+		},
 	)
 
 	return nil
 }
 
-func (f *AvgByTypeFilter) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+func (f *AvgByTypeFilter) handleFirstPeriod(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+
+	tx, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
 	if err != nil {
 		nack()
 		return
 	}
 
-	switch moneyLaundry.GetType() {
-
-	case protobuf.MessageType_AVGBYTYPETRANSACTION:
-		f.handleTransaction(moneyLaundry, ack, nack)
-
-	case protobuf.MessageType_EOF_:
-		f.handleEOF(moneyLaundry, ack, nack)
-
-	default:
-		nack()
-	}
-}
-
-func (f *AvgByTypeFilter) handleTransaction(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-
-	tx, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
-
+	amount, err := strconv.ParseFloat(tx.GetAmountPaid(), 64)
 	if err != nil {
 		nack()
 		return
 	}
 
 	clientID := moneyLaundry.GetClientID()
+	paymentFormat := tx.GetPaymentFormat()
 
-	timestamp := tx.GetTimestamp().AsTime()
+	if _, exists := f.period1Stats[clientID]; !exists {
+		f.period1Stats[clientID] = make(map[string]*AvgByTypeStats)
+	}
 
-	if timestamp.After(f.period1Start) && timestamp.Before(f.period1End) {
+	stats, exists := f.period1Stats[clientID][paymentFormat]
 
-		amount, err := strconv.ParseFloat(tx.GetAmountPaid(), 64) // está bien parsear a float? son solo en USD
-		if err != nil {
-			nack()
-			return
-		}
+	if !exists {
+		stats = &AvgByTypeStats{}
+		f.period1Stats[clientID][paymentFormat] = stats
+	}
 
-		stats, exists := f.period1Stats[clientID]
-		if !exists {
-			stats = &AvgByTypeStats{}
-			f.period1Stats[clientID] = stats
-		}
+	stats.Sum += amount
+	stats.Count++
 
-		stats.Sum += amount
-		stats.Count++
+	ack()
+}
 
-		ack()
+func (f *AvgByTypeFilter) handleSecondPeriod(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+
+	tx, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
+	if err != nil {
+		nack()
 		return
 	}
 
-	if timestamp.After(f.period2Start) && timestamp.Before(f.period2End) {
-		f.period2Transactions[clientID] = append(f.period2Transactions[clientID], tx)
+	clientID := moneyLaundry.GetClientID()
+	paymentFormat := tx.GetPaymentFormat()
+
+	if _, exists := f.period2Transactions[clientID]; !exists {
+		f.period2Transactions[clientID] = make(map[string][]*protobuf.AvgByTypeTransaction)
 	}
+
+	f.period2Transactions[clientID][paymentFormat] = append(f.period2Transactions[clientID][paymentFormat], tx)
 
 	ack()
 }
@@ -133,45 +156,50 @@ func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, na
 
 	clientID := moneyLaundry.GetClientID()
 
-	stats, exists := f.period1Stats[clientID]
+	statsByFormat, exists := f.period1Stats[clientID]
 
-	if !exists || stats.Count == 0 {
-
-		if err := f.outputQueue.Send(middleware.Message{Body: moneyLaundry.ProtoReflect().Bytes()}); err != nil {
-			nack()
-			return
-		}
-
-		ack()
-		return
+	if !exists {
+		statsByFormat = make(map[string]*AvgByTypeStats)
 	}
 
-	average := stats.Sum / float64(stats.Count)
+	transactionsByFormat := f.period2Transactions[clientID]
 
-	threshold := average / 100
+	for paymentFormat, stats := range statsByFormat {
 
-	for _, tx := range f.period2Transactions[clientID] {
-
-		amount, err := strconv.ParseFloat(tx.GetAmountPaid(), 64)
-		if err != nil {
+		if stats.Count == 0 {
 			continue
 		}
 
-		if amount >= threshold {
-			continue
-		}
+		average := stats.Sum / float64(stats.Count)
 
-		result := &protobuf.AvgByTypeResult{Account: tx.GetAccount(), AmountPaid: tx.GetAmountPaid()}
+		threshold := average / 100
 
-		msg, err := serializer.SerializeProtoMessageWithClientID(clientID, result, protobuf.MessageType_AVGBYTYPE_RESULT)
-		if err != nil {
-			nack()
-			return
-		}
+		for _, tx := range transactionsByFormat[paymentFormat] {
 
-		if err := f.outputQueue.Send(*msg); err != nil {
-			nack()
-			return
+			amount, err := strconv.ParseFloat(tx.GetAmountPaid(), 64)
+			if err != nil {
+				continue
+			}
+
+			if amount >= threshold {
+				continue
+			}
+
+			result := &protobuf.AvgByTypeResult{
+				Account:    tx.GetAccount(),
+				AmountPaid: tx.GetAmountPaid(),
+			}
+
+			msg, err := serializer.SerializeProtoMessageWithClientID(clientID, result, protobuf.MessageType_AVGBYTYPE_RESULT)
+			if err != nil {
+				nack()
+				return
+			}
+
+			if err := f.outputQueue.Send(*msg); err != nil {
+				nack()
+				return
+			}
 		}
 	}
 
@@ -190,4 +218,22 @@ func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, na
 	}
 
 	ack()
+}
+
+func (f *AvgByTypeFilter) handleSignals() {
+
+	signals := make(chan os.Signal, 1)
+
+	signal.Notify(
+		signals,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+
+	<-signals
+
+	slog.Info("shutdown signal received")
+
+	f.inputQueue.Close()
+	f.outputQueue.Close()
 }

@@ -1,6 +1,8 @@
 package routers
 
 import (
+	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -17,12 +19,17 @@ type PaymentTypeRouter struct {
 	inputQueue middleware.Middleware
 
 	paymentTypeExchange *middleware.ExchangeMiddleware
+
+	avgByTypeExchangeKeys []string
+	maxWorkersAmount      int
 }
 
 type PaymentTypeRouterConfig struct {
 	InputQueueName string
 
 	PaymentTypeExchangeName string
+
+	AvgByTypeWorkerAmount int
 
 	MomHost string
 	MomPort int
@@ -40,15 +47,23 @@ func NewPaymentTypeRouter(config PaymentTypeRouterConfig) (*PaymentTypeRouter, e
 		return nil, err
 	}
 
-	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(config.PaymentTypeExchangeName, []string{}, connSettings)
+	avgByTypeExchangeKeys := make([]string, config.AvgByTypeWorkerAmount)
+
+	for i := range avgByTypeExchangeKeys {
+		avgByTypeExchangeKeys[i] = fmt.Sprintf("%s.%d", config.PaymentTypeExchangeName, i)
+	}
+
+	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(config.PaymentTypeExchangeName, avgByTypeExchangeKeys, connSettings)
 	if err != nil {
 		inputQueue.Close()
 		return nil, err
 	}
 
 	return &PaymentTypeRouter{
-		inputQueue:          inputQueue,
-		paymentTypeExchange: paymentTypeExchange,
+		inputQueue:            inputQueue,
+		paymentTypeExchange:   paymentTypeExchange,
+		avgByTypeExchangeKeys: avgByTypeExchangeKeys,
+		maxWorkersAmount:      config.AvgByTypeWorkerAmount,
 	}, nil
 }
 
@@ -92,20 +107,15 @@ func (r *PaymentTypeRouter) handleAvgByTypeTransaction(msg middleware.Message, m
 		return
 	}
 
-	paymentFormat := transaction.GetPaymentFormat()
-
-	if paymentFormat == "" {
-		nack()
-		return
-	}
+	workerKey := r.selectWorkerKey(transaction.GetPaymentFormat())
 
 	slog.Debug(
 		"routing payment format",
-		"format", paymentFormat,
+		"format", workerKey,
 		"clientID", moneyLaundry.GetClientID(),
 	)
 
-	if err := r.paymentTypeExchange.SendWithKey(paymentFormat, msg); err != nil {
+	if err := r.paymentTypeExchange.SendWithKey(workerKey, msg); err != nil {
 		nack()
 		return
 	}
@@ -117,11 +127,12 @@ func (r *PaymentTypeRouter) handleEOFMessage(msg middleware.Message, ack, nack f
 
 	slog.Info("routing EOF to payment type workers")
 
-	if err := r.paymentTypeExchange.SendWithKey(eofRoutingKey, msg); err != nil {
-		nack()
-		return
+	for _, key := range r.avgByTypeExchangeKeys {
+		if err := r.paymentTypeExchange.SendWithKey(key, msg); err != nil {
+			nack()
+			return
+		}
 	}
-
 	ack()
 }
 
@@ -140,4 +151,13 @@ func (r *PaymentTypeRouter) handleSignals() {
 
 	r.inputQueue.Close()
 	r.paymentTypeExchange.Close()
+}
+
+func (r *PaymentTypeRouter) selectWorkerKey(paymentFormat string) string {
+
+	h := fnv.New32a()
+
+	_, _ = h.Write([]byte(paymentFormat))
+
+	return r.avgByTypeExchangeKeys[h.Sum32()%uint32(r.maxWorkersAmount)]
 }

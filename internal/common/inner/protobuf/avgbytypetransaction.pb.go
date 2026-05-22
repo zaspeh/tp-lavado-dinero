@@ -9,7 +9,6 @@ package protobuf
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -27,7 +26,6 @@ type AvgByTypeTransaction struct {
 	Account       string                 `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 	AmountPaid    string                 `protobuf:"bytes,2,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
 	PaymentFormat string                 `protobuf:"bytes,3,opt,name=payment_format,json=paymentFormat,proto3" json:"payment_format,omitempty"`
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -83,24 +81,16 @@ func (x *AvgByTypeTransaction) GetPaymentFormat() string {
 	return ""
 }
 
-func (x *AvgByTypeTransaction) GetTimestamp() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Timestamp
-	}
-	return nil
-}
-
 var File_internal_common_inner_protobuf_avgbytypetransaction_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_avgbytypetransaction_proto_rawDesc = "" +
 	"\n" +
-	"9internal/common/inner/protobuf/avgbytypetransaction.proto\x12\bprotobuf\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb2\x01\n" +
+	"9internal/common/inner/protobuf/avgbytypetransaction.proto\x12\bprotobuf\"x\n" +
 	"\x14AvgByTypeTransaction\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1f\n" +
 	"\vamount_paid\x18\x02 \x01(\tR\n" +
 	"amountPaid\x12%\n" +
-	"\x0epayment_format\x18\x03 \x01(\tR\rpaymentFormat\x128\n" +
-	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestampB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x0epayment_format\x18\x03 \x01(\tR\rpaymentFormatB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_avgbytypetransaction_proto_rawDescOnce sync.Once
@@ -116,16 +106,14 @@ func file_internal_common_inner_protobuf_avgbytypetransaction_proto_rawDescGZIP(
 
 var file_internal_common_inner_protobuf_avgbytypetransaction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_internal_common_inner_protobuf_avgbytypetransaction_proto_goTypes = []any{
-	(*AvgByTypeTransaction)(nil),  // 0: protobuf.AvgByTypeTransaction
-	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
+	(*AvgByTypeTransaction)(nil), // 0: protobuf.AvgByTypeTransaction
 }
 var file_internal_common_inner_protobuf_avgbytypetransaction_proto_depIdxs = []int32{
-	1, // 0: protobuf.AvgByTypeTransaction.timestamp:type_name -> google.protobuf.Timestamp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_avgbytypetransaction_proto_init() }

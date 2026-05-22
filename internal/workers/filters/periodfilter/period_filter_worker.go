@@ -319,9 +319,8 @@ func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg 
 func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, messageType protobuf.MessageType) error {
 
 	avgByTypeTransaction := &protobuf.AvgByTypeTransaction{
-		Account:       periodFilterMsg.GetAccount(),
-		AmountPaid:    periodFilterMsg.GetAmountPaid(),
-		PaymentFormat: periodFilterMsg.GetPaymentFormat(),
+		Account:    periodFilterMsg.GetAccount(),
+		AmountPaid: periodFilterMsg.GetAmountPaid(),
 	}
 
 	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, avgByTypeTransaction, messageType)

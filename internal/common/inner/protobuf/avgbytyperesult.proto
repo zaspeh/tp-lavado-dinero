@@ -4,8 +4,7 @@ package protobuf;
 
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
-message AvgByTypeTransaction {
+message AvgByTypeResult {
     string account = 1;
     string amount_paid = 2;
-    string payment_format = 3;
 }
