@@ -119,7 +119,7 @@ func (cc *ClientConnection) Run() error {
 func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {
 	slog.Debug("Received transaction batch from client", "clientID", cc.id, "batchSize", len(msg))
 	for _, transaction := range msg {
-		protoTransaction, err := messagehandler.TransactionToProtoMessage(transaction)
+		protoTransaction, err := messagehandler.RawTransactionToProtoTransaction(transaction)
 		if err != nil {
 			return err
 		}
@@ -128,15 +128,10 @@ func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch)
 			return err
 		}
 
-		//TODO, manejar batch para q5
-		// wrappedMessage, err := messagehandler.TransactionToConvertionTransaction(cc.id, transaction)
-		// if err != nil {
-		// 	return err
-		// }
-
-		// if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
-		// 	return err
-		// }
+		protoToConvertTransaction := messagehandler.ProtoTransactionToProtoConvTransaction(protoTransaction)
+		if err := cc.rawDataBatcher.Add(protoToConvertTransaction); err != nil {
+			return err
+		}
 
 		cc.transactionCounter++
 	}
@@ -157,7 +152,15 @@ func (cc *ClientConnection) sendTransactionBatch(batch *protobuf.TransactionBatc
 }
 
 func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConvertTransactionBatch) error {
-	return nil
+	innerMessage := &protobuf.MoneyLaundry_ToConvertBatch{
+		ToConvertBatch: batch,
+	}
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH, innerMessage)
+	if err != nil {
+		return err
+	}
+
+	return cc.currencyFilterQueue.Send(msg)
 }
 
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {

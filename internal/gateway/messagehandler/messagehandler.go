@@ -17,7 +17,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
-func TransactionToProtoMessage(msg request.Transaction) (*protobuf.Transaction, error) {
+func RawTransactionToProtoTransaction(msg request.Transaction) (*protobuf.Transaction, error) {
 	reader := csv.NewReader(strings.NewReader(msg.Record))
 	fields, err := reader.Read()
 
@@ -65,32 +65,14 @@ func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
 	return serializer.SerializeProtoMessageWithClientID(clientID, eofMessage, pb.MessageType_EOF_)
 }
 
-func TransactionToConvertionTransaction(clientID string, msg request.Transaction) (*m.Message, error) {
-	reader := csv.NewReader(strings.NewReader(msg.Record))
-
-	fields, err := reader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing csv: %w", err)
-	}
-
-	// son 11 campos, el ultimo es is laundering que no nos importa
-	if len(fields) < 10 {
-		return nil, fmt.Errorf("invalid record: expected 10 fields, got %d", len(fields))
-	}
-
-	timestamp, err := time.Parse("2006/01/02 15:04", fields[0])
-	if err != nil {
-		return nil, fmt.Errorf("invalid timestamp: %w", err)
-	}
-
+func ProtoTransactionToProtoConvTransaction(msg *pb.Transaction) *pb.ToConvertTransaction {
 	convertionTransaction := &pb.ToConvertTransaction{
-		Timestamp:       timestamppb.New(timestamp),
-		AmountPaid:      fields[7],
-		PaymentCurrency: fields[8],
-		PaymentFormat:   fields[9],
+		Timestamp:       msg.GetTimestamp(),
+		AmountPaid:      msg.GetAmountPaid(),
+		PaymentCurrency: msg.GetPaymentCurrency(),
+		PaymentFormat:   msg.GetPaymentFormat(),
 	}
-
-	return serializer.SerializeProtoMessageWithClientID(clientID, convertionTransaction, pb.MessageType_TO_CONVERT_TRANSACTION)
+	return convertionTransaction
 }
 
 func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxBankResult, error) {
