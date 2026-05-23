@@ -237,11 +237,7 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 		nack()
 		return
 	}
-	slog.Info(
-		"period filter client id",
-		"clientID",
-		moneyLaundry.GetClientID(),
-	)
+
 	timestamp := periodFilterMsg.GetTimestamp().AsTime()
 
 	// filtro por periodo Q3
@@ -261,11 +257,6 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 }
 
 func (pf *PeriodFilterWorker) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	slog.Info(
-		"received money laundry",
-		"clientID", moneyLaundry.GetClientID(),
-		"type", moneyLaundry.GetType(),
-	)
 	transactionMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ToConvertTransaction{})
 	if err != nil {
 		nack()
@@ -327,19 +318,11 @@ func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg 
 }
 
 func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, messageType protobuf.MessageType) error {
-
 	avgByTypeTransaction := &protobuf.AvgByTypeTransaction{
 		Account:       periodFilterMsg.GetAccount(),
 		AmountPaid:    periodFilterMsg.GetAmountPaid(),
 		PaymentFormat: periodFilterMsg.GetPaymentFormat(),
 	}
-
-	slog.Info(
-		"sending to payment type router",
-		"clientID", clientID,
-		"paymentFormat", periodFilterMsg.GetPaymentFormat(),
-		"amount", periodFilterMsg.GetAmountPaid(),
-	)
 
 	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, avgByTypeTransaction, messageType)
 
