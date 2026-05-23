@@ -122,17 +122,20 @@ func (c *Client) processTransactions() error {
 	scanner := bufio.NewScanner(file)
 	scanner.Scan() // skip header
 
-	// Closure necesario por el uso de scanner, revisar como mejorarlo
-	next := func() (request.Transaction, bool) {
-		if !scanner.Scan() {
-			return request.Transaction{}, false
+	batcher := batch.NewBatcher(c.transactionBatch, c.sendTransactionBatch)
+
+	for scanner.Scan() {
+		record := scanner.Text()
+		transaction := request.NewTransaction(record)
+		if err := batcher.Add(transaction); err != nil {
+			slog.Debug("Error while adding transaction to batcher", "err", err)
+			return err
 		}
-		return request.NewTransaction(scanner.Text()), true
 	}
 
-	err = batch.ForEachFlushed(c.transactionBatch, next, c.sendTransactionBatch)
-	if err != nil {
-		slog.Debug("Error while processing transactions", "err", err)
+	// liberamos el batcher por si quedó algo pendiente
+	if err := batcher.Flush(); err != nil {
+		slog.Debug("Error while flushing batcher", "err", err)
 		return err
 	}
 
