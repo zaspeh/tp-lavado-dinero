@@ -73,7 +73,7 @@ services:
     
 
   period_filter:
-    count: 0
+    count: 1
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -174,7 +174,7 @@ services:
       EXPECTED_EOFS: 1
       
   payment_format_filter:
-    count: 0
+    count: 1
     worker_type: FORMAT_FILTER
     env:
       INPUT_QUEUE_NAME: payment_format_filter_input
@@ -182,7 +182,7 @@ services:
       VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   currency_converter:
-    count: 0
+    count: 1
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
@@ -190,7 +190,7 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 0
+    count: 1
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
@@ -198,7 +198,7 @@ services:
       AMOUNT_TO_FILTER: 1.00
 
   converter_join:
-    count: 0
+    count: 1
     worker_type: CONVERSION_JOIN
     env:
       INPUT_QUEUE_NAME: conversion_join_input_queue

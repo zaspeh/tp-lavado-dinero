@@ -16,7 +16,7 @@ import (
 
 const (
 	// TODO CAMBIAR A ENV VAR DESPUES
-	eofAmountExpected = 1
+	eofAmountExpected = 2
 )
 
 type ClientConnectionConfig struct {
@@ -160,7 +160,7 @@ func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConv
 		return err
 	}
 
-	return cc.currencyFilterQueue.Send(msg)
+	return cc.rawDataQueue.Send(msg)
 }
 
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
@@ -168,6 +168,10 @@ func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 
 	// Liberamos el batcher por si quedó algo pendiente
 	if err := cc.transactionBatcher.Flush(); err != nil {
+		return err
+	}
+
+	if err := cc.rawDataBatcher.Flush(); err != nil {
 		return err
 	}
 

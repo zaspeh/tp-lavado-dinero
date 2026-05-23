@@ -185,15 +185,15 @@ func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack
 }
 
 func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_TO_CONVERT_TRANSACTION:
-		pf.handleTransactionMessage(moneyLaundry, ack, nack)
+	case protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH:
+		pf.handleToConvertBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		// funcionalidad a revisar, hay problemas de EOF
 		pf.handleEOFMessageFromRaw(msg, ack, nack)
@@ -256,21 +256,19 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 	ack()
 }
 
-func (pf *PeriodFilterWorker) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	transactionMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ToConvertTransaction{})
-	if err != nil {
-		nack()
-		return
-	}
+func (pf *PeriodFilterWorker) handleToConvertBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	toConvertBatch := moneyLaundry.GetToConvertBatch()
+	items := toConvertBatch.GetItems()
+	for _, transactionMsg := range items {
+		if !pf.paymentTypePeriod.Contains(transactionMsg.GetTimestamp().AsTime()) {
+			continue
+		}
 
-	if !pf.paymentTypePeriod.Contains(transactionMsg.GetTimestamp().AsTime()) {
-		ack()
-		return
-	}
-
-	if err := pf.publishToPaymentTypeQueue(transactionMsg); err != nil {
-		nack()
-		return
+		slog.Debug("Publishing transaction to payment type filter", "timestamp", transactionMsg.GetTimestamp().AsTime())
+		if err := pf.publishToPaymentTypeQueue(transactionMsg); err != nil {
+			nack()
+			return
+		}
 	}
 	ack()
 }
