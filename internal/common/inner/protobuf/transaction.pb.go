@@ -132,7 +132,7 @@ func (x *Transaction) GetPaymentFormat() string {
 
 type TransactionBatch struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Transaction   []*Transaction         `protobuf:"bytes,1,rep,name=transaction,proto3" json:"transaction,omitempty"`
+	Transactions  []*Transaction         `protobuf:"bytes,1,rep,name=transactions,proto3" json:"transactions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -167,9 +167,9 @@ func (*TransactionBatch) Descriptor() ([]byte, []int) {
 	return file_internal_common_inner_protobuf_transaction_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *TransactionBatch) GetTransaction() []*Transaction {
+func (x *TransactionBatch) GetTransactions() []*Transaction {
 	if x != nil {
-		return x.Transaction
+		return x.Transactions
 	}
 	return nil
 }
@@ -190,9 +190,9 @@ const file_internal_common_inner_protobuf_transaction_proto_rawDesc = "" +
 	"\x10payment_currency\x18\a \x01(\tR\x0fpaymentCurrency\x12\x1f\n" +
 	"\vamount_paid\x18\b \x01(\tR\n" +
 	"amountPaid\x12%\n" +
-	"\x0epayment_format\x18\t \x01(\tR\rpaymentFormat\"K\n" +
-	"\x10TransactionBatch\x127\n" +
-	"\vtransaction\x18\x01 \x03(\v2\x15.protobuf.TransactionR\vtransactionB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x0epayment_format\x18\t \x01(\tR\rpaymentFormat\"M\n" +
+	"\x10TransactionBatch\x129\n" +
+	"\ftransactions\x18\x01 \x03(\v2\x15.protobuf.TransactionR\ftransactionsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_transaction_proto_rawDescOnce sync.Once
@@ -214,7 +214,7 @@ var file_internal_common_inner_protobuf_transaction_proto_goTypes = []any{
 }
 var file_internal_common_inner_protobuf_transaction_proto_depIdxs = []int32{
 	2, // 0: protobuf.Transaction.timestamp:type_name -> google.protobuf.Timestamp
-	0, // 1: protobuf.TransactionBatch.transaction:type_name -> protobuf.Transaction
+	0, // 1: protobuf.TransactionBatch.transactions:type_name -> protobuf.Transaction
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name

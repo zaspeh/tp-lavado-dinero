@@ -19,5 +19,5 @@ message Transaction {
 }
 
 message TransactionBatch {
-	repeated Transaction transaction = 1;
+	repeated Transaction transactions = 1;
 }

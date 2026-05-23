@@ -3,11 +3,13 @@ package clientconnection
 import (
 	"log/slog"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/messagehandler"
 )
@@ -25,6 +27,7 @@ type ClientConnectionConfig struct {
 	CurrencyFilterQueueName string
 	RawDataQueueName        string
 	ClientExchangeName      string
+	MaxBatchWeight          int
 }
 
 type ClientConnection struct {
@@ -35,6 +38,8 @@ type ClientConnection struct {
 	resultExchange      *m.ExchangeMiddleware
 	EOFamountReceived   int
 	transactionCounter  int
+	MaxBatchWeight      int
+	transactionBatcher  *batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
 }
 
 func New(config ClientConnectionConfig) (*ClientConnection, error) {
@@ -74,7 +79,19 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 	}, nil
 }
 
+func (cc *ClientConnection) setUpBatchers() {
+	transactionBatch := batch.New(
+		cc.MaxBatchWeight,
+		protowrappers.ProtoSizer[*protobuf.Transaction](),
+		protowrappers.WrapTransactions,
+	)
+
+	// Set up despues de inicializacion para tener acceso a cc.sendTransactionBatch
+	cc.transactionBatcher = batch.NewBatcher(transactionBatch, cc.sendTransactionBatch)
+}
+
 func (cc *ClientConnection) Run() error {
+	cc.setUpBatchers()
 	go cc.resultExchange.StartConsuming(func(msg m.Message, ack, nack func()) {
 		cc.handleResult(msg, ack, nack)
 	})
@@ -118,16 +135,17 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {
 	slog.Debug("Received transaction batch from client", "clientID", cc.id, "batchSize", len(msg))
 	for _, transaction := range msg {
-		wrappedMessage, err := messagehandler.TransactionToProto(cc.id, transaction)
+		protoTransaction, err := messagehandler.TransactionToProtoMessage(transaction)
 		if err != nil {
 			return err
 		}
 
-		if err := cc.currencyFilterQueue.Send(*wrappedMessage); err != nil {
+		if err := cc.transactionBatcher.Add(protoTransaction); err != nil {
 			return err
 		}
 
-		wrappedMessage, err = messagehandler.TransactionToConvertionTransaction(cc.id, transaction)
+		//TODO, manejar batch para q5
+		wrappedMessage, err := messagehandler.TransactionToConvertionTransaction(cc.id, transaction)
 		if err != nil {
 			return err
 		}
@@ -135,14 +153,32 @@ func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch)
 		if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
 			return err
 		}
+
 		cc.transactionCounter++
 	}
 
 	return cc.protocol.SendAck()
 }
 
+func (cc *ClientConnection) sendTransactionBatch(batch *protobuf.TransactionBatch) error {
+	innerMessage := &protobuf.MoneyLaundry_Transactions{
+		Transactions: batch,
+	}
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TRANSACTION_BATCH, innerMessage)
+	if err != nil {
+		return err
+	}
+
+	return cc.currencyFilterQueue.Send(msg)
+}
+
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 	slog.Info("Received EOF from client", "clientID", cc.id)
+
+	// Liberamos el batcher por si quedó algo pendiente
+	if err := cc.transactionBatcher.Flush(); err != nil {
+		return err
+	}
 
 	wrappedMessage, err := messagehandler.EOFToProto(
 		cc.id,
