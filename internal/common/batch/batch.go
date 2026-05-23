@@ -33,6 +33,8 @@ func New[T any, V any](maxWeight int, sizer Sizer[T], wrapper Wrapper[T, V]) *Ba
 
 func (b *Batch[T, V]) TryAdd(item T) bool {
 	w := b.sizer(item)
+
+	// Si el item individual excede el maxWeight, lo agregamos igual
 	if b.currentWeight+w > b.maxWeight && len(b.items) > 0 {
 		return false
 	}
