@@ -64,19 +64,6 @@ func (p *ExternalProtocol) receiveMsgType() (uint8, error) {
 	return serializer.DeserializeUint8(msgTypeBytes), nil
 }
 
-func (p *ExternalProtocol) SendTransaction(transactionMessage request.Transaction) error {
-	if err := p.sendMsgType(transaction); err != nil {
-		return err
-	}
-	serializeLength := serializer.SerializeUint16(uint16(len(transactionMessage.Record)))
-	serializeString := serializer.SerializeString(transactionMessage.Record)
-	err := p.socket.WriteAll(append(serializeLength, serializeString...))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (p *ExternalProtocol) SendTransactionBatch(transactions []request.Transaction) error {
 	if len(transactions) == 0 {
 		return nil
@@ -207,8 +194,6 @@ func (p *ExternalProtocol) ReceiveMsg() (request.Message, error) {
 		return nil, err
 	}
 	switch msgType {
-	case transaction:
-		return p.ReceiveTransaction()
 	case transactionBatch:
 		return p.ReceiveTransactionBatch()
 	case eof:
@@ -216,20 +201,6 @@ func (p *ExternalProtocol) ReceiveMsg() (request.Message, error) {
 	default:
 		return nil, ErrInvalidMessageType
 	}
-}
-
-func (p *ExternalProtocol) ReceiveTransaction() (request.Transaction, error) {
-	stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
-	if err != nil {
-		return request.Transaction{}, err
-	}
-	stringLength := serializer.DeserializeUint16(stringLengthBytes)
-	stringBytes, err := p.socket.ReadAll(int(stringLength))
-	if err != nil {
-		return request.Transaction{}, err
-	}
-	record := serializer.DeserializeString(stringBytes)
-	return request.NewTransaction(record), nil
 }
 
 func (p *ExternalProtocol) ReceiveTransactionBatch() (request.TransactionBatch, error) {

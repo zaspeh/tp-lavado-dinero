@@ -8,10 +8,6 @@ func NewTransaction(record string) Transaction {
 	return Transaction{Record: record}
 }
 
-func (t Transaction) Handle(handler MessageHandler) error {
-	return handler.HandleTransaction(t)
-}
-
 type TransactionBatch []Transaction
 
 func (tb TransactionBatch) Handle(handler MessageHandler) error {
