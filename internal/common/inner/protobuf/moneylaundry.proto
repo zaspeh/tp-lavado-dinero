@@ -4,6 +4,8 @@ package protobuf;
 
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
+import "internal/common/inner/protobuf/transaction.proto";
+
 enum MessageType {
     EOF_ = 0;
     TRANSACTION = 1;
