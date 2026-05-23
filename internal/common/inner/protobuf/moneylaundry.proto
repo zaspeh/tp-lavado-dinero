@@ -26,10 +26,17 @@ enum MessageType {
 
     AVGBYTYPE_FIRST_PERIOD = 17;
     AVGBYTYPE_SECOND_PERIOD = 18;
+
+    TRANSACTION_BATCH = 19;
 }
 
 message MoneyLaundry {
     string clientID = 1;
     MessageType type = 2;
     bytes payload = 3;
+    // Se ingresa oneof aparte para que coexista con el resto del sistema
+    // la idea es eliminar payload para obtimizar la serializacion
+    oneof inner_message {
+        TransactionBatch transactions = 4;
+    }
 }

@@ -15,7 +15,8 @@ services:
   client:
     count: 1
     datasets_dir: ./datasets
-    output_dir: ./outputs     
+    output_dir: ./outputs  
+    max_batch_weight: 8000   
     
   currency_filter:
     count: 1

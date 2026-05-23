@@ -25,11 +25,17 @@ func buildClient() (*client.Client, error) {
 		return nil, err
 	}
 
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
+
 	config := client.ClientConfig{
-		ServerHost: serverHost,
-		ServerPort: serverPort,
-		InputFile:  inputFile,
-		OutputDir:  outputDir,
+		ServerHost:     serverHost,
+		ServerPort:     serverPort,
+		InputFile:      inputFile,
+		OutputDir:      outputDir,
+		MaxBatchWeight: maxBatchWeight,
 	}
 
 	return client.New(config)

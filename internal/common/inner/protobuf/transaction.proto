@@ -17,3 +17,7 @@ message Transaction {
 	string amount_paid = 8; //	chequear el tipo de este campo.
 	string payment_format = 9;
 }
+
+message TransactionBatch {
+	repeated Transaction transaction = 1;
+}

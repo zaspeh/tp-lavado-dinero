@@ -64,6 +64,7 @@ def build_client(cfg, i):
     
     host_datasets = client_cfg.get('datasets_dir', './datasets')
     host_output_base = client_cfg.get('output_dir_base', './outputs')
+    max_batch_weight = client_cfg.get('max_batch_weight', 8192)
 
     return {
         'build': {
@@ -77,7 +78,8 @@ def build_client(cfg, i):
             f'SERVER_PORT={gateway_port}',
             f'INPUT_FILE_TRANSACTIONS=/datasets/client_{i}_transactions.csv',
             f'INPUT_FILE_ACCOUNTS=/datasets/client_{i}_accounts.csv',
-            'OUTPUT_DIR=/outputs' 
+            'OUTPUT_DIR=/outputs',
+            f'MAX_BATCH_WEIGHT={max_batch_weight}'
         ],
         'volumes': [
             f'{host_datasets}:/datasets',
