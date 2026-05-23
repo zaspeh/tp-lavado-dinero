@@ -6,14 +6,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func ProtoSizer[T proto.Message]() batch.Sizer[T] {
+	return func(item T) int {
+		return proto.Size(item)
+	}
+}
+
 func WrapTransactions(transactions []*protobuf.Transaction) *protobuf.TransactionBatch {
 	return &protobuf.TransactionBatch{
 		Transactions: transactions,
 	}
 }
 
-func ProtoSizer[T proto.Message]() batch.Sizer[T] {
-	return func(item T) int {
-		return proto.Size(item)
+func WrapToConvertTransactions(transactions []*protobuf.ToConvertTransaction) *protobuf.ToConvertTransactionBatch {
+	return &protobuf.ToConvertTransactionBatch{
+		Items: transactions,
 	}
 }

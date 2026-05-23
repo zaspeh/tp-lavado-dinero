@@ -40,6 +40,7 @@ type ClientConnection struct {
 	transactionCounter  int
 	MaxBatchWeight      int
 	transactionBatcher  *batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
+	rawDataBatcher      *batch.Batcher[*protobuf.ToConvertTransaction, *protobuf.ToConvertTransactionBatch]
 }
 
 func New(config ClientConnectionConfig) (*ClientConnection, error) {
@@ -86,8 +87,15 @@ func (cc *ClientConnection) setUpBatchers() {
 		protowrappers.WrapTransactions,
 	)
 
+	toConvertTransactionBatch := batch.New(
+		cc.MaxBatchWeight,
+		protowrappers.ProtoSizer[*protobuf.ToConvertTransaction](),
+		protowrappers.WrapToConvertTransactions,
+	)
+
 	// Set up despues de inicializacion para tener acceso a cc.sendTransactionBatch
 	cc.transactionBatcher = batch.NewBatcher(transactionBatch, cc.sendTransactionBatch)
+	cc.rawDataBatcher = batch.NewBatcher(toConvertTransactionBatch, cc.sendToConvertTransactionBatch)
 }
 
 func (cc *ClientConnection) Run() error {
@@ -146,6 +154,10 @@ func (cc *ClientConnection) sendTransactionBatch(batch *protobuf.TransactionBatc
 	}
 
 	return cc.currencyFilterQueue.Send(msg)
+}
+
+func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConvertTransactionBatch) error {
+	return nil
 }
 
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {

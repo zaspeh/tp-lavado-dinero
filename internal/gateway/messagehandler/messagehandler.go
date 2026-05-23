@@ -3,7 +3,6 @@ package messagehandler
 import (
 	"encoding/csv"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -56,58 +55,6 @@ func TransactionToProtoMessage(msg request.Transaction) (*protobuf.Transaction, 
 		PaymentFormat:   fields[9],
 	}
 	return transaction, nil
-}
-
-func TransactionToProto(clientID string, msg request.Transaction) (*m.Message, error) {
-	reader := csv.NewReader(strings.NewReader(msg.Record))
-
-	fields, err := reader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing csv: %w", err)
-	}
-
-	if len(fields) < 10 {
-		return nil, fmt.Errorf("invalid record: expected 10 fields, got %d", len(fields))
-	}
-
-	fromBank, err := strconv.Atoi(fields[1])
-	if err != nil {
-		return nil, err
-	}
-
-	toBank, err := strconv.Atoi(fields[3])
-	if err != nil {
-		return nil, err
-	}
-
-	timestamp, err := time.Parse("2006/01/02 15:04", fields[0])
-	if err != nil {
-		return nil, fmt.Errorf("invalid timestamp: %w", err)
-	}
-
-	transaction := &pb.Transaction{
-		ClientID:  clientID,
-		Timestamp: timestamppb.New(timestamp),
-		FromBank:  int32(fromBank),
-		ToBank:    int32(toBank),
-		Account:   fields[2],
-		ToAccount: fields[4],
-
-		AmountPaid:      fields[7],
-		PaymentCurrency: fields[8],
-		PaymentFormat:   fields[9],
-	}
-	slog.Info(
-		"transaction created",
-		"amount", transaction.GetAmountPaid(),
-		"currency", transaction.GetPaymentCurrency(),
-		"paymentFormat", transaction.GetPaymentFormat(),
-		"f5", fields[5],
-		"f6", fields[6],
-		"f7", fields[7],
-	)
-	return serializer.SerializeProtoMessage(transaction, pb.MessageType_TRANSACTION)
-
 }
 
 func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
