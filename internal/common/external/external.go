@@ -188,6 +188,8 @@ func (p *ExternalProtocol) ReceiveMsg() (request.Message, error) {
 	switch msgType {
 	case transaction:
 		return p.ReceiveTransaction()
+	case transactionBatch:
+		return p.ReceiveTransactionBatch()
 	case eof:
 		return request.EOF{}, nil
 	default:
@@ -207,6 +209,29 @@ func (p *ExternalProtocol) ReceiveTransaction() (request.Transaction, error) {
 	}
 	record := serializer.DeserializeString(stringBytes)
 	return request.NewTransaction(record), nil
+}
+
+func (p *ExternalProtocol) ReceiveTransactionBatch() (request.TransactionBatch, error) {
+	batchLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
+	if err != nil {
+		return nil, err
+	}
+	batchLength := serializer.DeserializeUint16(batchLengthBytes)
+	transactions := make([]request.Transaction, batchLength)
+	for i := range transactions {
+		stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
+		if err != nil {
+			return nil, err
+		}
+		stringLength := serializer.DeserializeUint16(stringLengthBytes)
+		stringBytes, err := p.socket.ReadAll(int(stringLength))
+		if err != nil {
+			return nil, err
+		}
+		record := serializer.DeserializeString(stringBytes)
+		transactions[i] = request.NewTransaction(record)
+	}
+	return request.NewTransactionBatch(transactions), nil
 }
 
 func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {

@@ -32,7 +32,7 @@ type Client struct {
 	running          atomic.Bool
 	protocol         *external.ExternalProtocol
 	writer           *storage.ResultCSVWriter
-	transactionBatch *batch.Batch[request.Transaction, []request.Transaction]
+	transactionBatch *batch.Batch[request.Transaction, request.TransactionBatch]
 }
 
 func connectWithRetry(host string, port string) (*socket.Socket, error) {
@@ -150,7 +150,7 @@ func (c *Client) processTransactions() error {
 	return c.protocol.WaitAck()
 }
 
-func (c *Client) sendTransactionBatch(transactions []request.Transaction) error {
+func (c *Client) sendTransactionBatch(transactions request.TransactionBatch) error {
 	if err := c.protocol.SendTransactionBatch(transactions); err != nil {
 		return err
 	}

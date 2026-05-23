@@ -115,6 +115,10 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 	return cc.protocol.SendAck()
 }
 
+func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {
+	return nil
+}
+
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 	slog.Info("Received EOF from client", "clientID", cc.id)
 

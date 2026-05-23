@@ -12,7 +12,13 @@ func (t Transaction) Handle(handler MessageHandler) error {
 	return handler.HandleTransaction(t)
 }
 
+type TransactionBatch []Transaction
+
+func (tb TransactionBatch) Handle(handler MessageHandler) error {
+	return handler.HandleTransactionBatch(tb)
+}
+
 // Implementacion Naive, para respetar la firma de Wrapper
-func NewTransactionBatch(records []Transaction) []Transaction {
-	return records
+func NewTransactionBatch(records []Transaction) TransactionBatch {
+	return TransactionBatch(records)
 }
