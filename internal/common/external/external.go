@@ -16,11 +16,10 @@ import (
 
 const (
 	transaction uint8 = iota
-
+	transactionBatch
 	microtransactionResult
 	maxBankResult
 	convertedMicroPaymentResult
-
 	eof
 	ack
 	nack
@@ -76,8 +75,28 @@ func (p *ExternalProtocol) SendTransaction(transactionMessage request.Transactio
 	return nil
 }
 
-func (p *ExternalProtocol) SendResult() error { // podríamos borrarlo
-	return nil
+func (p *ExternalProtocol) SendTransactionBatch(transactions []request.Transaction) error {
+	if len(transactions) == 0 {
+		return nil
+	}
+
+	totalSize := p.HeaderSizeForTransactions()
+
+	payloads := make([][]byte, len(transactions))
+	for i, tx := range transactions {
+		payloads[i] = serializer.SerializeString(tx.Record)
+		totalSize += p.TransactionSize(tx)
+	}
+
+	buf := make([]byte, 0, totalSize)
+	buf = append(buf, serializer.SerializeUint8(transactionBatch)...)
+	buf = append(buf, serializer.SerializeUint16(uint16(len(transactions)))...)
+	for i, tx := range transactions {
+		buf = append(buf, serializer.SerializeUint16(uint16(len(tx.Record)))...)
+		buf = append(buf, payloads[i]...)
+	}
+
+	return p.socket.WriteAll(buf)
 }
 
 func (p *ExternalProtocol) SendMicrotransactionResult(result *result.MicrotransactionResult) error {

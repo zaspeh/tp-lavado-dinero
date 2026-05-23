@@ -120,27 +120,20 @@ func (c *Client) processTransactions() error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	scanner.Scan() // skip header
 
-	if scanner.Scan() {
-		slog.Debug("Header skipped", "header", scanner.Text())
+	// Closure necesario por el uso de scanner, revisar como mejorarlo
+	next := func() (request.Transaction, bool) {
+		if !scanner.Scan() {
+			return request.Transaction{}, false
+		}
+		return request.NewTransaction(scanner.Text()), true
 	}
 
-	for scanner.Scan() {
-		if !c.running.Load() {
-			break
-		}
-		record := scanner.Text()
-		transactionMessage := request.NewTransaction(record)
-		err := c.protocol.SendTransaction(transactionMessage)
-		if err != nil {
-			slog.Debug("Error while sending transaction", "err", err)
-			return err
-		}
-		err = c.protocol.WaitAck()
-		if err != nil {
-			slog.Debug("Error while waiting ack", "err", err)
-			return err
-		}
+	err = batch.ForEachFlushed(c.transactionBatch, next, c.sendTransactionBatch)
+	if err != nil {
+		slog.Debug("Error while processing transactions", "err", err)
+		return err
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -154,14 +147,14 @@ func (c *Client) processTransactions() error {
 		return err
 	}
 
-	err = c.protocol.WaitAck()
-	if err != nil {
+	return c.protocol.WaitAck()
+}
+
+func (c *Client) sendTransactionBatch(transactions []request.Transaction) error {
+	if err := c.protocol.SendTransactionBatch(transactions); err != nil {
 		return err
 	}
-
-	slog.Info("EOF ack received")
-
-	return nil
+	return c.protocol.WaitAck()
 }
 
 func (c *Client) receiveResults() error {
