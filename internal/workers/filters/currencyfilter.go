@@ -69,16 +69,15 @@ func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 
 func (f *CurrencyFilter) Run() error {
 	f.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+		moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 		if err != nil {
 			nack()
 			return
 		}
 
 		switch moneyLaundry.Type {
-		case protobuf.MessageType_TRANSACTION:
-			f.handleTransactionMessage(moneyLaundry, ack, nack)
-
+		case protobuf.MessageType_TRANSACTION_BATCH:
+			f.handleTransactionBatchMessage(moneyLaundry, ack, nack)
 		case protobuf.MessageType_EOF_:
 			f.broadcastEOFMessage(msg, ack, nack)
 		default:
@@ -89,28 +88,18 @@ func (f *CurrencyFilter) Run() error {
 	return nil
 }
 
-func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	transaction, err := serializer.DeserializeTransaction(moneyLaundry.Payload, &protobuf.Transaction{})
-	if err != nil {
-		nack()
-		return
-	}
+func (f *CurrencyFilter) handleTransactionBatchMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	transactions := moneyLaundry.GetTransactions().GetTransactions()
 	clientID := moneyLaundry.GetClientID()
-
-	// TODO: El gateway no propaga ClientID en MoneyLaundry para TRANSACTION.
-	// Temporalmente usamos el ClientID embebido en Transaction para Query 3.
-	if clientID == "" {
-		clientID = transaction.GetClientID()
-	}
-
-	if transaction.GetPaymentCurrency() == f.currencyToFilter {
-		err := f.broadcastToQueues(clientID, transaction)
-		if err != nil {
-			nack()
-			return
+	for _, transaction := range transactions {
+		if transaction.GetPaymentCurrency() == f.currencyToFilter {
+			err := f.broadcastToQueues(clientID, transaction)
+			if err != nil {
+				nack()
+				return
+			}
 		}
 	}
-
 	ack()
 }
 

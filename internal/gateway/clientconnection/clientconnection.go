@@ -108,30 +108,6 @@ func (cc *ClientConnection) Run() error {
 	}
 }
 
-func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
-	wrappedMessage, err := messagehandler.TransactionToProto(cc.id, msg)
-	if err != nil {
-		return err
-	}
-
-	if err := cc.currencyFilterQueue.Send(*wrappedMessage); err != nil {
-		return err
-	}
-
-	wrappedMessage, err = messagehandler.TransactionToConvertionTransaction(cc.id, msg)
-	if err != nil {
-		return err
-	}
-
-	if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
-		return err
-	}
-
-	cc.transactionCounter++
-
-	return cc.protocol.SendAck()
-}
-
 func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {
 	slog.Debug("Received transaction batch from client", "clientID", cc.id, "batchSize", len(msg))
 	for _, transaction := range msg {
@@ -145,14 +121,14 @@ func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch)
 		}
 
 		//TODO, manejar batch para q5
-		wrappedMessage, err := messagehandler.TransactionToConvertionTransaction(cc.id, transaction)
-		if err != nil {
-			return err
-		}
+		// wrappedMessage, err := messagehandler.TransactionToConvertionTransaction(cc.id, transaction)
+		// if err != nil {
+		// 	return err
+		// }
 
-		if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
-			return err
-		}
+		// if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
+		// 	return err
+		// }
 
 		cc.transactionCounter++
 	}
