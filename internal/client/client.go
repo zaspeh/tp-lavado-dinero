@@ -13,23 +13,26 @@ import (
 	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/client/storage"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 )
 
 type ClientConfig struct {
-	ServerHost string
-	ServerPort string
-	InputFile  string
-	OutputDir  string
+	ServerHost     string
+	ServerPort     string
+	InputFile      string
+	OutputDir      string
+	MaxBatchWeight int
 }
 
 type Client struct {
-	config   ClientConfig
-	running  atomic.Bool
-	protocol *external.ExternalProtocol
-	writer   *storage.ResultCSVWriter
+	config           ClientConfig
+	running          atomic.Bool
+	protocol         *external.ExternalProtocol
+	writer           *storage.ResultCSVWriter
+	transactionBatch *batch.Batch[request.Transaction, []request.Transaction]
 }
 
 func connectWithRetry(host string, port string) (*socket.Socket, error) {
@@ -62,10 +65,21 @@ func New(config ClientConfig) (*Client, error) {
 		return nil, err
 	}
 
+	externalProtocol := external.New(socket)
+	sizer := externalProtocol.TransactionSize
+	wrapper := request.NewTransactionBatch
+
+	transactionBatch := batch.New(
+		config.MaxBatchWeight-externalProtocol.HeaderSizeForTransactions(),
+		sizer,
+		wrapper,
+	)
+
 	client := &Client{
-		config:   config,
-		protocol: external.New(socket),
-		writer:   writer,
+		config:           config,
+		protocol:         external.New(socket),
+		writer:           writer,
+		transactionBatch: transactionBatch,
 	}
 
 	client.running.Store(true)

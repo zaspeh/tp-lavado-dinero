@@ -42,6 +42,14 @@ func New(socket *socket.Socket) *ExternalProtocol {
 	}
 }
 
+func (p *ExternalProtocol) HeaderSizeForTransactions() int {
+	return serializer.ByteSize + serializer.Uint16Size // msgType + BatchCount
+}
+
+func (p *ExternalProtocol) TransactionSize(transaction request.Transaction) int {
+	return serializer.Uint16Size + len(transaction.Record) // length + record bytes
+}
+
 func (p *ExternalProtocol) sendMsgType(msgType uint8) error {
 	serializeType := serializer.SerializeUint8(msgType)
 	return p.socket.WriteAll(serializeType)
