@@ -116,7 +116,28 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 }
 
 func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {
-	return nil
+	for _, transaction := range msg {
+		wrappedMessage, err := messagehandler.TransactionToProto(cc.id, transaction)
+		if err != nil {
+			return err
+		}
+
+		if err := cc.currencyFilterQueue.Send(*wrappedMessage); err != nil {
+			return err
+		}
+
+		wrappedMessage, err = messagehandler.TransactionToConvertionTransaction(cc.id, transaction)
+		if err != nil {
+			return err
+		}
+
+		if err := cc.rawDataQueue.Send(*wrappedMessage); err != nil {
+			return err
+		}
+		cc.transactionCounter++
+	}
+
+	return cc.protocol.SendAck()
 }
 
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
