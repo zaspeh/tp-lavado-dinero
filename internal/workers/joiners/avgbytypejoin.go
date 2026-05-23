@@ -74,7 +74,7 @@ func (j *AvgByTypeJoin) handleMessage(msg middleware.Message, ack, nack func()) 
 	switch moneyLaundry.GetType() {
 
 	case protobuf.MessageType_AVGBYTYPE_RESULT:
-		j.handleResult(moneyLaundry, ack, nack)
+		j.handleResult(msg, ack, nack)
 
 	case protobuf.MessageType_EOF_:
 		j.handleEOF(moneyLaundry, ack, nack)
@@ -84,14 +84,12 @@ func (j *AvgByTypeJoin) handleMessage(msg middleware.Message, ack, nack func()) 
 	}
 }
 
-func (j *AvgByTypeJoin) handleResult(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	result, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeResult{})
-	if err != nil {
-		nack()
-		return
-	}
+func (j *AvgByTypeJoin) handleResult(msg middleware.Message, ack, nack func()) {
+	slog.Info(
+		"received avg by type result",
+	)
 
-	if err := j.sendResult(result); err != nil {
+	if err := j.resultExchange.Send(msg); err != nil {
 		nack()
 		return
 	}

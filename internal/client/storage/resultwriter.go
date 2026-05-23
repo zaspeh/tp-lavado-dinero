@@ -16,6 +16,8 @@ type ResultCSVWriter struct {
 	q1Writer      *csv.Writer
 	q2File        *os.File
 	q2Writer      *csv.Writer
+	q3File        *os.File
+	q3Writer      *csv.Writer
 	q5File        *os.File
 	q5Writer      *csv.Writer
 }
@@ -54,10 +56,28 @@ func (rw *ResultCSVWriter) Open() error {
 		return err
 	}
 
+	rw.q3File, err = os.OpenFile(filepath.Join(rw.outputDir, "q3_result.csv"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		rw.q1File.Close()
+		rw.q2File.Close()
+		return err
+	}
+
+	rw.q3Writer = csv.NewWriter(rw.q3File)
+
+	err = rw.q3Writer.Write([]string{"account", "amount"})
+	if err != nil {
+		rw.q1File.Close()
+		rw.q2File.Close()
+		rw.q3File.Close()
+		return err
+	}
+
 	rw.q5File, err = os.OpenFile(filepath.Join(rw.outputDir, "q5_result.csv"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		rw.q1File.Close()
 		rw.q2File.Close()
+		rw.q3File.Close()
 		return err
 	}
 	rw.q5Writer = csv.NewWriter(rw.q5File)
@@ -65,6 +85,7 @@ func (rw *ResultCSVWriter) Open() error {
 	if err != nil {
 		rw.q1File.Close()
 		rw.q2File.Close()
+		rw.q3File.Close()
 		rw.q5File.Close()
 		return err
 	}
@@ -86,6 +107,12 @@ func (rw *ResultCSVWriter) Close() {
 	}
 	if rw.q2File != nil {
 		rw.q2File.Close()
+	}
+	if rw.q3Writer != nil {
+		rw.q3Writer.Flush()
+	}
+	if rw.q3File != nil {
+		rw.q3File.Close()
 	}
 	if rw.q5Writer != nil {
 		rw.q5Writer.Flush()
@@ -142,4 +169,20 @@ func (rw *ResultCSVWriter) HandleConvertedMicroPaymentResult(msg result.Converte
 	}
 	rw.q5Writer.Flush()
 	return rw.q5Writer.Error()
+}
+
+func (rw *ResultCSVWriter) HandleAvgByTypeResult(msg result.AvgByTypeResult) error {
+
+	record := []string{
+		msg.Account,
+		msg.AmountPaid,
+	}
+
+	if err := rw.q3Writer.Write(record); err != nil {
+		return err
+	}
+
+	rw.q3Writer.Flush()
+
+	return rw.q3Writer.Error()
 }

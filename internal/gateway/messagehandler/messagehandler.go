@@ -3,6 +3,7 @@ package messagehandler
 import (
 	"encoding/csv"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -45,17 +46,26 @@ func TransactionToProto(clientID string, msg request.Transaction) (*m.Message, e
 	}
 
 	transaction := &pb.Transaction{
-		ClientID:        clientID,
-		Timestamp:       timestamppb.New(timestamp),
-		FromBank:        int32(fromBank),
-		ToBank:          int32(toBank),
-		Account:         fields[2],
-		ToAccount:       fields[4],
-		PaymentCurrency: fields[6], // ojo con esto
-		AmountPaid:      fields[5], // ojo con esto
-		PaymentFormat:   fields[7],
-	}
+		ClientID:  clientID,
+		Timestamp: timestamppb.New(timestamp),
+		FromBank:  int32(fromBank),
+		ToBank:    int32(toBank),
+		Account:   fields[2],
+		ToAccount: fields[4],
 
+		AmountPaid:      fields[7],
+		PaymentCurrency: fields[8],
+		PaymentFormat:   fields[9],
+	}
+	slog.Info(
+		"transaction created",
+		"amount", transaction.GetAmountPaid(),
+		"currency", transaction.GetPaymentCurrency(),
+		"paymentFormat", transaction.GetPaymentFormat(),
+		"f5", fields[5],
+		"f6", fields[6],
+		"f7", fields[7],
+	)
 	return serializer.SerializeProtoMessage(transaction, pb.MessageType_TRANSACTION)
 
 }

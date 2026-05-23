@@ -1,8 +1,9 @@
 package result
 
 type ResultHandler interface {
-	HandleMicrotransactionResult(result MicrotransactionResult) error
-	HandleMaxBankResult(result MaxBankResult) error
-	HandleEOF(result EOF) error
-	HandleConvertedMicroPaymentResult(result ConvertedMicroPaymentResult) error
+	HandleEOF(msg EOF) error
+	HandleMicrotransactionResult(msg MicrotransactionResult) error
+	HandleMaxBankResult(msg MaxBankResult) error
+	HandleConvertedMicroPaymentResult(msg ConvertedMicroPaymentResult) error
+	HandleAvgByTypeResult(msg AvgByTypeResult) error
 }

@@ -88,7 +88,8 @@ func (r *PaymentTypeRouter) handleMessage(msg middleware.Message, ack, nack func
 
 	switch moneyLaundry.GetType() {
 
-	case protobuf.MessageType_AVGBYTYPETRANSACTION:
+	case protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD,
+		protobuf.MessageType_AVGBYTYPE_SECOND_PERIOD:
 		r.handleAvgByTypeTransaction(msg, moneyLaundry, ack, nack)
 
 	case protobuf.MessageType_EOF_:
@@ -100,12 +101,16 @@ func (r *PaymentTypeRouter) handleMessage(msg middleware.Message, ack, nack func
 }
 
 func (r *PaymentTypeRouter) handleAvgByTypeTransaction(msg middleware.Message, moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-
 	transaction, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
 	if err != nil {
 		nack()
 		return
 	}
+	slog.Info(
+		"routing avg by type transaction",
+		"type", moneyLaundry.GetType(),
+		"paymentFormat", transaction.GetPaymentFormat(),
+	)
 
 	workerKey := r.selectWorkerKey(transaction.GetPaymentFormat())
 

@@ -20,6 +20,8 @@ const (
 	microtransactionResult
 	maxBankResult
 	convertedMicroPaymentResult
+	avgByTypeResult
+
 	eof
 	ack
 	nack
@@ -158,6 +160,25 @@ func (p *ExternalProtocol) SendConvertedMicroPaymentResult(result *result.Conver
 
 }
 
+func (p *ExternalProtocol) SendAvgByTypeResult(result *result.AvgByTypeResult) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if err := p.sendMsgType(avgByTypeResult); err != nil {
+		return err
+	}
+
+	record := fmt.Sprintf("%s,%s", result.Account, result.AmountPaid)
+
+	length := serializer.SerializeUint16(
+		uint16(len(record)),
+	)
+
+	data := serializer.SerializeString(record)
+
+	return p.socket.WriteAll(append(length, data...))
+}
+
 func (p *ExternalProtocol) SendEOF() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -245,6 +266,8 @@ func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {
 		return p.receiveMicrotransactionResult()
 	case maxBankResult:
 		return p.receiveMaxBankResult()
+	case avgByTypeResult:
+		return p.receiveAvgByTypeResult()
 	case eof:
 		return result.EOF{}, nil
 	case convertedMicroPaymentResult:
@@ -255,6 +278,34 @@ func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {
 			msgType,
 		)
 	}
+}
+
+func (p *ExternalProtocol) receiveAvgByTypeResult() (result.Result, error) {
+	stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
+	if err != nil {
+		return nil, err
+	}
+
+	length := serializer.DeserializeUint16(stringLengthBytes)
+
+	stringBytes, err := p.socket.ReadAll(int(length))
+	if err != nil {
+		return nil, err
+	}
+
+	record := serializer.DeserializeString(stringBytes)
+	fields := strings.Split(record, ",")
+
+	if len(fields) != 2 {
+		return nil, fmt.Errorf(
+			"invalid avg by type result record",
+		)
+	}
+
+	return result.AvgByTypeResult{
+		Account:    fields[0],
+		AmountPaid: fields[1],
+	}, nil
 }
 
 func (p *ExternalProtocol) receiveMicrotransactionResult() (result.Result, error) {

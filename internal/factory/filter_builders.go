@@ -130,6 +130,22 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	query3Period1, err := buildPeriodFromEnv(
+		"QUERY3_PERIOD_1_START",
+		"QUERY3_PERIOD_1_END",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	query3Period2, err := buildPeriodFromEnv(
+		"QUERY3_PERIOD_2_START",
+		"QUERY3_PERIOD_2_END",
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	config := periodfilter.PeriodFilterWorkerConfig{
 		UsdInputQueueName: usdInputQ,
 		RawInputQueueName: rawInputQ,
@@ -145,6 +161,9 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		},
 
 		ScatterGatherPeriod: scatterGatherPeriod,
+
+		Query3Period1: query3Period1,
+		Query3Period2: query3Period2,
 
 		OriginDestinationRouterQueueName: originDestinationRouterQ,
 

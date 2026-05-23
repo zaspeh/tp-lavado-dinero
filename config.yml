@@ -28,7 +28,7 @@ services:
       CURRENCY_TO_FILTER: "US Dollar"
 
   microtransaction_filter:
-    count: 1
+    count: 0
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
@@ -36,7 +36,7 @@ services:
       AMOUNT_TO_FILTER: 50
 
   microtransaction_join:
-    count: 1
+    count: 0
     worker_type: MICROTRANSACTION_JOIN
     env:
       INPUT_QUEUE_NAME: microtransaction_join_input_queue
@@ -45,7 +45,7 @@ services:
       MAX_BATCH_BYTES: 8000
     
   bank_router:
-    count: 1
+    count: 0
     worker_type: BANK_ROUTER
     env:
       INPUT_QUEUE_NAME: bank_router_input_queue
@@ -53,7 +53,7 @@ services:
       MAX_BANK_WORKER_AMOUNT: 1
 
   max_bank:
-    count: 1
+    count: 0
     worker_type: MAX_BANK
     env:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
@@ -61,7 +61,7 @@ services:
       MAX_BATCH_WEIGHT: 8000 
 
   max_bank_join:
-    count: 1
+    count: 0
     worker_type: MAX_BANK_JOIN
     env:
       INPUT_QUEUE_NAME: max_bank_join_input
@@ -98,6 +98,7 @@ services:
     env:
       INPUT_QUEUE_NAME: payment_type_router_input
       PAYMENT_TYPE_EXCHANGE_NAME: payment_type_exchange
+      AVG_BY_TYPE_WORKER_AMOUNT: 1
 
   origin_destination_router:
     count: 0
@@ -148,7 +149,6 @@ services:
 
     env:
       INPUT_QUEUE_NAME: grouped_destination_accounts
-
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: destination_intermediary_aggregation
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
 
@@ -158,17 +158,7 @@ services:
 
     env:
       INPUT_EXCHANGE_NAME: payment_type_exchange
-
       OUTPUT_QUEUE_NAME: avg_by_type_join_input
-
-
-  payment_type_router:
-    count: 1
-    worker_type: PAYMENT_TYPE_ROUTER
-    env:
-      INPUT_QUEUE_NAME: payment_type_router_input
-      PAYMENT_TYPE_EXCHANGE_NAME: payment_type_exchange
-      AVG_BY_TYPE_WORKER_AMOUNT: 1
 
   avg_by_type_join:
     count: 1
@@ -176,13 +166,11 @@ services:
 
     env:
       INPUT_QUEUE_NAME: avg_by_type_join_input
-
       CLIENT_EXCHANGE_NAME: client_results_exchange
-
       EXPECTED_EOFS: 1
       
   payment_format_filter:
-    count: 1
+    count: 0
     worker_type: FORMAT_FILTER
     env:
       INPUT_QUEUE_NAME: payment_format_filter_input
@@ -190,7 +178,7 @@ services:
       VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   currency_converter:
-    count: 1
+    count: 0
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
@@ -198,7 +186,7 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 1
+    count: 0
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
@@ -206,7 +194,7 @@ services:
       AMOUNT_TO_FILTER: 1.00
 
   converter_join:
-    count: 1
+    count: 0
     worker_type: CONVERSION_JOIN
     env:
       INPUT_QUEUE_NAME: conversion_join_input_queue

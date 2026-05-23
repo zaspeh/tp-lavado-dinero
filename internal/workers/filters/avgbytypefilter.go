@@ -114,6 +114,13 @@ func (f *AvgByTypeFilter) handleFirstPeriod(moneyLaundry *protobuf.MoneyLaundry,
 	clientID := moneyLaundry.GetClientID()
 	paymentFormat := tx.GetPaymentFormat()
 
+	slog.Info(
+		"avgbytype first period",
+		"clientID", clientID,
+		"paymentFormat", paymentFormat,
+		"amount", tx.GetAmountPaid(),
+	)
+
 	if _, exists := f.period1Stats[clientID]; !exists {
 		f.period1Stats[clientID] = make(map[string]*AvgByTypeStats)
 	}
@@ -142,6 +149,13 @@ func (f *AvgByTypeFilter) handleSecondPeriod(moneyLaundry *protobuf.MoneyLaundry
 	clientID := moneyLaundry.GetClientID()
 	paymentFormat := tx.GetPaymentFormat()
 
+	slog.Info(
+		"avgbytype second period",
+		"clientID", clientID,
+		"paymentFormat", paymentFormat,
+		"amount", tx.GetAmountPaid(),
+	)
+
 	if _, exists := f.period2Transactions[clientID]; !exists {
 		f.period2Transactions[clientID] = make(map[string][]*protobuf.AvgByTypeTransaction)
 	}
@@ -154,6 +168,11 @@ func (f *AvgByTypeFilter) handleSecondPeriod(moneyLaundry *protobuf.MoneyLaundry
 func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 
 	clientID := moneyLaundry.GetClientID()
+
+	slog.Info(
+		"processing avg by type EOF",
+		"clientID", clientID,
+	)
 
 	statsByFormat, exists := f.period1Stats[clientID]
 
@@ -188,6 +207,14 @@ func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, na
 				Account:    tx.GetAccount(),
 				AmountPaid: tx.GetAmountPaid(),
 			}
+
+			slog.Info(
+				"average calculated",
+				"clientID", clientID,
+				"paymentFormat", paymentFormat,
+				"average", average,
+				"threshold", threshold,
+			)
 
 			msg, err := serializer.SerializeProtoMessageWithClientID(clientID, result, protobuf.MessageType_AVGBYTYPE_RESULT)
 			if err != nil {

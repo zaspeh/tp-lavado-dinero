@@ -168,6 +168,7 @@ func (pf *PeriodFilterWorker) handleSignals() {
 }
 
 func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack func()) {
+	slog.Info("USD message arrived in PeriodFilter")
 	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
 	if err != nil {
 		nack()
@@ -237,7 +238,19 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 		nack()
 		return
 	}
-
+	slog.Info(
+		"query3 periods",
+		"p1Start", pf.query3Period1.StartDate,
+		"p1End", pf.query3Period1.EndDate,
+		"p2Start", pf.query3Period2.StartDate,
+		"p2End", pf.query3Period2.EndDate,
+	)
+	slog.Info(
+		"processing period filter message",
+		"account", periodFilterMsg.GetAccount(),
+		"amount", periodFilterMsg.GetAmountPaid(),
+		"paymentFormat", periodFilterMsg.GetPaymentFormat(),
+	)
 	timestamp := periodFilterMsg.GetTimestamp().AsTime()
 
 	// filtro por periodo Q3
@@ -299,6 +312,13 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 }
 
 func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, timestamp time.Time) error {
+	slog.Info(
+		"query3 period check",
+		"timestamp", timestamp,
+		"inPeriod1", pf.query3Period1.Contains(timestamp),
+		"inPeriod2", pf.query3Period2.Contains(timestamp),
+	)
+
 	if pf.query3Period1.Contains(timestamp) {
 		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD)
 		if err != nil {
@@ -319,9 +339,17 @@ func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg 
 func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, messageType protobuf.MessageType) error {
 
 	avgByTypeTransaction := &protobuf.AvgByTypeTransaction{
-		Account:    periodFilterMsg.GetAccount(),
-		AmountPaid: periodFilterMsg.GetAmountPaid(),
+		Account:       periodFilterMsg.GetAccount(),
+		AmountPaid:    periodFilterMsg.GetAmountPaid(),
+		PaymentFormat: periodFilterMsg.GetPaymentFormat(),
 	}
+
+	slog.Info(
+		"sending to payment type router",
+		"clientID", clientID,
+		"paymentFormat", periodFilterMsg.GetPaymentFormat(),
+		"amount", periodFilterMsg.GetAmountPaid(),
+	)
 
 	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, avgByTypeTransaction, messageType)
 

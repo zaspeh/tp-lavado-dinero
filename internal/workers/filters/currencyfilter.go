@@ -95,9 +95,12 @@ func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLa
 		nack()
 		return
 	}
-
+	slog.Info(
+		"transaction fields",
+		"amount", transaction.GetAmountPaid(),
+		"paymentFormat", transaction.GetPaymentFormat(),
+	)
 	slog.Info("transaction received", "currency", transaction.GetPaymentCurrency(), "client", transaction.GetClientID())
-
 	if transaction.GetPaymentCurrency() == f.currencyToFilter {
 		slog.Info("USD transaction detected")
 		err := f.broadcastToQueues(moneyLaundry.GetClientID(), transaction)
@@ -157,11 +160,34 @@ func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobu
 	if err := f.bankRouterQueue.Send(*serializedMaxBankMessage); err != nil {
 		return err
 	}
-
-	return nil
-
 	//q3
 
+	periodFilter := &protobuf.PeriodFilter{
+		Timestamp:     transaction.GetTimestamp(),
+		FromBank:      transaction.GetFromBank(),
+		ToBank:        transaction.GetToBank(),
+		Account:       transaction.GetAccount(),
+		ToAccount:     transaction.GetToAccount(),
+		AmountPaid:    transaction.GetAmountPaid(),
+		PaymentFormat: transaction.GetPaymentFormat(),
+	}
+
+	serializedPeriodFilter, err := serializer.SerializeProtoMessageWithClientID(clientID, periodFilter, protobuf.MessageType_PERIODFILTER)
+	if err != nil {
+		return err
+	}
+
+	slog.Info(
+		"sending transaction to period filter",
+		"account", transaction.GetAccount(),
+		"paymentFormat", transaction.GetPaymentFormat(),
+	)
+
+	if err := f.periodFilterQueue.Send(*serializedPeriodFilter); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (f *CurrencyFilter) broadcastEOFMessage(msg middleware.Message, ack, nack func()) {

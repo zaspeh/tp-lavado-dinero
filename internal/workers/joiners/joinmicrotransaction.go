@@ -31,7 +31,7 @@ type JoinMicrotransactionConfig struct {
 	MomPort int
 
 	MaxBatchTransactions int
-	MaxBatchBytes        int
+	MaxBatchBytes        int // probar con un mega
 }
 
 func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotransaction, error) {
@@ -213,10 +213,7 @@ func (j *JoinMicrotransaction) sendEOF(clientID string) error {
 		ClientID: clientID,
 	}
 
-	msg, err := serializer.SerializeProtoMessage(
-		eof,
-		protobuf.MessageType_EOF_,
-	)
+	msg, err := serializer.SerializeProtoMessage(eof, protobuf.MessageType_EOF_)
 	if err != nil {
 		return err
 	}

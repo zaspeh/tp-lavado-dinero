@@ -14,7 +14,7 @@ import (
 
 const (
 	// TODO CAMBIAR A ENV VAR DESPUES
-	eofAmountExpected = 2
+	eofAmountExpected = 1
 )
 
 type ClientConnectionConfig struct {
@@ -157,6 +157,9 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 		cc.handleMaxBankResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT:
 		cc.handleConvertedMicroPaymentResult(moneyLaundry, ack, nack)
+	case protobuf.MessageType_AVGBYTYPE_RESULT:
+		slog.Info("received avg by type result from exchange")
+		cc.handleAvgByTypeResult(moneyLaundry, ack, nack)
 	default:
 		slog.Warn("received message with unknown type", "type", moneyLaundry.GetType())
 		nack()
@@ -177,6 +180,32 @@ func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
 			return
 		}
 	}
+	ack()
+}
+
+func (cc *ClientConnection) handleAvgByTypeResult(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	avgResult, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeResult{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	slog.Info(
+		"sending avg by type result to client",
+		"account", avgResult.GetAccount(),
+		"amount", avgResult.GetAmountPaid(),
+	)
+
+	msgResult := &result.AvgByTypeResult{
+		Account:    avgResult.GetAccount(),
+		AmountPaid: avgResult.GetAmountPaid(),
+	}
+
+	if err := cc.protocol.SendAvgByTypeResult(msgResult); err != nil {
+		nack()
+		return
+	}
+
 	ack()
 }
 
