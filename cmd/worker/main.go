@@ -4,10 +4,12 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/logging"
 	"github.com/zaspeh/tp-lavado-dinero/internal/factory"
 )
 
 func run() int {
+	logging.InitDefaultLogger()
 	workerType := os.Getenv("WORKER_TYPE")
 	worker, err := factory.CreateWorker(workerType)
 	if err != nil {

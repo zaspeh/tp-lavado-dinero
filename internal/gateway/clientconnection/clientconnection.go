@@ -116,6 +116,7 @@ func (cc *ClientConnection) HandleTransaction(msg request.Transaction) error {
 }
 
 func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {
+	slog.Debug("Received transaction batch from client", "clientID", cc.id, "batchSize", len(msg))
 	for _, transaction := range msg {
 		wrappedMessage, err := messagehandler.TransactionToProto(cc.id, transaction)
 		if err != nil {

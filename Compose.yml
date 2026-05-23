@@ -30,6 +30,7 @@ services:
     - OUTPUT_QUEUE_NAME=currency_filter_input_queue
     - CLIENT_EXCHANGE_NAME=client_results_exchange
     - RAW_DATA_QUEUE_NAME=raw_transactions
+    - LOG_LEVEL=debug
     ports:
     - 8080:8080
     depends_on:
@@ -49,6 +50,8 @@ services:
     - INPUT_FILE_TRANSACTIONS=/datasets/client_0_transactions.csv
     - INPUT_FILE_ACCOUNTS=/datasets/client_0_accounts.csv
     - OUTPUT_DIR=/outputs
+    - MAX_BATCH_WEIGHT=8000
+    - LOG_LEVEL=debug
     volumes:
     - ./datasets:/datasets
     - ./outputs/client_0:/outputs
@@ -63,6 +66,7 @@ services:
     container_name: currency_filter_0
     environment:
     - ID=0
+    - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -83,6 +87,7 @@ services:
     container_name: period_filter_0
     environment:
     - ID=0
+    - LOG_LEVEL=debug
     - WORKER_TYPE=PERIOD_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -117,6 +122,7 @@ services:
     container_name: payment_type_router_0
     environment:
     - ID=0
+    - LOG_LEVEL=debug
     - WORKER_TYPE=PAYMENT_TYPE_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -135,6 +141,7 @@ services:
     container_name: avg_by_type_0
     environment:
     - ID=0
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AVG_BY_TYPE
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -152,6 +159,7 @@ services:
     container_name: avg_by_type_join_0
     environment:
     - ID=0
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AVG_BY_TYPE_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672

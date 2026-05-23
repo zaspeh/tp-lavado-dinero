@@ -30,7 +30,7 @@ def build_rabbitmq(cfg):
         'networks': ['money_laundering_network']
     }
 
-def build_gateway(cfg):
+def build_gateway(cfg, log_level):
     gateway_port = cfg['gateway']['port']
     amqp_port = cfg['rabbitmq']['amqp_port']
     output_queue_name = cfg['gateway']['env'].get('OUTPUT_QUEUE_NAME')
@@ -49,7 +49,8 @@ def build_gateway(cfg):
             f'MOM_PORT={amqp_port}',
             f'OUTPUT_QUEUE_NAME={output_queue_name}',
             f'CLIENT_EXCHANGE_NAME={client_exchange_name}',
-            f'RAW_DATA_QUEUE_NAME={raw_input_queue_name}'
+            f'RAW_DATA_QUEUE_NAME={raw_input_queue_name}',
+            f'LOG_LEVEL={log_level}'
         ],
         'ports': [f"{gateway_port}:{gateway_port}"],
         'depends_on': {
@@ -58,7 +59,7 @@ def build_gateway(cfg):
         'networks': ['money_laundering_network']
     }
 
-def build_client(cfg, i):
+def build_client(cfg, i, log_level):
     gateway_port = cfg['gateway']['port']
     client_cfg = cfg['services']['client']
     
@@ -79,7 +80,8 @@ def build_client(cfg, i):
             f'INPUT_FILE_TRANSACTIONS=/datasets/client_{i}_transactions.csv',
             f'INPUT_FILE_ACCOUNTS=/datasets/client_{i}_accounts.csv',
             'OUTPUT_DIR=/outputs',
-            f'MAX_BATCH_WEIGHT={max_batch_weight}'
+            f'MAX_BATCH_WEIGHT={max_batch_weight}',
+            f'LOG_LEVEL={log_level}'
         ],
         'volumes': [
             f'{host_datasets}:/datasets',
@@ -89,13 +91,14 @@ def build_client(cfg, i):
         'networks': ['money_laundering_network']
     }
 
-def build_worker(svc_name, cfg, i):
+def build_worker(svc_name, cfg, i, log_level):
     amqp_port = cfg['rabbitmq']['amqp_port']
     svc_config = cfg['services'][svc_name]
     worker_type = svc_config.get('worker_type', 'UNKNOWN')
     
     env_list = [
         f"ID={i}",
+        f"LOG_LEVEL={log_level}",
         f"WORKER_TYPE={worker_type}",
         "MOM_HOST=rabbitmq",
         f"MOM_PORT={amqp_port}"
@@ -119,6 +122,8 @@ def build_worker(svc_name, cfg, i):
     }
 
 def generate_compose(cfg):
+    global_log_level = cfg.get('global_log_level', 'info')
+
     compose = {
         'networks': {
             'money_laundering_network': {'driver': 'bridge'}
@@ -127,17 +132,19 @@ def generate_compose(cfg):
     }
     
     compose['services']['rabbitmq'] = build_rabbitmq(cfg)
-    compose['services']['gateway'] = build_gateway(cfg)
+
+    gateway_log_level = cfg['gateway'].get('log_level', global_log_level)
+    compose['services']['gateway'] = build_gateway(cfg, gateway_log_level)
     
     for svc_name, svc_data in cfg.get('services', {}).items():
         count = svc_data.get('count', 0)
-        
+        svc_log_level = svc_data.get('log_level', global_log_level)
         if svc_name == 'client':
             for i in range(count):
-                compose['services'][f"client_{i}"] = build_client(cfg, i)
+                compose['services'][f"client_{i}"] = build_client(cfg, i, svc_log_level)
         else:
             for i in range(count):
-                compose['services'][f"{svc_name}_{i}"] = build_worker(svc_name, cfg, i)
+                compose['services'][f"{svc_name}_{i}"] = build_worker(svc_name, cfg, i, svc_log_level)
             
     return compose
 

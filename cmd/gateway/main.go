@@ -4,10 +4,12 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/logging"
 	"github.com/zaspeh/tp-lavado-dinero/internal/factory"
 )
 
 func run() int {
+	logging.InitDefaultLogger()
 	gateway, err := factory.CreateGateway()
 	if err != nil {
 		slog.Error("while loading config", "err", err)

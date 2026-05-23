@@ -1,4 +1,7 @@
 # Infraestructura Core
+
+global_log_level: debug 
+
 gateway:
   env:
     OUTPUT_QUEUE_NAME: currency_filter_input_queue
