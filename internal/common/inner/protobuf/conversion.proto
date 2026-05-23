@@ -13,6 +13,10 @@ message ToConvertTransaction {
     string payment_format = 4;
 }
 
+message ToConvertTransactionBatch {
+    repeated ToConvertTransaction items = 1;
+}
+
 message ToConvertPeriodFiltered {
     string amount_paid = 1;
     string payment_currency = 2;

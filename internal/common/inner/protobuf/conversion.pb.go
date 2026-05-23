@@ -90,6 +90,50 @@ func (x *ToConvertTransaction) GetPaymentFormat() string {
 	return ""
 }
 
+type ToConvertTransactionBatch struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Items         []*ToConvertTransaction `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToConvertTransactionBatch) Reset() {
+	*x = ToConvertTransactionBatch{}
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToConvertTransactionBatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToConvertTransactionBatch) ProtoMessage() {}
+
+func (x *ToConvertTransactionBatch) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToConvertTransactionBatch.ProtoReflect.Descriptor instead.
+func (*ToConvertTransactionBatch) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ToConvertTransactionBatch) GetItems() []*ToConvertTransaction {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 type ToConvertPeriodFiltered struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	AmountPaid      string                 `protobuf:"bytes,1,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
@@ -101,7 +145,7 @@ type ToConvertPeriodFiltered struct {
 
 func (x *ToConvertPeriodFiltered) Reset() {
 	*x = ToConvertPeriodFiltered{}
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[1]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -113,7 +157,7 @@ func (x *ToConvertPeriodFiltered) String() string {
 func (*ToConvertPeriodFiltered) ProtoMessage() {}
 
 func (x *ToConvertPeriodFiltered) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[1]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -126,7 +170,7 @@ func (x *ToConvertPeriodFiltered) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToConvertPeriodFiltered.ProtoReflect.Descriptor instead.
 func (*ToConvertPeriodFiltered) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{1}
+	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ToConvertPeriodFiltered) GetAmountPaid() string {
@@ -160,7 +204,7 @@ type ToConvertTypeFilteredPayment struct {
 
 func (x *ToConvertTypeFilteredPayment) Reset() {
 	*x = ToConvertTypeFilteredPayment{}
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[2]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -172,7 +216,7 @@ func (x *ToConvertTypeFilteredPayment) String() string {
 func (*ToConvertTypeFilteredPayment) ProtoMessage() {}
 
 func (x *ToConvertTypeFilteredPayment) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[2]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,7 +229,7 @@ func (x *ToConvertTypeFilteredPayment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToConvertTypeFilteredPayment.ProtoReflect.Descriptor instead.
 func (*ToConvertTypeFilteredPayment) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{2}
+	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ToConvertTypeFilteredPayment) GetAmountPaid() string {
@@ -211,7 +255,7 @@ type ConvertedAmount struct {
 
 func (x *ConvertedAmount) Reset() {
 	*x = ConvertedAmount{}
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[3]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -223,7 +267,7 @@ func (x *ConvertedAmount) String() string {
 func (*ConvertedAmount) ProtoMessage() {}
 
 func (x *ConvertedAmount) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[3]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +280,7 @@ func (x *ConvertedAmount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertedAmount.ProtoReflect.Descriptor instead.
 func (*ConvertedAmount) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{3}
+	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ConvertedAmount) GetAmount() float64 {
@@ -255,7 +299,7 @@ type ConvertedMicroPaymentResult struct {
 
 func (x *ConvertedMicroPaymentResult) Reset() {
 	*x = ConvertedMicroPaymentResult{}
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[4]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -267,7 +311,7 @@ func (x *ConvertedMicroPaymentResult) String() string {
 func (*ConvertedMicroPaymentResult) ProtoMessage() {}
 
 func (x *ConvertedMicroPaymentResult) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[4]
+	mi := &file_internal_common_inner_protobuf_conversion_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -280,7 +324,7 @@ func (x *ConvertedMicroPaymentResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertedMicroPaymentResult.ProtoReflect.Descriptor instead.
 func (*ConvertedMicroPaymentResult) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{4}
+	return file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ConvertedMicroPaymentResult) GetCount() int64 {
@@ -300,7 +344,9 @@ const file_internal_common_inner_protobuf_conversion_proto_rawDesc = "" +
 	"\vamount_paid\x18\x02 \x01(\tR\n" +
 	"amountPaid\x12)\n" +
 	"\x10payment_currency\x18\x03 \x01(\tR\x0fpaymentCurrency\x12%\n" +
-	"\x0epayment_format\x18\x04 \x01(\tR\rpaymentFormat\"\x8c\x01\n" +
+	"\x0epayment_format\x18\x04 \x01(\tR\rpaymentFormat\"Q\n" +
+	"\x19ToConvertTransactionBatch\x124\n" +
+	"\x05items\x18\x01 \x03(\v2\x1e.protobuf.ToConvertTransactionR\x05items\"\x8c\x01\n" +
 	"\x17ToConvertPeriodFiltered\x12\x1f\n" +
 	"\vamount_paid\x18\x01 \x01(\tR\n" +
 	"amountPaid\x12)\n" +
@@ -327,22 +373,24 @@ func file_internal_common_inner_protobuf_conversion_proto_rawDescGZIP() []byte {
 	return file_internal_common_inner_protobuf_conversion_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_internal_common_inner_protobuf_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_internal_common_inner_protobuf_conversion_proto_goTypes = []any{
 	(*ToConvertTransaction)(nil),         // 0: protobuf.ToConvertTransaction
-	(*ToConvertPeriodFiltered)(nil),      // 1: protobuf.ToConvertPeriodFiltered
-	(*ToConvertTypeFilteredPayment)(nil), // 2: protobuf.ToConvertTypeFilteredPayment
-	(*ConvertedAmount)(nil),              // 3: protobuf.ConvertedAmount
-	(*ConvertedMicroPaymentResult)(nil),  // 4: protobuf.ConvertedMicroPaymentResult
-	(*timestamppb.Timestamp)(nil),        // 5: google.protobuf.Timestamp
+	(*ToConvertTransactionBatch)(nil),    // 1: protobuf.ToConvertTransactionBatch
+	(*ToConvertPeriodFiltered)(nil),      // 2: protobuf.ToConvertPeriodFiltered
+	(*ToConvertTypeFilteredPayment)(nil), // 3: protobuf.ToConvertTypeFilteredPayment
+	(*ConvertedAmount)(nil),              // 4: protobuf.ConvertedAmount
+	(*ConvertedMicroPaymentResult)(nil),  // 5: protobuf.ConvertedMicroPaymentResult
+	(*timestamppb.Timestamp)(nil),        // 6: google.protobuf.Timestamp
 }
 var file_internal_common_inner_protobuf_conversion_proto_depIdxs = []int32{
-	5, // 0: protobuf.ToConvertTransaction.timestamp:type_name -> google.protobuf.Timestamp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	6, // 0: protobuf.ToConvertTransaction.timestamp:type_name -> google.protobuf.Timestamp
+	0, // 1: protobuf.ToConvertTransactionBatch.items:type_name -> protobuf.ToConvertTransaction
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_conversion_proto_init() }
@@ -356,7 +404,7 @@ func file_internal_common_inner_protobuf_conversion_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_conversion_proto_rawDesc), len(file_internal_common_inner_protobuf_conversion_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

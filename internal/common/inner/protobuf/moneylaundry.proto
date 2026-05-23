@@ -5,6 +5,7 @@ package protobuf;
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 import "internal/common/inner/protobuf/transaction.proto";
+import "internal/common/inner/protobuf/conversion.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -30,6 +31,7 @@ enum MessageType {
     AVGBYTYPE_SECOND_PERIOD = 18;
 
     TRANSACTION_BATCH = 19;
+    TO_CONVERT_TRANSACTION_BATCH = 20;
 }
 
 message MoneyLaundry {
@@ -40,5 +42,6 @@ message MoneyLaundry {
     // la idea es eliminar payload para obtimizar la serializacion
     oneof inner_message {
         TransactionBatch transactions = 4;
+        ToConvertTransactionBatch to_convert_batch = 5;
     }
 }
