@@ -168,7 +168,6 @@ func (pf *PeriodFilterWorker) handleSignals() {
 }
 
 func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack func()) {
-	slog.Info("USD message arrived in PeriodFilter")
 	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
 	if err != nil {
 		nack()
@@ -239,17 +238,9 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 		return
 	}
 	slog.Info(
-		"query3 periods",
-		"p1Start", pf.query3Period1.StartDate,
-		"p1End", pf.query3Period1.EndDate,
-		"p2Start", pf.query3Period2.StartDate,
-		"p2End", pf.query3Period2.EndDate,
-	)
-	slog.Info(
-		"processing period filter message",
-		"account", periodFilterMsg.GetAccount(),
-		"amount", periodFilterMsg.GetAmountPaid(),
-		"paymentFormat", periodFilterMsg.GetPaymentFormat(),
+		"period filter client id",
+		"clientID",
+		moneyLaundry.GetClientID(),
 	)
 	timestamp := periodFilterMsg.GetTimestamp().AsTime()
 
@@ -270,6 +261,11 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 }
 
 func (pf *PeriodFilterWorker) handleTransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	slog.Info(
+		"received money laundry",
+		"clientID", moneyLaundry.GetClientID(),
+		"type", moneyLaundry.GetType(),
+	)
 	transactionMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ToConvertTransaction{})
 	if err != nil {
 		nack()
@@ -312,12 +308,6 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 }
 
 func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, timestamp time.Time) error {
-	slog.Info(
-		"query3 period check",
-		"timestamp", timestamp,
-		"inPeriod1", pf.query3Period1.Contains(timestamp),
-		"inPeriod2", pf.query3Period2.Contains(timestamp),
-	)
 
 	if pf.query3Period1.Contains(timestamp) {
 		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD)

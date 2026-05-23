@@ -95,15 +95,17 @@ func (f *CurrencyFilter) handleTransactionMessage(moneyLaundry *protobuf.MoneyLa
 		nack()
 		return
 	}
-	slog.Info(
-		"transaction fields",
-		"amount", transaction.GetAmountPaid(),
-		"paymentFormat", transaction.GetPaymentFormat(),
-	)
-	slog.Info("transaction received", "currency", transaction.GetPaymentCurrency(), "client", transaction.GetClientID())
+	clientID := moneyLaundry.GetClientID()
+
+	// TODO: El gateway no propaga ClientID en MoneyLaundry para TRANSACTION.
+	// Temporalmente usamos el ClientID embebido en Transaction para Query 3.
+	if clientID == "" {
+		clientID = transaction.GetClientID()
+	}
+	slog.Info("transaction received", "currency", transaction.GetPaymentCurrency(), "client", clientID)
 	if transaction.GetPaymentCurrency() == f.currencyToFilter {
 		slog.Info("USD transaction detected")
-		err := f.broadcastToQueues(moneyLaundry.GetClientID(), transaction)
+		err := f.broadcastToQueues(clientID, transaction)
 		if err != nil {
 			nack()
 			return
@@ -171,10 +173,22 @@ func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobu
 		AmountPaid:    transaction.GetAmountPaid(),
 		PaymentFormat: transaction.GetPaymentFormat(),
 	}
-
+	slog.Info(
+		"sending period filter",
+		"clientID", clientID,
+	)
 	serializedPeriodFilter, err := serializer.SerializeProtoMessageWithClientID(clientID, periodFilter, protobuf.MessageType_PERIODFILTER)
 	if err != nil {
 		return err
+	}
+	// DEBUG
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(*serializedPeriodFilter)
+	if err == nil {
+		slog.Info(
+			"serialized period filter message",
+			"clientID", moneyLaundry.GetClientID(),
+			"type", moneyLaundry.GetType(),
+		)
 	}
 
 	slog.Info(

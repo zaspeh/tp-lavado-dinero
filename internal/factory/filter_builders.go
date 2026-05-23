@@ -98,6 +98,11 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	paymentTypeRouterQ, err := getEnvStrict("PAYMENT_TYPE_ROUTER_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
 	avgByTypePeriod1, err := buildPeriodFromEnv(
 		"AVG_BY_TYPE_PERIOD_1_START",
 		"AVG_BY_TYPE_PERIOD_1_END",
@@ -166,6 +171,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		Query3Period2: query3Period2,
 
 		OriginDestinationRouterQueueName: originDestinationRouterQ,
+		PaymentTypeRouterQueueName:       paymentTypeRouterQ,
 
 		PaymentTypePeriod:          paymentTypePeriod,
 		PaymentTypeFilterQueueName: paymentTypeQ,

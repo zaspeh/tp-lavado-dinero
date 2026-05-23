@@ -70,6 +70,8 @@ func NewPaymentTypeRouter(config PaymentTypeRouterConfig) (*PaymentTypeRouter, e
 func (r *PaymentTypeRouter) Run() error {
 	go r.handleSignals()
 
+	slog.Info("PAYMENT TYPE ROUTER STARTED")
+
 	r.inputQueue.StartConsuming(
 		func(msg middleware.Message, ack, nack func()) {
 			r.handleMessage(msg, ack, nack)
@@ -80,12 +82,18 @@ func (r *PaymentTypeRouter) Run() error {
 }
 
 func (r *PaymentTypeRouter) handleMessage(msg middleware.Message, ack, nack func()) {
+	slog.Info("router received raw message")
 	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
+	slog.Info(
+		"router received message",
+		"type", moneyLaundry.GetType(),
+		"clientID", moneyLaundry.GetClientID(),
+	)
 	switch moneyLaundry.GetType() {
 
 	case protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD,
@@ -110,6 +118,7 @@ func (r *PaymentTypeRouter) handleAvgByTypeTransaction(msg middleware.Message, m
 		"routing avg by type transaction",
 		"type", moneyLaundry.GetType(),
 		"paymentFormat", transaction.GetPaymentFormat(),
+		"ClientID", moneyLaundry.GetClientID(),
 	)
 
 	workerKey := r.selectWorkerKey(transaction.GetPaymentFormat())
