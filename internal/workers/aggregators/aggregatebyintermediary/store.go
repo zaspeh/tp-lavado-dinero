@@ -81,3 +81,26 @@ func (s *IntermediaryStore) getOrCreateRelations(
 
 	return relations
 }
+
+func (s *IntermediaryStore) GetPairs() map[model.OriginDestinationPair]int {
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result := make(map[model.OriginDestinationPair]int)
+
+	for pair, count := range s.pairs {
+		result[pair] = count
+	}
+
+	return result
+}
+
+func (s *IntermediaryStore) Clear() {
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.relations = make(map[model.Account]*IntermediaryRelations)
+	s.pairs = make(map[model.OriginDestinationPair]int)
+}

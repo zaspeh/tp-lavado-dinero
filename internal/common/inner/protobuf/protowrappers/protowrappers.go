@@ -23,3 +23,9 @@ func WrapToConvertTransactions(transactions []*protobuf.ToConvertTransaction) *p
 		Items: transactions,
 	}
 }
+
+func WrapSuspiciousPaths(paths []*protobuf.SuspiciousPath) *protobuf.SuspiciousPathBatch {
+	return &protobuf.SuspiciousPathBatch{
+		Paths: paths,
+	}
+}

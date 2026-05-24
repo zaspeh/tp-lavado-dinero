@@ -7,9 +7,11 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
@@ -23,6 +25,8 @@ type AggregateByIntermediaryWorker struct {
 	eofMu                      sync.Mutex
 	eofReceivedFromOrigin      bool
 	eofReceivedFromDestination bool
+
+	maxBatchWeight int
 }
 
 type AggregateByIntermediaryWorkerConfig struct {
@@ -32,6 +36,7 @@ type AggregateByIntermediaryWorkerConfig struct {
 	OriginInputExchangeName      string
 	DestinationInputExchangeName string
 	OutputQueueName              string
+	MaxBatchWeight               int
 }
 
 func NewAggregateByIntermediaryWorker(config AggregateByIntermediaryWorkerConfig) (*AggregateByIntermediaryWorker, error) {
@@ -65,6 +70,7 @@ func NewAggregateByIntermediaryWorker(config AggregateByIntermediaryWorkerConfig
 		destinationInputExchange: destinationInputExchange,
 		outputQueue:              outputQueue,
 		store:                    NewIntermediaryStore(),
+		maxBatchWeight:           config.MaxBatchWeight,
 	}, nil
 }
 
@@ -219,6 +225,43 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationEOFMessage(moneyLaund
 }
 
 func (abi *AggregateByIntermediaryWorker) publishPairs() error {
-	//TODO
-	return nil
+	defer abi.store.Clear()
+
+	b := batch.New(
+		abi.maxBatchWeight,
+		protowrappers.ProtoSizer[*protobuf.SuspiciousPath](),
+		protowrappers.WrapSuspiciousPaths,
+	)
+
+	batcher := batch.NewBatcher(b, func(pb *protobuf.SuspiciousPathBatch) error {
+
+		serializedMsg, err := serializer.SerializeProtoMessage(pb, protobuf.MessageType_SUSPICIOUS_PATH_BATCH)
+		if err != nil {
+			return err
+		}
+
+		return abi.outputQueue.Send(*serializedMsg)
+	})
+
+	for pair, intermediaryCount := range abi.store.GetPairs() {
+		path := &protobuf.SuspiciousPath{
+			Origin: &protobuf.Account{
+				Bank:    pair.Origin.Bank,
+				Account: pair.Origin.Account,
+			},
+
+			Destination: &protobuf.Account{
+				Bank:    pair.Destination.Bank,
+				Account: pair.Destination.Account,
+			},
+
+			IntermediaryCount: uint32(intermediaryCount),
+		}
+
+		if err := batcher.Add(path); err != nil {
+			return err
+		}
+	}
+
+	return batcher.Flush()
 }
