@@ -46,6 +46,7 @@ const (
 	MessageType_TRANSACTION_BATCH                MessageType = 19
 	MessageType_TO_CONVERT_TRANSACTION_BATCH     MessageType = 20
 	MessageType_SUSPICIOUS_PATH_BATCH            MessageType = 21
+	MessageType_SUSPICIOUS_ACCOUNT_BATCH         MessageType = 22
 )
 
 // Enum value maps for MessageType.
@@ -73,6 +74,7 @@ var (
 		19: "TRANSACTION_BATCH",
 		20: "TO_CONVERT_TRANSACTION_BATCH",
 		21: "SUSPICIOUS_PATH_BATCH",
+		22: "SUSPICIOUS_ACCOUNT_BATCH",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                             0,
@@ -97,6 +99,7 @@ var (
 		"TRANSACTION_BATCH":                19,
 		"TO_CONVERT_TRANSACTION_BATCH":     20,
 		"SUSPICIOUS_PATH_BATCH":            21,
+		"SUSPICIOUS_ACCOUNT_BATCH":         22,
 	}
 )
 
@@ -247,7 +250,7 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\apayload\x18\x03 \x01(\fR\apayload\x12@\n" +
 	"\ftransactions\x18\x04 \x01(\v2\x1a.protobuf.TransactionBatchH\x00R\ftransactions\x12O\n" +
 	"\x10to_convert_batch\x18\x05 \x01(\v2#.protobuf.ToConvertTransactionBatchH\x00R\x0etoConvertBatchB\x0f\n" +
-	"\rinner_message*\xac\x04\n" +
+	"\rinner_message*\xca\x04\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -271,7 +274,8 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\x17AVGBYTYPE_SECOND_PERIOD\x10\x12\x12\x15\n" +
 	"\x11TRANSACTION_BATCH\x10\x13\x12 \n" +
 	"\x1cTO_CONVERT_TRANSACTION_BATCH\x10\x14\x12\x19\n" +
-	"\x15SUSPICIOUS_PATH_BATCH\x10\x15B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x15SUSPICIOUS_PATH_BATCH\x10\x15\x12\x1c\n" +
+	"\x18SUSPICIOUS_ACCOUNT_BATCH\x10\x16B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once

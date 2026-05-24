@@ -158,6 +158,9 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg middleware.Message, ack, nack 
 }
 
 func (sgj *ScatterGatherJoinWorker) publishResults() error {
-	//TODO
+	/*defer sgj.store.Clear()
+
+	b := batch.New(sgj.maxBatchWeight, protowrappers.ProtoSizer[]())*/
 	return nil
+
 }

@@ -33,6 +33,7 @@ enum MessageType {
     TRANSACTION_BATCH = 19;
     TO_CONVERT_TRANSACTION_BATCH = 20;
     SUSPICIOUS_PATH_BATCH = 21;
+    SUSPICIOUS_ACCOUNT_BATCH = 22;
 }
 
 message MoneyLaundry {
