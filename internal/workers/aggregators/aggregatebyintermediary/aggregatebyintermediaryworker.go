@@ -7,6 +7,9 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type AggregateByIntermediaryWorker struct {
@@ -86,9 +89,48 @@ func (abi *AggregateByIntermediaryWorker) handleSignals() {
 }
 
 func (abi *AggregateByIntermediaryWorker) handleOriginMessage(msg middleware.Message, ack, nack func()) {
-	//TODO
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_INTERMEDIARYPAIR:
+		abi.handleIntermediaryPairMessage(moneyLaundry, ack, nack)
+	case protobuf.MessageType_EOF_:
+		abi.handleEOFMessage(moneyLaundry, msg, ack, nack)
+	default:
+		nack()
+	}
 }
 
 func (abi *AggregateByIntermediaryWorker) handleDestinationMessage(msg middleware.Message, ack, nack func()) {
+	//TODO
+}
+
+func (abi *AggregateByIntermediaryWorker) handleIntermediaryPairMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	intermediaryPairMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.IntermediaryPair{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	origin := model.Account{
+		Bank:    intermediaryPairMsg.GetAccount().GetBank(),
+		Account: intermediaryPairMsg.GetAccount().GetAccount(),
+	}
+
+	intermediary := model.Account{
+		Bank:    intermediaryPairMsg.GetIntermediary().GetBank(),
+		Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
+	}
+
+	abi.store.AddOrigin(intermediary, origin)
+
+	ack()
+}
+
+func (abi *AggregateByIntermediaryWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	//TODO
 }
