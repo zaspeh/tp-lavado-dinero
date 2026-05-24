@@ -123,6 +123,22 @@ func (c *EOFCoordinator) handleRemoteEOF(coordinationMsg *protobuf.EOFCoordinati
 }
 
 func (c *EOFCoordinator) broadcastLocalCount(clientID string, state *clientState) error {
+	coordinationMsg := &protobuf.EOFCoordination{
+		ClientId:       clientID,
+		SenderId:       uint32(c.workerID),
+		ProcessedCount: state.localProcessed,
+		SurvivorCount:  state.localSurvivors,
+		ExpectedTotal:  state.expectedTotal,
+	}
+	message, err := serializer.SerializeCoordinationMessage(coordinationMsg)
+	if err != nil {
+		return err
+	}
+	for _, key := range c.publishKeys {
+		if err := c.exchange.SendWithKey(key, message); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

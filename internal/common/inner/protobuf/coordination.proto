@@ -6,7 +6,7 @@ option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 message EOFCoordination {
   string client_id = 1;
-  string sender_id = 2;
+  uint32  sender_id = 2;
   uint64 processed_count = 3;
   uint64 survivor_count = 4;
   uint64 expected_total = 6;

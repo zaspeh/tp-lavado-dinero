@@ -24,7 +24,7 @@ const (
 type EOFCoordination struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ClientId       string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
-	SenderId       string                 `protobuf:"bytes,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	SenderId       uint32                 `protobuf:"varint,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
 	ProcessedCount uint64                 `protobuf:"varint,3,opt,name=processed_count,json=processedCount,proto3" json:"processed_count,omitempty"`
 	SurvivorCount  uint64                 `protobuf:"varint,4,opt,name=survivor_count,json=survivorCount,proto3" json:"survivor_count,omitempty"`
 	ExpectedTotal  uint64                 `protobuf:"varint,6,opt,name=expected_total,json=expectedTotal,proto3" json:"expected_total,omitempty"`
@@ -69,11 +69,11 @@ func (x *EOFCoordination) GetClientId() string {
 	return ""
 }
 
-func (x *EOFCoordination) GetSenderId() string {
+func (x *EOFCoordination) GetSenderId() uint32 {
 	if x != nil {
 		return x.SenderId
 	}
-	return ""
+	return 0
 }
 
 func (x *EOFCoordination) GetProcessedCount() uint64 {
@@ -104,7 +104,7 @@ const file_internal_common_inner_protobuf_coordination_proto_rawDesc = "" +
 	"1internal/common/inner/protobuf/coordination.proto\x12\bprotobuf\"\xc2\x01\n" +
 	"\x0fEOFCoordination\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x1b\n" +
-	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12'\n" +
+	"\tsender_id\x18\x02 \x01(\rR\bsenderId\x12'\n" +
 	"\x0fprocessed_count\x18\x03 \x01(\x04R\x0eprocessedCount\x12%\n" +
 	"\x0esurvivor_count\x18\x04 \x01(\x04R\rsurvivorCount\x12%\n" +
 	"\x0eexpected_total\x18\x06 \x01(\x04R\rexpectedTotalB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
