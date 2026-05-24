@@ -69,3 +69,22 @@ func DeserializeTransaction[T proto.Message](payload []byte, transaction T) (T, 
 	}
 	return transaction, nil
 }
+
+func SerializeCoordinationMessage(message *protobuf.EOFCoordination) (middleware.Message, error) {
+	marshalledMessage, err := proto.Marshal(message)
+	if err != nil {
+		return middleware.Message{}, fmt.Errorf("error marshalling coordination message: %w", err)
+	}
+
+	return middleware.Message{
+		Body: marshalledMessage,
+	}, nil
+}
+
+func DeserializeCoordinationMessage(message middleware.Message) (*protobuf.EOFCoordination, error) {
+	coordinationMessage := &protobuf.EOFCoordination{}
+	if err := proto.Unmarshal(message.Body, coordinationMessage); err != nil {
+		return nil, fmt.Errorf("error unmarshalling coordination message: %w", err)
+	}
+	return coordinationMessage, nil
+}
