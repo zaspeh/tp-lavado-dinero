@@ -46,6 +46,8 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildConvertedMicroPaymentJoinWorker()
 	case "AGGREGATE_BY_INTERMEDIARY":
 		return buildAggregateByIntermediaryWorker()
+	case "SCATTER_GATHER_JOIN":
+		return buildScatterGatherJoinWorker()
 	default:
 		return nil, nil
 	}

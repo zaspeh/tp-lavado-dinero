@@ -5,6 +5,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/conversionjoin.go"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/maxbankjoin.go"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/scattergatherjoin"
 )
 
 func buildMaxBankJoinWorker() (workers.Worker, error) {
@@ -147,4 +148,42 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 	}
 
 	return conversionjoin.NewConversionJoin(config)
+}
+
+func buildScatterGatherJoinWorker() (workers.Worker, error) {
+
+	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	clientExchangeName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
+
+	config := scattergatherjoin.ScatterGatherJoinConfig{
+		InputQueueName:     inputQueueName,
+		ClientExchangeName: clientExchangeName,
+		MomHost:            host,
+		MomPort:            port,
+		MaxBatchWeight:     maxBatchWeight,
+	}
+
+	return scattergatherjoin.NewScatterGatherJoinWorker(config)
 }
