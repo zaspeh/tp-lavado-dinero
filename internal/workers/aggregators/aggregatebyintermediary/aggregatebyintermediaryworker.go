@@ -97,7 +97,7 @@ func (abi *AggregateByIntermediaryWorker) handleOriginMessage(msg middleware.Mes
 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_INTERMEDIARYPAIR:
-		abi.handleIntermediaryPairMessage(moneyLaundry, ack, nack)
+		abi.handleOriginIntermediaryPairMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		abi.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
@@ -106,10 +106,23 @@ func (abi *AggregateByIntermediaryWorker) handleOriginMessage(msg middleware.Mes
 }
 
 func (abi *AggregateByIntermediaryWorker) handleDestinationMessage(msg middleware.Message, ack, nack func()) {
-	//TODO
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_INTERMEDIARYPAIR:
+		abi.handleDestinationIntermediaryPairMessage(moneyLaundry, ack, nack)
+	case protobuf.MessageType_EOF_:
+		abi.handleEOFMessage(moneyLaundry, msg, ack, nack)
+	default:
+		nack()
+	}
 }
 
-func (abi *AggregateByIntermediaryWorker) handleIntermediaryPairMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+func (abi *AggregateByIntermediaryWorker) handleOriginIntermediaryPairMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	intermediaryPairMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.IntermediaryPair{})
 	if err != nil {
 		nack()
@@ -127,6 +140,28 @@ func (abi *AggregateByIntermediaryWorker) handleIntermediaryPairMessage(moneyLau
 	}
 
 	abi.store.AddOrigin(intermediary, origin)
+
+	ack()
+}
+
+func (abi *AggregateByIntermediaryWorker) handleDestinationIntermediaryPairMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	intermediaryPairMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.IntermediaryPair{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	destination := model.Account{
+		Bank:    intermediaryPairMsg.GetAccount().GetBank(),
+		Account: intermediaryPairMsg.GetAccount().GetAccount(),
+	}
+
+	intermediary := model.Account{
+		Bank:    intermediaryPairMsg.GetIntermediary().GetBank(),
+		Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
+	}
+
+	abi.store.AddDestination(intermediary, destination)
 
 	ack()
 }

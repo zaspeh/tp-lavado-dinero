@@ -25,15 +25,7 @@ func (s *IntermediaryStore) AddOrigin(intermediary model.Account, origin model.A
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	relations, ok := s.relations[intermediary]
-
-	if !ok {
-		relations = &IntermediaryRelations{
-			Origins:      make(map[model.Account]struct{}),
-			Destinations: make(map[model.Account]struct{}),
-		}
-		s.relations[intermediary] = relations
-	}
+	relations := s.getOrCreateRelations(intermediary)
 
 	if _, exists := relations.Origins[origin]; exists {
 		return
@@ -48,4 +40,44 @@ func (s *IntermediaryStore) AddOrigin(intermediary model.Account, origin model.A
 	}
 
 	relations.Origins[origin] = struct{}{}
+}
+
+func (s *IntermediaryStore) AddDestination(intermediary model.Account, destination model.Account) {
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	relations := s.getOrCreateRelations(intermediary)
+
+	if _, exists := relations.Destinations[destination]; exists {
+		return
+	}
+
+	for origin := range relations.Origins {
+		pair := model.OriginDestinationPair{
+			Origin:      origin,
+			Destination: destination,
+		}
+		s.pairs[pair]++
+	}
+
+	relations.Destinations[destination] = struct{}{}
+}
+
+func (s *IntermediaryStore) getOrCreateRelations(
+	intermediary model.Account,
+) *IntermediaryRelations {
+
+	relations, ok := s.relations[intermediary]
+
+	if !ok {
+		relations = &IntermediaryRelations{
+			Origins:      make(map[model.Account]struct{}),
+			Destinations: make(map[model.Account]struct{}),
+		}
+
+		s.relations[intermediary] = relations
+	}
+
+	return relations
 }
