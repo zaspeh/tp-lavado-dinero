@@ -1,8 +1,14 @@
 package aggregatebyintermediary
 
-import "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
+import (
+	"sync"
+
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
+)
 
 type IntermediaryStore struct {
+	mu sync.Mutex
+
 	relations map[model.Account]*IntermediaryRelations
 	pairs     map[model.OriginDestinationPair]int
 }

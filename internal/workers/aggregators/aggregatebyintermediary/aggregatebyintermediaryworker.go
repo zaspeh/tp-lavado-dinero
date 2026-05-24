@@ -1,6 +1,11 @@
 package aggregatebyintermediary
 
 import (
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 )
 
@@ -54,4 +59,36 @@ func NewAggregateByIntermediaryWorker(config AggregateByIntermediaryWorkerConfig
 		outputQueue:              outputQueue,
 		store:                    NewIntermediaryStore(),
 	}, nil
+}
+
+func (abi *AggregateByIntermediaryWorker) Run() error {
+	go abi.handleSignals()
+
+	go abi.originInputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		abi.handleOriginMessage(msg, ack, nack)
+	})
+
+	abi.destinationInputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		abi.handleDestinationMessage(msg, ack, nack)
+	})
+
+	return nil
+}
+
+func (abi *AggregateByIntermediaryWorker) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
+	slog.Info("shutdown signal received")
+	abi.originInputExchange.Close()
+	abi.destinationInputExchange.Close()
+	abi.outputQueue.Close()
+}
+
+func (abi *AggregateByIntermediaryWorker) handleOriginMessage(msg middleware.Message, ack, nack func()) {
+	//TODO
+}
+
+func (abi *AggregateByIntermediaryWorker) handleDestinationMessage(msg middleware.Message, ack, nack func()) {
+	//TODO
 }
