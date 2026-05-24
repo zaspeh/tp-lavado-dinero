@@ -94,7 +94,18 @@ func (c *EOFCoordinator) RecordSurvivor(clientID string) {
 }
 
 func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64) error {
-	return nil
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	state := c.getClientState(clientID)
+	state.EOFSeen = true
+	state.expectedTotal = expectedTotal
+
+	if err := c.broadcastLocalCount(clientID, state); err != nil {
+		return err
+	}
+
+	return c.tryFlush(clientID, state)
 }
 
 func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func()) {
@@ -111,7 +122,7 @@ func (c *EOFCoordinator) handleRemoteEOF(coordinationMsg *protobuf.EOFCoordinati
 	return nil
 }
 
-func (c *EOFCoordinator) broadcastProgress(clientID string, expectedTotal uint64) error {
+func (c *EOFCoordinator) broadcastLocalCount(clientID string, state *clientState) error {
 	return nil
 }
 
