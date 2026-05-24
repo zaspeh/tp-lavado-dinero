@@ -6,4 +6,5 @@ type ResultHandler interface {
 	HandleMaxBankResult(msg MaxBankResult) error
 	HandleConvertedMicroPaymentResult(msg ConvertedMicroPaymentResult) error
 	HandleAvgByTypeResult(msg AvgByTypeResult) error
+	HandleSuspiciousAccountsResult(msg SuspiciousAccountsResult) error
 }

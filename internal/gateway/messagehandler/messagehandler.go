@@ -103,3 +103,27 @@ func ProtoToConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry) 
 		Count: deserializeMsg.GetCount(),
 	}, nil
 }
+
+func ProtoToSuspiciousAccounts(moneyLaundering *protobuf.MoneyLaundry,
+) (*result.SuspiciousAccountsResult, error) {
+
+	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.SuspiciousAccountBatch{})
+	if err != nil {
+		return nil, err
+	}
+
+	accounts := make([]result.SuspiciousAccount, 0, len(batch.GetAccounts()))
+
+	for _, account := range batch.GetAccounts() {
+
+		accounts = append(accounts, result.SuspiciousAccount{
+			Bank:    account.GetBank(),
+			Account: account.GetAccount(),
+		})
+	}
+
+	return &result.SuspiciousAccountsResult{
+		Accounts: accounts,
+	}, nil
+
+}

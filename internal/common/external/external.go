@@ -3,6 +3,7 @@ package external
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -21,6 +22,7 @@ const (
 	maxBankResult
 	convertedMicroPaymentResult
 	avgByTypeResult
+	suspiciousAccountsResult
 
 	eof
 	ack
@@ -166,6 +168,32 @@ func (p *ExternalProtocol) SendAvgByTypeResult(result *result.AvgByTypeResult) e
 	return p.socket.WriteAll(append(length, data...))
 }
 
+func (p *ExternalProtocol) SendSuspiciousAccountsResult(result *result.SuspiciousAccountsResult) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for _, account := range result.Accounts {
+
+		if err := p.sendMsgType(
+			suspiciousAccountsResult,
+		); err != nil {
+			return err
+		}
+
+		record := fmt.Sprintf("%d,%s", account.Bank, account.Account)
+
+		length := serializer.SerializeUint16(uint16(len(record)))
+
+		data := serializer.SerializeString(record)
+
+		if err := p.socket.WriteAll(append(length, data...)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (p *ExternalProtocol) SendEOF() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -243,6 +271,8 @@ func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {
 		return result.EOF{}, nil
 	case convertedMicroPaymentResult:
 		return p.receiveConvertedMicroPaymentResult()
+	case suspiciousAccountsResult:
+		return p.receiveSuspiciousAccountResult()
 	default:
 		return nil, fmt.Errorf(
 			"protocol error: invalid message type %d",
@@ -339,6 +369,46 @@ func (p *ExternalProtocol) receiveConvertedMicroPaymentResult() (result.Result, 
 	// TODO: revisar si se puede usar uint en proto y evitar esta conversión
 	return &result.ConvertedMicroPaymentResult{
 		Count: int64(count),
+	}, nil
+}
+
+func (p *ExternalProtocol) receiveSuspiciousAccountResult() (result.Result, error) {
+
+	stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
+	if err != nil {
+		return nil, err
+	}
+
+	length := serializer.DeserializeUint16(stringLengthBytes)
+	stringBytes, err := p.socket.ReadAll(int(length))
+
+	if err != nil {
+		return nil, err
+	}
+
+	record := serializer.DeserializeString(stringBytes)
+
+	fields := strings.Split(record, ",")
+
+	if len(fields) != 2 {
+		return nil, fmt.Errorf(
+			"invalid suspicious account result",
+		)
+	}
+
+	bank, err := strconv.Atoi(fields[0])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result.SuspiciousAccountsResult{
+		Accounts: []result.SuspiciousAccount{
+			{
+				Bank:    int32(bank),
+				Account: fields[1],
+			},
+		},
 	}, nil
 }
 

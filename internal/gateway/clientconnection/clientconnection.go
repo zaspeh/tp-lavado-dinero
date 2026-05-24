@@ -213,6 +213,8 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	case protobuf.MessageType_AVGBYTYPE_RESULT:
 		slog.Info("received avg by type result from exchange")
 		cc.handleAvgByTypeResult(moneyLaundry, ack, nack)
+	case protobuf.MessageType_SUSPICIOUS_ACCOUNT_BATCH:
+		cc.handleSuspiciousAccountBatch(moneyLaundry, ack, nack)
 	default:
 		slog.Warn("received message with unknown type", "type", moneyLaundry.GetType())
 		nack()
@@ -311,6 +313,25 @@ func (cc *ClientConnection) handleConvertedMicroPaymentResult(moneyLaundering *p
 		nack()
 		return
 	}
+	ack()
+}
+
+func (cc *ClientConnection) handleSuspiciousAccountBatch(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+
+	externalMsg, err := messagehandler.ProtoToSuspiciousAccounts(moneyLaundering)
+
+	if err != nil {
+		nack()
+		return
+	}
+
+	if err := cc.protocol.SendSuspiciousAccountsResult(
+		externalMsg,
+	); err != nil {
+		nack()
+		return
+	}
+
 	ack()
 }
 
