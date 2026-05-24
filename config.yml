@@ -156,6 +156,18 @@ services:
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: destination_intermediary_aggregation
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
 
+  aggregate_by_intermediary:
+    count: 0
+    worker_type: AGGREGATE_BY_INTERMEDIARY
+
+    env:
+      ORIGIN_INPUT_EXCHANGE_NAME: origin_intermediary_aggregation
+      DESTINATION_INPUT_EXCHANGE_NAME: destination_intermediary_aggregation
+
+      OUTPUT_QUEUE_NAME: suspicious_paths_output
+
+      MAX_BATCH_WEIGHT: 8000
+
   avg_by_type:
     count: 0
     worker_type: AVG_BY_TYPE
