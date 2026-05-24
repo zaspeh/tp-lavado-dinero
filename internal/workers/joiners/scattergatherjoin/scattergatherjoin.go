@@ -7,6 +7,9 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type ScatterGatherJoinWorker struct {
@@ -95,5 +98,51 @@ func (sgj *ScatterGatherJoinWorker) handleSignals() {
 }
 
 func (sgj *ScatterGatherJoinWorker) handleMessage(msg middleware.Message, ack, nack func()) {
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundry.GetType() {
+	case protobuf.MessageType_SUSPICIOUS_PATH_BATCH:
+		sgj.handleSuspiciousPathBatch(moneyLaundry, ack, nack)
+
+	case protobuf.MessageType_EOF_:
+		slog.Info("Received EOF message in ScatterGatherJoin, forwarding to client exchange")
+		sgj.handleEOF(msg, ack, nack)
+
+	default:
+		nack()
+	}
+}
+
+func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	batchMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.SuspiciousPathBatch{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	for _, path := range batchMsg.GetPaths() {
+		pair := model.OriginDestinationPair{
+			Origin: model.Account{
+				Bank:    path.GetOrigin().GetBank(),
+				Account: path.GetOrigin().GetAccount(),
+			},
+			Destination: model.Account{
+				Bank:    path.GetDestination().GetBank(),
+				Account: path.GetDestination().GetAccount(),
+			},
+		}
+
+		sgj.store.Add(pair, int(path.GetIntermediaryCount()))
+	}
+
+	ack()
+}
+
+func (sgj *ScatterGatherJoinWorker) handleEOF(msg middleware.Message, ack, nack func()) {
 	//TODO
 }

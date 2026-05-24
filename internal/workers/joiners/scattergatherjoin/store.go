@@ -13,3 +13,7 @@ func NewScatterGatherStore() *ScatterGatherStore {
 		paths: make(map[model.OriginDestinationPair]int),
 	}
 }
+
+func (s *ScatterGatherStore) Add(pair model.OriginDestinationPair, count int) {
+	s.paths[pair] += count
+}
