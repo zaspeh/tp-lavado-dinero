@@ -18,6 +18,8 @@ type ResultCSVWriter struct {
 	q2Writer      *csv.Writer
 	q3File        *os.File
 	q3Writer      *csv.Writer
+	q4File        *os.File
+	q4Writer      *csv.Writer
 	q5File        *os.File
 	q5Writer      *csv.Writer
 }
@@ -73,11 +75,33 @@ func (rw *ResultCSVWriter) Open() error {
 		return err
 	}
 
+	rw.q4File, err = os.OpenFile(filepath.Join(rw.outputDir, "q4_result.csv"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+
+	if err != nil {
+		rw.q1File.Close()
+		rw.q2File.Close()
+		rw.q3File.Close()
+		return err
+	}
+
+	rw.q4Writer = csv.NewWriter(rw.q4File)
+
+	err = rw.q4Writer.Write([]string{"bank", "account"})
+
+	if err != nil {
+		rw.q1File.Close()
+		rw.q2File.Close()
+		rw.q3File.Close()
+		rw.q4File.Close()
+		return err
+	}
+
 	rw.q5File, err = os.OpenFile(filepath.Join(rw.outputDir, "q5_result.csv"), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		rw.q1File.Close()
 		rw.q2File.Close()
 		rw.q3File.Close()
+		rw.q4File.Close()
 		return err
 	}
 	rw.q5Writer = csv.NewWriter(rw.q5File)
@@ -86,6 +110,7 @@ func (rw *ResultCSVWriter) Open() error {
 		rw.q1File.Close()
 		rw.q2File.Close()
 		rw.q3File.Close()
+		rw.q4File.Close()
 		rw.q5File.Close()
 		return err
 	}
@@ -113,6 +138,12 @@ func (rw *ResultCSVWriter) Close() {
 	}
 	if rw.q3File != nil {
 		rw.q3File.Close()
+	}
+	if rw.q4Writer != nil {
+		rw.q4Writer.Flush()
+	}
+	if rw.q4File != nil {
+		rw.q4File.Close()
 	}
 	if rw.q5Writer != nil {
 		rw.q5Writer.Flush()
@@ -185,4 +216,22 @@ func (rw *ResultCSVWriter) HandleAvgByTypeResult(msg result.AvgByTypeResult) err
 	rw.q3Writer.Flush()
 
 	return rw.q3Writer.Error()
+}
+
+func (rw *ResultCSVWriter) HandleSuspiciousAccountsResult(msg result.SuspiciousAccountsResult) error {
+	for _, account := range msg.Accounts {
+
+		record := []string{
+			strconv.Itoa(int(account.Bank)),
+			account.Account,
+		}
+
+		if err := rw.q4Writer.Write(record); err != nil {
+			return err
+		}
+	}
+
+	rw.q4Writer.Flush()
+
+	return rw.q4Writer.Error()
 }
