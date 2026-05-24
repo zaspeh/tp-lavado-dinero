@@ -1,5 +1,9 @@
 package origindestination
 
+import "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
+
+type Account = model.Account
+
 type AccountStore struct {
 	data map[Account]map[Account]struct{}
 }

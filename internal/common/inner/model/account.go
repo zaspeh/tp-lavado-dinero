@@ -1,4 +1,4 @@
-package origindestination
+package model
 
 type Account struct {
 	Bank    int32
