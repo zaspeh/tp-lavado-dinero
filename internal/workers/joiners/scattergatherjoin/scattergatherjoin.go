@@ -6,9 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
@@ -158,9 +160,53 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg middleware.Message, ack, nack 
 }
 
 func (sgj *ScatterGatherJoinWorker) publishResults() error {
-	/*defer sgj.store.Clear()
+	defer sgj.store.Clear()
 
-	b := batch.New(sgj.maxBatchWeight, protowrappers.ProtoSizer[]())*/
-	return nil
+	suspiciousAccounts := make(map[model.Account]struct{})
 
+	for pair, count := range sgj.store.GetPaths() {
+		if count < 5 {
+			continue
+		}
+
+		origin := pair.Origin
+
+		suspiciousAccounts[origin] = struct{}{}
+	}
+
+	b := batch.New(
+		sgj.maxBatchWeight,
+		protowrappers.ProtoSizer[*protobuf.Account](),
+		protowrappers.WrapSuspiciousAccounts,
+	)
+
+	batcher := batch.NewBatcher(
+		b,
+		func(pb *protobuf.SuspiciousAccountBatch) error {
+
+			serializedMsg, err := serializer.SerializeProtoMessage(
+				pb,
+				protobuf.MessageType_SUSPICIOUS_ACCOUNT_BATCH,
+			)
+
+			if err != nil {
+				return err
+			}
+
+			return sgj.resultExchange.Send(*serializedMsg)
+		},
+	)
+
+	for account := range suspiciousAccounts {
+		protoAccount := &protobuf.Account{
+			Bank:    account.GetBank(),
+			Account: account.GetAccount(),
+		}
+
+		if err := batcher.Add(protoAccount); err != nil {
+			return err
+		}
+	}
+
+	return batcher.Flush()
 }

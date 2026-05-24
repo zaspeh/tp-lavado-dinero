@@ -21,60 +21,16 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type SuspiciousAccount struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SuspiciousAccount) Reset() {
-	*x = SuspiciousAccount{}
-	mi := &file_suspiciousaccount_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SuspiciousAccount) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SuspiciousAccount) ProtoMessage() {}
-
-func (x *SuspiciousAccount) ProtoReflect() protoreflect.Message {
-	mi := &file_suspiciousaccount_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SuspiciousAccount.ProtoReflect.Descriptor instead.
-func (*SuspiciousAccount) Descriptor() ([]byte, []int) {
-	return file_suspiciousaccount_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *SuspiciousAccount) GetAccount() *Account {
-	if x != nil {
-		return x.Account
-	}
-	return nil
-}
-
 type SuspiciousAccountBatch struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Accounts      []*SuspiciousAccount   `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	Accounts      []*Account             `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SuspiciousAccountBatch) Reset() {
 	*x = SuspiciousAccountBatch{}
-	mi := &file_suspiciousaccount_proto_msgTypes[1]
+	mi := &file_suspiciousaccount_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -86,7 +42,7 @@ func (x *SuspiciousAccountBatch) String() string {
 func (*SuspiciousAccountBatch) ProtoMessage() {}
 
 func (x *SuspiciousAccountBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_suspiciousaccount_proto_msgTypes[1]
+	mi := &file_suspiciousaccount_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -99,10 +55,10 @@ func (x *SuspiciousAccountBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspiciousAccountBatch.ProtoReflect.Descriptor instead.
 func (*SuspiciousAccountBatch) Descriptor() ([]byte, []int) {
-	return file_suspiciousaccount_proto_rawDescGZIP(), []int{1}
+	return file_suspiciousaccount_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *SuspiciousAccountBatch) GetAccounts() []*SuspiciousAccount {
+func (x *SuspiciousAccountBatch) GetAccounts() []*Account {
 	if x != nil {
 		return x.Accounts
 	}
@@ -113,11 +69,9 @@ var File_suspiciousaccount_proto protoreflect.FileDescriptor
 
 const file_suspiciousaccount_proto_rawDesc = "" +
 	"\n" +
-	"\x17suspiciousaccount.proto\x12\bprotobuf\x1a\raccount.proto\"@\n" +
-	"\x11SuspiciousAccount\x12+\n" +
-	"\aaccount\x18\x01 \x01(\v2\x11.protobuf.AccountR\aaccount\"Q\n" +
-	"\x16SuspiciousAccountBatch\x127\n" +
-	"\baccounts\x18\x01 \x03(\v2\x1b.protobuf.SuspiciousAccountR\baccountsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x17suspiciousaccount.proto\x12\bprotobuf\x1a\raccount.proto\"G\n" +
+	"\x16SuspiciousAccountBatch\x12-\n" +
+	"\baccounts\x18\x01 \x03(\v2\x11.protobuf.AccountR\baccountsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_suspiciousaccount_proto_rawDescOnce sync.Once
@@ -131,20 +85,18 @@ func file_suspiciousaccount_proto_rawDescGZIP() []byte {
 	return file_suspiciousaccount_proto_rawDescData
 }
 
-var file_suspiciousaccount_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_suspiciousaccount_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_suspiciousaccount_proto_goTypes = []any{
-	(*SuspiciousAccount)(nil),      // 0: protobuf.SuspiciousAccount
-	(*SuspiciousAccountBatch)(nil), // 1: protobuf.SuspiciousAccountBatch
-	(*Account)(nil),                // 2: protobuf.Account
+	(*SuspiciousAccountBatch)(nil), // 0: protobuf.SuspiciousAccountBatch
+	(*Account)(nil),                // 1: protobuf.Account
 }
 var file_suspiciousaccount_proto_depIdxs = []int32{
-	2, // 0: protobuf.SuspiciousAccount.account:type_name -> protobuf.Account
-	0, // 1: protobuf.SuspiciousAccountBatch.accounts:type_name -> protobuf.SuspiciousAccount
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 0: protobuf.SuspiciousAccountBatch.accounts:type_name -> protobuf.Account
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_suspiciousaccount_proto_init() }
@@ -159,7 +111,7 @@ func file_suspiciousaccount_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_suspiciousaccount_proto_rawDesc), len(file_suspiciousaccount_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

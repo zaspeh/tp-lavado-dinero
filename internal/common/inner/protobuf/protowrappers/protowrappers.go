@@ -29,3 +29,10 @@ func WrapSuspiciousPaths(paths []*protobuf.SuspiciousPath) *protobuf.SuspiciousP
 		Paths: paths,
 	}
 }
+
+func WrapSuspiciousAccounts(accounts []*protobuf.Account) *protobuf.SuspiciousAccountBatch {
+
+	return &protobuf.SuspiciousAccountBatch{
+		Accounts: accounts,
+	}
+}

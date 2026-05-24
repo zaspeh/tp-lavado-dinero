@@ -6,10 +6,6 @@ import "account.proto";
 
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
-message SuspiciousAccount {
-  Account account = 1;
-}
-
 message SuspiciousAccountBatch {
-  repeated SuspiciousAccount accounts = 1;
+  repeated Account accounts = 1;
 }
