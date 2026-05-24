@@ -143,7 +143,23 @@ func (c *EOFCoordinator) broadcastLocalCount(clientID string, state *clientState
 }
 
 func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
-	return nil
+	if !state.EOFSeen {
+		return nil
+	}
+
+	totalProcessed := state.localProcessed
+	totalSurvivors := state.localSurvivors
+
+	for _, peer := range state.peerCount {
+		totalProcessed += peer.processed
+		totalSurvivors += peer.survivors
+	}
+
+	if totalProcessed < state.expectedTotal {
+		return nil
+	}
+
+	return c.flushHandler(clientID, totalSurvivors)
 }
 
 func (c *EOFCoordinator) getClientState(clientID string) *clientState {
