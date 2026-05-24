@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -18,7 +19,10 @@ type AggregateByIntermediaryWorker struct {
 
 	outputQueue middleware.Middleware
 
-	store *IntermediaryStore
+	store                      *IntermediaryStore
+	eofMu                      sync.Mutex
+	eofReceivedFromOrigin      bool
+	eofReceivedFromDestination bool
 }
 
 type AggregateByIntermediaryWorkerConfig struct {
@@ -99,7 +103,7 @@ func (abi *AggregateByIntermediaryWorker) handleOriginMessage(msg middleware.Mes
 	case protobuf.MessageType_INTERMEDIARYPAIR:
 		abi.handleOriginIntermediaryPairMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
-		abi.handleEOFMessage(moneyLaundry, msg, ack, nack)
+		abi.handleOriginEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
@@ -116,7 +120,7 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationMessage(msg middlewar
 	case protobuf.MessageType_INTERMEDIARYPAIR:
 		abi.handleDestinationIntermediaryPairMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
-		abi.handleEOFMessage(moneyLaundry, msg, ack, nack)
+		abi.handleDestinationEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
@@ -166,6 +170,55 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationIntermediaryPairMessa
 	ack()
 }
 
-func (abi *AggregateByIntermediaryWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+func (abi *AggregateByIntermediaryWorker) handleOriginEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	abi.eofMu.Lock()
+	defer abi.eofMu.Unlock()
+
+	abi.eofReceivedFromOrigin = true
+
+	if !abi.eofReceivedFromDestination {
+		ack()
+		return
+	}
+
+	if err := abi.publishPairs(); err != nil {
+		nack()
+		return
+	}
+
+	if err := abi.outputQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
+}
+
+func (abi *AggregateByIntermediaryWorker) handleDestinationEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	abi.eofMu.Lock()
+	defer abi.eofMu.Unlock()
+
+	abi.eofReceivedFromDestination = true
+
+	if !abi.eofReceivedFromOrigin {
+		ack()
+		return
+	}
+
+	if err := abi.publishPairs(); err != nil {
+		nack()
+		return
+	}
+
+	if err := abi.outputQueue.Send(msg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
+}
+
+func (abi *AggregateByIntermediaryWorker) publishPairs() error {
 	//TODO
+	return nil
 }
