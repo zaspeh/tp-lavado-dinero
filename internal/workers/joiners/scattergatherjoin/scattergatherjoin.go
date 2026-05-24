@@ -144,5 +144,20 @@ func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *prot
 }
 
 func (sgj *ScatterGatherJoinWorker) handleEOF(msg middleware.Message, ack, nack func()) {
+	if err := sgj.publishResults(); err != nil {
+		nack()
+		return
+	}
+
+	if err := sgj.resultExchange.Send(msg); err != nil {
+		nack()
+		return
+	}
+
+	ack()
+}
+
+func (sgj *ScatterGatherJoinWorker) publishResults() error {
 	//TODO
+	return nil
 }
