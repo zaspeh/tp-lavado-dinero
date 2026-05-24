@@ -215,3 +215,12 @@ services:
     env:
       INPUT_QUEUE_NAME: conversion_join_input_queue
       CLIENT_EXCHANGE_NAME: client_results_exchange
+  
+  scatter_gather_join:
+    count: 0
+    worker_type: SCATTER_GATHER_JOIN
+
+    env:
+      INPUT_QUEUE_NAME: suspicious_paths_output
+      CLIENT_EXCHANGE_NAME: client_results_exchange
+      MAX_BATCH_WEIGHT: 8000
