@@ -6,3 +6,10 @@ type IntermediaryStore struct {
 	relations map[model.Account]*IntermediaryRelations
 	pairs     map[model.OriginDestinationPair]int
 }
+
+func NewIntermediaryStore() *IntermediaryStore {
+	return &IntermediaryStore{
+		relations: make(map[model.Account]*IntermediaryRelations),
+		pairs:     make(map[model.OriginDestinationPair]int),
+	}
+}
