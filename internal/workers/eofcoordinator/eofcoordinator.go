@@ -119,7 +119,18 @@ func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func
 }
 
 func (c *EOFCoordinator) handleRemoteEOF(coordinationMsg *protobuf.EOFCoordination) error {
-	return nil
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	clientID := coordinationMsg.GetClientId()
+	state := c.getClientState(clientID)
+	state.EOFSeen = true
+	state.peerCount[int(coordinationMsg.GetSenderId())] = peerCount{
+		processed: coordinationMsg.GetProcessedCount(),
+		survivors: coordinationMsg.GetSurvivorCount(),
+	}
+
+	return c.tryFlush(clientID, state)
 }
 
 func (c *EOFCoordinator) broadcastLocalCount(clientID string, state *clientState) error {
