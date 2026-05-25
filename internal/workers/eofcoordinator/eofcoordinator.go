@@ -77,20 +77,40 @@ func (c *EOFCoordinator) Run() error {
 	return nil
 }
 
-func (c *EOFCoordinator) RecordProcessed(clientID string) {
+func (c *EOFCoordinator) RecordProcessed(clientID string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	state := c.getClientState(clientID)
 	state.localProcessed++
+
+	if !state.EOFSeen {
+		return nil
+	}
+
+	if err := c.broadcastLocalCount(clientID, state); err != nil {
+		return err
+	}
+
+	return c.tryFlush(clientID, state)
 }
 
-func (c *EOFCoordinator) RecordSurvivor(clientID string) {
+func (c *EOFCoordinator) RecordSurvivor(clientID string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	state := c.getClientState(clientID)
 	state.localSurvivors++
+
+	if !state.EOFSeen {
+		return nil
+	}
+
+	if err := c.broadcastLocalCount(clientID, state); err != nil {
+		return err
+	}
+
+	return c.tryFlush(clientID, state)
 }
 
 func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64) error {
