@@ -23,7 +23,7 @@ type ConversionJoin struct {
 	inputQueue         middleware.Middleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
-	resultsAmount      int
+	clientResults      map[string]int
 }
 
 func NewConversionJoin(config ConversionJoinConfig) (*ConversionJoin, error) {
@@ -47,6 +47,7 @@ func NewConversionJoin(config ConversionJoinConfig) (*ConversionJoin, error) {
 		inputQueue:         inputQueue,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
+		clientResults:      make(map[string]int),
 	}, nil
 }
 
@@ -69,7 +70,7 @@ func (j *ConversionJoin) handleMessage(msg middleware.Message, ack, nack func())
 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_CONVERTED_AMOUNT:
-		j.handleConvertedAmountMessage(ack, nack)
+		j.handleConvertedAmountMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		j.HandleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
@@ -90,17 +91,20 @@ func (j *ConversionJoin) handleSignals() {
 	j.resultExchange.Close()
 }
 
-func (j *ConversionJoin) handleConvertedAmountMessage(ack, _ func()) {
-	j.resultsAmount++
+func (j *ConversionJoin) handleConvertedAmountMessage(moneyLaundry *protobuf.MoneyLaundry, ack, _ func()) {
+	clientID := moneyLaundry.GetClientID()
+	j.clientResults[clientID]++
 	ack()
 }
 
 func (j *ConversionJoin) HandleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
-	slog.Info("Sending EOF for client", "client_id", moneyLaundry.GetClientID())
-	resultMsg := &protobuf.ConvertedMicroPaymentResult{
-		Count: int64(j.resultsAmount),
-	}
 	clientID := moneyLaundry.GetClientID()
+	slog.Info("Sending EOF for client", "client_id", clientID)
+
+	resultsCount := j.clientResults[clientID]
+	resultMsg := &protobuf.ConvertedMicroPaymentResult{
+		Count: int64(resultsCount),
+	}
 	serializedResult, err := serializer.SerializeProtoMessageWithClientID(clientID, resultMsg, protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT)
 	if err != nil {
 		nack()
@@ -117,5 +121,7 @@ func (j *ConversionJoin) HandleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, r
 		nack()
 		return
 	}
+
+	delete(j.clientResults, clientID)
 	ack()
 }
