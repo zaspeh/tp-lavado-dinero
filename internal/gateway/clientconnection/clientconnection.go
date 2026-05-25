@@ -55,9 +55,9 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 	}
 
 	// TODO: descomentar cuando el sistema sea multicliente
-	// exchangeRoutingKey := []string{clientExchangeName + "." + id}
-	exchangeRoutingKey := []string{config.ClientExchangeName}
-	resultExchange, err := m.CreateExchangeMiddleware(config.ClientExchangeName, exchangeRoutingKey, connSettings)
+	personalKey := config.ClientExchangeName + "." + config.ID
+	exchangeRoutingKeys := []string{config.ClientExchangeName, personalKey}
+	resultExchange, err := m.CreateExchangeMiddleware(config.ClientExchangeName, exchangeRoutingKeys, connSettings)
 	if err != nil {
 		currencyFilterQueue.Close()
 		return nil, err

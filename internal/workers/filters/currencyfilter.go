@@ -178,7 +178,7 @@ func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobu
 		},
 	}
 
-	serializedMaxBankMessage, err := serializer.SerializeProtoMessage(maxbank, protobuf.MessageType_MAXBANK)
+	serializedMaxBankMessage, err := serializer.SerializeProtoMessageWithClientID(clientID, maxbank, protobuf.MessageType_MAXBANK)
 	if err != nil {
 		return err
 	}

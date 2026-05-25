@@ -1,6 +1,7 @@
 package maxbankjoin
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -129,7 +130,8 @@ func (j *MaxBankJoin) handleEOFMessage(msg *protobuf.MoneyLaundry, ack, nack fun
 			return
 		}
 
-		if err := j.resultExchange.Send(serializeMsg); err != nil {
+		publishKey := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
+		if err := j.resultExchange.SendWithKey(publishKey, serializeMsg); err != nil {
 			nack()
 			return
 		}

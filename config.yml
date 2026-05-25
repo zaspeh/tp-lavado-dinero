@@ -32,7 +32,7 @@ services:
       CURRENCY_TO_FILTER: "US Dollar"
 
   microtransaction_filter:
-    count: 1
+    count: 0
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
@@ -40,7 +40,7 @@ services:
       AMOUNT_TO_FILTER: 50
 
   microtransaction_join:
-    count: 1
+    count: 0
     worker_type: MICROTRANSACTION_JOIN
     env:
       INPUT_QUEUE_NAME: microtransaction_join_input_queue
@@ -74,7 +74,7 @@ services:
     
 
   period_filter:
-    count: 1
+    count: 0
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -195,7 +195,7 @@ services:
       VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   currency_converter:
-    count: 1
+    count: 0
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
@@ -203,7 +203,7 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 1
+    count: 0
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
@@ -211,7 +211,7 @@ services:
       AMOUNT_TO_FILTER: 1.00
 
   converter_join:
-    count: 1
+    count: 0
     worker_type: CONVERSION_JOIN
     env:
       INPUT_QUEUE_NAME: conversion_join_input_queue
