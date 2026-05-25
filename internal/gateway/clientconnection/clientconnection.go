@@ -39,6 +39,7 @@ type ClientConnection struct {
 	resultExchange      *m.ExchangeMiddleware
 	EOFamountReceived   int
 	transactionCounter  int
+	accountsCounter     int
 	MaxBatchWeight      int
 	transactionBatcher  *batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
 	rawDataBatcher      *batch.Batcher[*protobuf.ToConvertTransaction, *protobuf.ToConvertTransactionBatch]
@@ -187,6 +188,7 @@ func (cc *ClientConnection) HandleAccountBatch(msg request.AccountBatch) error {
 		if err := cc.accountBatcher.Add(protoMaxBank); err != nil {
 			return err
 		}
+		cc.accountsCounter++
 	}
 
 	return cc.protocol.SendAck()
@@ -216,19 +218,29 @@ func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 		return err
 	}
 
-	wrappedMessage, err := messagehandler.EOFToProto(
-		cc.id,
-		cc.transactionCounter,
-	)
+	if err := cc.accountBatcher.Flush(); err != nil {
+		return err
+	}
+
+	eofTransactions, err := messagehandler.EOFToProto(cc.id, cc.transactionCounter)
 	if err != nil {
 		return err
 	}
 
-	if err := cc.currencyFilterQueue.Send(wrappedMessage); err != nil {
+	if err := cc.currencyFilterQueue.Send(eofTransactions); err != nil {
 		return err
 	}
 
-	if err := cc.rawDataQueue.Send(wrappedMessage); err != nil {
+	if err := cc.rawDataQueue.Send(eofTransactions); err != nil {
+		return err
+	}
+
+	eofAccounts, err := messagehandler.EOFToProto(cc.id, cc.accountsCounter)
+	if err != nil {
+		return err
+	}
+
+	if err := cc.maxBankRouter.Send(eofAccounts); err != nil {
 		return err
 	}
 

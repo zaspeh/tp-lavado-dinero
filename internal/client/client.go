@@ -167,18 +167,7 @@ func (c *Client) processTransactions() error {
 		return err
 	}
 
-	if err := TransactionScanner.Err(); err != nil {
-		slog.Debug("Error while scanning input file", "err", err)
-		return err
-	}
-
-	err = c.protocol.SendEOF()
-	if err != nil {
-		slog.Debug("Error while sending EOF", "err", err)
-		return err
-	}
-
-	return c.protocol.WaitAck()
+	return TransactionScanner.Err()
 }
 
 func (c *Client) processAccounts() error {
