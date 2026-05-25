@@ -49,7 +49,7 @@ services:
       MAX_BATCH_BYTES: 8000
     
   bank_router:
-    count: 0
+    count: 2
     worker_type: BANK_ROUTER
     env:
       INPUT_QUEUE_NAME: bank_router_input_queue

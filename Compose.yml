@@ -169,6 +169,48 @@ services:
         condition: service_healthy
     networks:
     - money_laundering_network
+  bank_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: bank_router_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=BANK_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=BANK_ROUTER
+    - INPUT_QUEUE_NAME=bank_router_input_queue
+    - MAX_BANK_EXCHANGE_NAME=max_bank_input_exchange
+    - MAX_BANK_WORKER_AMOUNT=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  bank_router_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: bank_router_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=BANK_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=BANK_ROUTER
+    - INPUT_QUEUE_NAME=bank_router_input_queue
+    - MAX_BANK_EXCHANGE_NAME=max_bank_input_exchange
+    - MAX_BANK_WORKER_AMOUNT=1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
   period_filter_0:
     build:
       context: .

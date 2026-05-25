@@ -6,6 +6,11 @@ import (
 )
 
 func buildBankRouterWorker() (workers.Worker, error) {
+	id, err := getEnvIntStrict("WORKER_ID")
+	if err != nil {
+		return nil, err
+	}
+
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -31,12 +36,20 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	config := routers.BackRouterConfig{
+		ID:                  id,
 		MomHost:             host,
 		MomPort:             port,
 		InputQueueName:      inQ,
 		MaxBankExchangeName: maxBankExchangeName,
 		MaxBankWorkerAmount: maxBankWorkerAmount,
+		WorkerCount:         workerCount,
+		WorkerExchangeName:  workerExchangeName,
 	}
 
 	return routers.NewBankRouter(config)
