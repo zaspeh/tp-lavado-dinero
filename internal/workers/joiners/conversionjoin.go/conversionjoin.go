@@ -1,6 +1,7 @@
 package conversionjoin
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -70,7 +71,7 @@ func (j *ConversionJoin) handleMessage(msg middleware.Message, ack, nack func())
 	case protobuf.MessageType_CONVERTED_AMOUNT:
 		j.handleConvertedAmountMessage(ack, nack)
 	case protobuf.MessageType_EOF_:
-		j.HandleEOFMessage(msg, ack, nack)
+		j.HandleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
@@ -89,29 +90,30 @@ func (j *ConversionJoin) handleSignals() {
 	j.resultExchange.Close()
 }
 
-func (j *ConversionJoin) handleConvertedAmountMessage(ack, nack func()) {
+func (j *ConversionJoin) handleConvertedAmountMessage(ack, _nack func()) {
 	j.resultsAmount++
 	ack()
 }
 
-func (j *ConversionJoin) HandleEOFMessage(msg middleware.Message, ack, nack func()) {
+func (j *ConversionJoin) HandleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
 	slog.Info("EOF message received")
 	resultMsg := &protobuf.ConvertedMicroPaymentResult{
 		Count: int64(j.resultsAmount),
 	}
-
-	serializedResult, err := serializer.SerializeProtoMessageWithClientID("c", resultMsg, protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT)
+	clientID := moneyLaundry.GetClientID()
+	serializedResult, err := serializer.SerializeProtoMessageWithClientID(clientID, resultMsg, protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT)
 	if err != nil {
 		nack()
 		return
 	}
 
-	if err := j.resultExchange.Send(*serializedResult); err != nil {
+	key := fmt.Sprintf("%s.%s", j.clientExchangeName, moneyLaundry.GetClientID())
+	if err := j.resultExchange.SendWithKey(key, *serializedResult); err != nil {
 		nack()
 		return
 	}
 
-	if err := j.resultExchange.Send(msg); err != nil {
+	if err := j.resultExchange.SendWithKey(key, rawMsg); err != nil {
 		nack()
 		return
 	}

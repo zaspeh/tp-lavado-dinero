@@ -6,7 +6,7 @@ GENERATOR_SCRIPT=scripts/generate-compose.py
 generate:
 	@python3 $(GENERATOR_SCRIPT)
 
-up: $(COMPOSE_FILE)
+up: generate $(COMPOSE_FILE)
 	docker compose -f $(COMPOSE_FILE) up -d --build --remove-orphans
 
 down:

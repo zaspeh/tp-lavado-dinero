@@ -258,6 +258,7 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 
 func (pf *PeriodFilterWorker) handleToConvertBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	toConvertBatch := moneyLaundry.GetToConvertBatch()
+	clientID := moneyLaundry.GetClientID()
 	items := toConvertBatch.GetItems()
 	for _, transactionMsg := range items {
 		if !pf.paymentTypePeriod.Contains(transactionMsg.GetTimestamp().AsTime()) {
@@ -265,7 +266,7 @@ func (pf *PeriodFilterWorker) handleToConvertBatch(moneyLaundry *protobuf.MoneyL
 		}
 
 		//slog.Debug("Publishing transaction to payment type filter", "timestamp", transactionMsg.GetTimestamp().AsTime())
-		if err := pf.publishToPaymentTypeQueue(transactionMsg); err != nil {
+		if err := pf.publishToPaymentTypeQueue(clientID, transactionMsg); err != nil {
 			nack()
 			return
 		}
@@ -331,13 +332,13 @@ func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protob
 	return pf.paymentTypeRouterQueue.Send(*serializedMsg)
 }
 
-func (pf *PeriodFilterWorker) publishToPaymentTypeQueue(transactionMsg *protobuf.ToConvertTransaction) error {
+func (pf *PeriodFilterWorker) publishToPaymentTypeQueue(clientID string, transactionMsg *protobuf.ToConvertTransaction) error {
 	filteredPeriodMsg := &protobuf.ToConvertPeriodFiltered{
 		AmountPaid:      transactionMsg.GetAmountPaid(),
 		PaymentCurrency: transactionMsg.GetPaymentCurrency(),
 		PaymentFormat:   transactionMsg.GetPaymentFormat(),
 	}
-	serializedMsg, err := serializer.SerializeProtoMessage(filteredPeriodMsg, protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED)
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, filteredPeriodMsg, protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED)
 	if err != nil {
 		return err
 	}

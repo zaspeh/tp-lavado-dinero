@@ -87,6 +87,7 @@ func (w *FormatFilterWorker) handleMessage(msg middleware.Message, ack, nack fun
 
 func (w *FormatFilterWorker) handlePeriodFilterdMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
 	periodFilteredMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ToConvertPeriodFiltered{})
+	clientID := moneyLaundering.GetClientID() // Preserve client ID for downstream processing
 	if err != nil {
 		nack()
 		return
@@ -97,7 +98,7 @@ func (w *FormatFilterWorker) handlePeriodFilterdMessage(moneyLaundering *protobu
 		return
 	}
 
-	if err := w.sendFormatFilteredMessage(periodFilteredMsg); err != nil {
+	if err := w.sendFormatFilteredMessage(clientID, periodFilteredMsg); err != nil {
 		nack()
 		return
 	}
@@ -109,12 +110,12 @@ func (w *FormatFilterWorker) isAllowedFormat(format string) bool {
 	return slices.Contains(w.allowedFormats, format)
 }
 
-func (w *FormatFilterWorker) sendFormatFilteredMessage(periodFiltered *protobuf.ToConvertPeriodFiltered) error {
+func (w *FormatFilterWorker) sendFormatFilteredMessage(clientID string, periodFiltered *protobuf.ToConvertPeriodFiltered) error {
 	formatFilteredMsg := &protobuf.ToConvertTypeFilteredPayment{
 		AmountPaid:      periodFiltered.GetAmountPaid(),
 		PaymentCurrency: periodFiltered.GetPaymentCurrency(),
 	}
-	serializedMsg, err := serializer.SerializeProtoMessageWithClientID("x", formatFilteredMsg, protobuf.MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT)
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, formatFilteredMsg, protobuf.MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT)
 	if err != nil {
 		return err
 	}

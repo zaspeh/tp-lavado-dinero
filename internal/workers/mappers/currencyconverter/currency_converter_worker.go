@@ -88,6 +88,8 @@ func (w *CurrencyConverterWorker) handleMessage(msg middleware.Message, ack, nac
 
 func (w *CurrencyConverterWorker) handleConvertMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
 	toConvertMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ToConvertTypeFilteredPayment{})
+	clientID := moneyLaundering.GetClientID()
+
 	if err != nil {
 		nack()
 		return
@@ -107,7 +109,7 @@ func (w *CurrencyConverterWorker) handleConvertMessage(moneyLaundering *protobuf
 		return
 	}
 
-	if err := w.sendConvertedMessage(convertedAmount); err != nil {
+	if err := w.sendConvertedMessage(clientID, convertedAmount); err != nil {
 		nack()
 		return
 	}
@@ -115,12 +117,12 @@ func (w *CurrencyConverterWorker) handleConvertMessage(moneyLaundering *protobuf
 	ack()
 }
 
-func (w *CurrencyConverterWorker) sendConvertedMessage(convertedAmount float64) error {
+func (w *CurrencyConverterWorker) sendConvertedMessage(clientID string, convertedAmount float64) error {
 	convertedMsg := &protobuf.ConvertedAmount{
 		Amount: convertedAmount,
 	}
 
-	serializedMsg, err := serializer.SerializeProtoMessageWithClientID("x", convertedMsg, protobuf.MessageType_CONVERTED_AMOUNT)
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, convertedMsg, protobuf.MessageType_CONVERTED_AMOUNT)
 	if err != nil {
 		return err
 	}
