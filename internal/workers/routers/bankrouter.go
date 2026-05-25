@@ -118,8 +118,6 @@ func (br *BankRouter) handleMessage(msg middleware.Message, ack, nack func()) {
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_MAXBANK:
-		br.handleMaxBankMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_MAXBANK_BATCH:
 		br.handleMaxBankBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
@@ -127,25 +125,6 @@ func (br *BankRouter) handleMessage(msg middleware.Message, ack, nack func()) {
 	default:
 		nack()
 	}
-}
-
-func (br *BankRouter) handleMaxBankMessage(moneyLaundryMsg *protobuf.MoneyLaundry, serializeMsg middleware.Message, ack, nack func()) {
-	maxBankMessage, err := serializer.DeserializeTransaction(moneyLaundryMsg.GetPayload(), &protobuf.MaxBank{})
-	if err != nil {
-		nack()
-		return
-	}
-
-	workerKey := br.selectWorkerKey(maxBankMessage.GetFromBank())
-	if err := br.maxBankExchange.SendWithKey(workerKey, serializeMsg); err != nil {
-		nack()
-		return
-	}
-
-	clientID := moneyLaundryMsg.GetClientID()
-	br.coordinator.RecordProcessed(clientID)
-	br.coordinator.RecordSurvivor(clientID)
-	ack()
 }
 
 func (br *BankRouter) handleMaxBankBatch(moneyLaundryMsg *protobuf.MoneyLaundry, ack, nack func()) {
