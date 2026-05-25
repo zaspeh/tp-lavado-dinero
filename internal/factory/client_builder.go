@@ -20,6 +20,11 @@ func buildClient() (*client.Client, error) {
 		return nil, err
 	}
 
+	accountsFile, err := getEnvStrict("INPUT_FILE_ACCOUNTS")
+	if err != nil {
+		return nil, err
+	}
+
 	outputDir, err := getEnvStrict("OUTPUT_DIR")
 	if err != nil {
 		return nil, err
@@ -31,11 +36,12 @@ func buildClient() (*client.Client, error) {
 	}
 
 	config := client.ClientConfig{
-		ServerHost:     serverHost,
-		ServerPort:     serverPort,
-		InputFile:      inputFile,
-		OutputDir:      outputDir,
-		MaxBatchWeight: maxBatchWeight,
+		ServerHost:           serverHost,
+		ServerPort:           serverPort,
+		TransactionInputFile: inputFile,
+		AccountsInputFile:    accountsFile,
+		OutputDir:            outputDir,
+		MaxBatchWeight:       maxBatchWeight,
 	}
 
 	return client.New(config)

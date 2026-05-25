@@ -33,7 +33,6 @@ type Client struct {
 	running  atomic.Bool
 	protocol *external.ExternalProtocol
 	writer   *storage.ResultCSVWriter
-	// transactionBatch *batch.Batch[request.Transaction, request.TransactionBatch]
 }
 
 func connectWithRetry(host string, port string) (*socket.Socket, error) {
@@ -66,21 +65,10 @@ func New(config ClientConfig) (*Client, error) {
 		return nil, err
 	}
 
-	externalProtocol := external.New(socket)
-	// sizer := externalProtocol.TransactionSize
-	// wrapper := request.NewTransactionBatch
-
-	// transactionBatch := batch.New(
-	// 	config.MaxBatchWeight-externalProtocol.HeaderSizeForTransactions(),
-	// 	sizer,
-	// 	wrapper,
-	// )
-
 	client := &Client{
 		config:   config,
-		protocol: externalProtocol,
+		protocol: external.New(socket),
 		writer:   writer,
-		// transactionBatch: transactionBatch,
 	}
 
 	client.running.Store(true)
@@ -204,9 +192,34 @@ func (c *Client) processAccounts() error {
 	accountsScanner := bufio.NewScanner(accountsFile)
 	accountsScanner.Scan() // skip header
 
+	batcher := c.buildAccountBatcher()
+
 	for accountsScanner.Scan() {
+		record := accountsScanner.Text()
+		account := request.NewAccount(record)
+		if err := batcher.Add(account); err != nil {
+			slog.Debug("Error while adding account to batcher", "err", err)
+			return err
+		}
 	}
-	return nil
+
+	if err := batcher.Flush(); err != nil {
+		slog.Debug("Error while flushing batcher", "err", err)
+		return err
+	}
+
+	if err := accountsScanner.Err(); err != nil {
+		slog.Debug("Error while scanning input file", "err", err)
+		return err
+	}
+
+	err = c.protocol.SendEOF()
+	if err != nil {
+		slog.Debug("Error while sending EOF", "err", err)
+		return err
+	}
+
+	return c.protocol.WaitAck()
 }
 
 func (c *Client) sendTransactionBatch(transactions request.TransactionBatch) error {
