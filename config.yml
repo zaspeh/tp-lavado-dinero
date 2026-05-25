@@ -1,6 +1,6 @@
 # Infraestructura Core
 
-global_log_level: debug
+global_log_level: info
 
 gateway:
   env:

@@ -129,8 +129,6 @@ func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaun
 	clientID := moneyLaundry.GetClientID()
 	results := j.results[clientID]
 
-	slog.Info("processing EOF", "client_id", clientID)
-
 	if len(results) == 0 {
 		ack()
 		return
@@ -184,7 +182,7 @@ func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaun
 }
 
 func (j *JoinMicrotransaction) sendBatch(clientID string, batch []*protobuf.Microtransaction) error {
-	slog.Info("sending microtransaction batch", "client_id", clientID, "batch_size", len(batch))
+	slog.Debug("sending microtransaction batch", "client_id", clientID, "batch_size", len(batch))
 
 	result := &protobuf.MicrotransactionResult{
 		Transactions: batch,

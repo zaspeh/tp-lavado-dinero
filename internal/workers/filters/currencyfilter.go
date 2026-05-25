@@ -237,9 +237,9 @@ func (f *CurrencyFilter) broadcastEOFMessage(clientID string, newEOFCount uint64
 		return err
 	}
 
-	if err := f.periodFilterQueue.Send(serializedEOFMessage); err != nil {
-		return err
-	}
+	// if err := f.periodFilterQueue.Send(serializedEOFMessage); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

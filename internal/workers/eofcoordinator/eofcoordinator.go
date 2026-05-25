@@ -172,6 +172,7 @@ func (c *EOFCoordinator) handlePeerCount(coordinationMsg *protobuf.EOFCoordinati
 		}
 	}
 
+	state.expectedTotal = coordinationMsg.GetExpectedTotal()
 	state.EOFSeen = true
 	return c.tryFlush(clientID, state)
 }
