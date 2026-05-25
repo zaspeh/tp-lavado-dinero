@@ -135,7 +135,14 @@ func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func
 		nack()
 		return
 	}
-	c.handleRemoteEOF(progressMsg)
+
+	if err := c.handleRemoteEOF(progressMsg); err != nil {
+		slog.Debug("Failed to handle remote EOF progress message", "error", err)
+		nack()
+		return
+	}
+
+	ack()
 }
 
 func (c *EOFCoordinator) handleRemoteEOF(coordinationMsg *protobuf.EOFCoordination) error {
