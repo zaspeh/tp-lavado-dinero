@@ -167,6 +167,10 @@ func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConv
 	return cc.rawDataQueue.Send(msg)
 }
 
+func (cc *ClientConnection) HandleAccountBatch(msg request.AccountBatch) error {
+	return nil
+}
+
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 	slog.Info("Received EOF from client", "clientID", cc.id, "totalTransactions", cc.transactionCounter)
 
