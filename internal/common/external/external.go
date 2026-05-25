@@ -53,6 +53,14 @@ func (p *ExternalProtocol) TransactionSize(transaction request.Transaction) int 
 	return serializer.Uint16Size + len(transaction.Record) // length + record bytes
 }
 
+func (p *ExternalProtocol) HeaderSizeForAccounts() int {
+	return p.HeaderSizeForTransactions()
+}
+
+func (p *ExternalProtocol) AccountSize(account request.Account) int {
+	return serializer.Uint16Size + len(account.Record)
+}
+
 func (p *ExternalProtocol) sendMsgType(msgType uint8) error {
 	serializeType := serializer.SerializeUint8(msgType)
 	return p.socket.WriteAll(serializeType)
