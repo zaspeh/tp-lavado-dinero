@@ -32,7 +32,7 @@ services:
       CURRENCY_TO_FILTER: "US Dollar"
 
   microtransaction_filter:
-    count: 0
+    count: 1
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
@@ -40,7 +40,7 @@ services:
       AMOUNT_TO_FILTER: 50
 
   microtransaction_join:
-    count: 0
+    count: 1
     worker_type: MICROTRANSACTION_JOIN
     env:
       INPUT_QUEUE_NAME: microtransaction_join_input_queue

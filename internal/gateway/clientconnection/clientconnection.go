@@ -16,7 +16,7 @@ import (
 
 const (
 	// TODO CAMBIAR A ENV VAR DESPUES
-	eofAmountExpected = 1
+	eofAmountExpected = 2
 )
 
 type ClientConnectionConfig struct {
@@ -55,7 +55,8 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 	}
 
 	personalKey := config.ClientExchangeName + "." + config.ID
-	exchangeRoutingKeys := []string{config.ClientExchangeName, personalKey}
+	exchangeRoutingKeys := []string{personalKey}
+	// exchangeRoutingKeys := []string{config.ClientExchangeName, personalKey}
 	resultExchange, err := m.CreateExchangeMiddleware(config.ClientExchangeName, exchangeRoutingKeys, connSettings)
 	if err != nil {
 		currencyFilterQueue.Close()
@@ -99,6 +100,10 @@ func (cc *ClientConnection) setUpBatchers() {
 
 func (cc *ClientConnection) Run() error {
 	cc.setUpBatchers()
+	if err := cc.resultExchange.SetUp(); err != nil {
+		return err
+	}
+
 	go cc.resultExchange.StartConsuming(func(msg m.Message, ack, nack func()) {
 		cc.handleResult(msg, ack, nack)
 	})

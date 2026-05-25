@@ -66,23 +66,17 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	maxBatchTransactions, err := getEnvIntStrict("MAX_BATCH_TRANSACTIONS")
-	if err != nil {
-		return nil, err
-	}
-
 	maxBatchBytes, err := getEnvIntStrict("MAX_BATCH_BYTES")
 	if err != nil {
 		return nil, err
 	}
 
 	config := joiners.JoinMicrotransactionConfig{
-		InputQueueName:       inputQueueName,
-		ClientExchangeName:   clientExchangeName,
-		MomHost:              host,
-		MomPort:              port,
-		MaxBatchTransactions: maxBatchTransactions,
-		MaxBatchBytes:        maxBatchBytes,
+		InputQueueName:     inputQueueName,
+		ClientExchangeName: clientExchangeName,
+		MomHost:            host,
+		MomPort:            port,
+		MaxBatchBytes:      maxBatchBytes,
 	}
 
 	return joiners.NewJoinMicrotransaction(config)

@@ -18,6 +18,12 @@ func WrapTransactions(transactions []*protobuf.Transaction) *protobuf.Transactio
 	}
 }
 
+func WrapMicrotransactions(transactions []*protobuf.Microtransaction) *protobuf.MicrotransactionResult {
+	return &protobuf.MicrotransactionResult{
+		Transactions: transactions,
+	}
+}
+
 func WrapToConvertTransactions(transactions []*protobuf.ToConvertTransaction) *protobuf.ToConvertTransactionBatch {
 	return &protobuf.ToConvertTransactionBatch{
 		Items: transactions,

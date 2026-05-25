@@ -90,13 +90,13 @@ func (j *ConversionJoin) handleSignals() {
 	j.resultExchange.Close()
 }
 
-func (j *ConversionJoin) handleConvertedAmountMessage(ack, _nack func()) {
+func (j *ConversionJoin) handleConvertedAmountMessage(ack, _ func()) {
 	j.resultsAmount++
 	ack()
 }
 
 func (j *ConversionJoin) HandleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
-	slog.Info("EOF message received")
+	slog.Info("Sending EOF for client", "client_id", moneyLaundry.GetClientID())
 	resultMsg := &protobuf.ConvertedMicroPaymentResult{
 		Count: int64(j.resultsAmount),
 	}
@@ -107,7 +107,7 @@ func (j *ConversionJoin) HandleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, r
 		return
 	}
 
-	key := fmt.Sprintf("%s.%s", j.clientExchangeName, moneyLaundry.GetClientID())
+	key := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
 	if err := j.resultExchange.SendWithKey(key, *serializedResult); err != nil {
 		nack()
 		return
