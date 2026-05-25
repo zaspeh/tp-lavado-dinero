@@ -3,8 +3,10 @@ package filters
 import (
 	"log/slog"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
@@ -16,6 +18,7 @@ type CurrencyFilter struct {
 	periodFilterQueue           middleware.Middleware
 	currencyToFilter            string
 	coordinator                 *c.EOFCoordinator
+	transactionBatchers         map[string]*batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
 }
 
 type CurrencyFilterConfig struct {
@@ -69,6 +72,7 @@ func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 		bankRouterQueue:             bankRouterQueue,
 		periodFilterQueue:           periodFilterQueue,
 		currencyToFilter:            config.CurrencyToFilter,
+		transactionBatchers:         make(map[string]*batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]),
 	}
 
 	coordinatorConfig := c.EOFCoordinatorConfig{
@@ -117,10 +121,10 @@ func (f *CurrencyFilter) Run() error {
 func (f *CurrencyFilter) handleTransactionBatchMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	transactions := moneyLaundry.GetTransactions().GetTransactions()
 	clientID := moneyLaundry.GetClientID()
+	batcher := f.getTransactionBatcher(clientID)
 	for _, transaction := range transactions {
 		if transaction.GetPaymentCurrency() == f.currencyToFilter {
-			err := f.broadcastToQueues(clientID, transaction)
-			if err != nil {
+			if err := batcher.Add(transaction); err != nil {
 				nack()
 				return
 			}
@@ -133,6 +137,12 @@ func (f *CurrencyFilter) handleTransactionBatchMessage(moneyLaundry *protobuf.Mo
 
 func (f *CurrencyFilter) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	clientID := moneyLaundry.GetClientID()
+	if batcher := f.transactionBatchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
+	}
 	eofMessage := moneyLaundry.GetEofMessage()
 	err := f.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions())
 	if err != nil {
@@ -142,69 +152,130 @@ func (f *CurrencyFilter) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, a
 	ack()
 }
 
-func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobuf.Transaction) error {
-	//q1
-	microtransaction := &protobuf.Microtransaction{
-		Account:    transaction.GetAccount(),
-		ToAccount:  transaction.GetToAccount(),
-		AmountPaid: transaction.GetAmountPaid(),
+func (f *CurrencyFilter) getTransactionBatcher(clientID string) *batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch] {
+	if batcher, ok := f.transactionBatchers[clientID]; ok {
+		return batcher
 	}
 
-	serializedMessage, err := serializer.SerializeProtoMessageWithClientID(
-		clientID,
-		microtransaction,
-		protobuf.MessageType_MICROTRANSACTION,
+	transactionBatch := batch.New(
+		0,
+		protowrappers.ProtoSizer[*protobuf.Transaction](),
+		protowrappers.WrapTransactions,
 	)
 
+	onFlush := func(batch *protobuf.TransactionBatch) error {
+		return f.broadcastTransactionBatch(clientID, batch)
+	}
+
+	batcher := batch.NewBatcher(transactionBatch, onFlush)
+	f.transactionBatchers[clientID] = batcher
+	return batcher
+}
+
+func (f *CurrencyFilter) broadcastTransactionBatch(clientID string, batch *protobuf.TransactionBatch) error {
+	transactions := batch.GetTransactions()
+	if len(transactions) == 0 {
+		return nil
+	}
+
+	if err := f.sendToMicrotransactionsFilter(clientID, transactions); err != nil {
+		return err
+	}
+
+	if err := f.sendToMaxBankRouter(clientID, transactions); err != nil {
+		return err
+	}
+
+	if err := f.sendToPeriodFilters(clientID, transactions); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *CurrencyFilter) sendToMicrotransactionsFilter(clientID string, transactions []*protobuf.Transaction) error {
+	for _, transaction := range transactions {
+		microtransaction := &protobuf.Microtransaction{
+			Account:    transaction.GetAccount(),
+			ToAccount:  transaction.GetToAccount(),
+			AmountPaid: transaction.GetAmountPaid(),
+		}
+
+		serializedMessage, err := serializer.SerializeProtoMessageWithClientID(
+			clientID,
+			microtransaction,
+			protobuf.MessageType_MICROTRANSACTION,
+		)
+		if err != nil {
+			return err
+		}
+
+		if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (f *CurrencyFilter) sendToMaxBankRouter(clientID string, transactions []*protobuf.Transaction) error {
+	maxBankMessages := make([]*protobuf.MaxBank, 0, len(transactions))
+	for _, transaction := range transactions {
+		transferSummary := &protobuf.TransferSummary{
+			Account: transaction.GetAccount(),
+			Amount:  transaction.GetAmountPaid(),
+		}
+
+		maxbank := &protobuf.MaxBank{
+			FromBank: transaction.GetFromBank(),
+			Payload: &protobuf.MaxBank_TransferSummary{
+				TransferSummary: transferSummary,
+			},
+		}
+		maxBankMessages = append(maxBankMessages, maxbank)
+	}
+
+	maxBankBatch := protowrappers.WrapMaxBank(maxBankMessages)
+	innerMessage := &protobuf.MoneyLaundry_MaxBankBatch{
+		MaxBankBatch: maxBankBatch,
+	}
+
+	serializedMaxBankMessage, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_MAXBANK_BATCH,
+		innerMessage,
+	)
 	if err != nil {
 		return err
 	}
 
-	if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
-		return err
-	}
+	return f.bankRouterQueue.Send(serializedMaxBankMessage)
+}
 
-	//q2
-	frombank := transaction.GetFromBank()
-	transferSummary := &protobuf.TransferSummary{
-		Account: transaction.Account,
-		Amount:  transaction.GetAmountPaid(),
-	}
+func (f *CurrencyFilter) sendToPeriodFilters(clientID string, transactions []*protobuf.Transaction) error {
+	for _, transaction := range transactions {
+		periodFilter := &protobuf.PeriodFilter{
+			Timestamp:     transaction.GetTimestamp(),
+			FromBank:      transaction.GetFromBank(),
+			ToBank:        transaction.GetToBank(),
+			Account:       transaction.GetAccount(),
+			ToAccount:     transaction.GetToAccount(),
+			AmountPaid:    transaction.GetAmountPaid(),
+			PaymentFormat: transaction.GetPaymentFormat(),
+		}
 
-	maxbank := &protobuf.MaxBank{
-		FromBank: frombank,
-		Payload: &protobuf.MaxBank_TransferSummary{
-			TransferSummary: transferSummary,
-		},
-	}
+		serializedPeriodFilter, err := serializer.SerializeProtoMessageWithClientID(
+			clientID,
+			periodFilter,
+			protobuf.MessageType_PERIODFILTER,
+		)
+		if err != nil {
+			return err
+		}
 
-	serializedMaxBankMessage, err := serializer.SerializeProtoMessageWithClientID(clientID, maxbank, protobuf.MessageType_MAXBANK)
-	if err != nil {
-		return err
-	}
-
-	if err := f.bankRouterQueue.Send(*serializedMaxBankMessage); err != nil {
-		return err
-	}
-	//q3
-
-	periodFilter := &protobuf.PeriodFilter{
-		Timestamp:     transaction.GetTimestamp(),
-		FromBank:      transaction.GetFromBank(),
-		ToBank:        transaction.GetToBank(),
-		Account:       transaction.GetAccount(),
-		ToAccount:     transaction.GetToAccount(),
-		AmountPaid:    transaction.GetAmountPaid(),
-		PaymentFormat: transaction.GetPaymentFormat(),
-	}
-
-	serializedPeriodFilter, err := serializer.SerializeProtoMessageWithClientID(clientID, periodFilter, protobuf.MessageType_PERIODFILTER)
-	if err != nil {
-		return err
-	}
-
-	if err := f.periodFilterQueue.Send(*serializedPeriodFilter); err != nil {
-		return err
+		if err := f.periodFilterQueue.Send(*serializedPeriodFilter); err != nil {
+			return err
+		}
 	}
 
 	return nil
