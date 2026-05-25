@@ -28,6 +28,10 @@ message MaxBankResult {
     string amount = 3;
 }
 
+message MaxBankBatch {
+    repeated MaxBank max_bank_message = 1;
+}
+
 message MaxBankResultBatch{
     repeated MaxBankResult results = 1;
 }

@@ -7,6 +7,7 @@ option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 import "internal/common/inner/protobuf/transaction.proto";
 import "internal/common/inner/protobuf/conversion.proto";
 import "internal/common/inner/protobuf/eof.proto";
+import "internal/common/inner/protobuf/maxbank.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -35,6 +36,7 @@ enum MessageType {
     TO_CONVERT_TRANSACTION_BATCH = 20;
     SUSPICIOUS_PATH_BATCH = 21;
     SUSPICIOUS_ACCOUNT_BATCH = 22;
+    MAXBANK_BATCH = 23;
 }
 
 message MoneyLaundry {
@@ -47,5 +49,6 @@ message MoneyLaundry {
         TransactionBatch transactions = 4;
         ToConvertTransactionBatch to_convert_batch = 5;
         EOF eof_message = 6;
+        MaxBankBatch max_bank_batch = 7;
     }
 }

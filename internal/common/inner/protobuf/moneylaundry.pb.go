@@ -47,6 +47,7 @@ const (
 	MessageType_TO_CONVERT_TRANSACTION_BATCH     MessageType = 20
 	MessageType_SUSPICIOUS_PATH_BATCH            MessageType = 21
 	MessageType_SUSPICIOUS_ACCOUNT_BATCH         MessageType = 22
+	MessageType_MAXBANK_BATCH                    MessageType = 23
 )
 
 // Enum value maps for MessageType.
@@ -75,6 +76,7 @@ var (
 		20: "TO_CONVERT_TRANSACTION_BATCH",
 		21: "SUSPICIOUS_PATH_BATCH",
 		22: "SUSPICIOUS_ACCOUNT_BATCH",
+		23: "MAXBANK_BATCH",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                             0,
@@ -100,6 +102,7 @@ var (
 		"TO_CONVERT_TRANSACTION_BATCH":     20,
 		"SUSPICIOUS_PATH_BATCH":            21,
 		"SUSPICIOUS_ACCOUNT_BATCH":         22,
+		"MAXBANK_BATCH":                    23,
 	}
 )
 
@@ -143,6 +146,7 @@ type MoneyLaundry struct {
 	//	*MoneyLaundry_Transactions
 	//	*MoneyLaundry_ToConvertBatch
 	//	*MoneyLaundry_EofMessage
+	//	*MoneyLaundry_MaxBankBatch
 	InnerMessage  isMoneyLaundry_InnerMessage `protobuf_oneof:"inner_message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -233,6 +237,15 @@ func (x *MoneyLaundry) GetEofMessage() *EOF {
 	return nil
 }
 
+func (x *MoneyLaundry) GetMaxBankBatch() *MaxBankBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_MaxBankBatch); ok {
+			return x.MaxBankBatch
+		}
+	}
+	return nil
+}
+
 type isMoneyLaundry_InnerMessage interface {
 	isMoneyLaundry_InnerMessage()
 }
@@ -249,17 +262,23 @@ type MoneyLaundry_EofMessage struct {
 	EofMessage *EOF `protobuf:"bytes,6,opt,name=eof_message,json=eofMessage,proto3,oneof"`
 }
 
+type MoneyLaundry_MaxBankBatch struct {
+	MaxBankBatch *MaxBankBatch `protobuf:"bytes,7,opt,name=max_bank_batch,json=maxBankBatch,proto3,oneof"`
+}
+
 func (*MoneyLaundry_Transactions) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ToConvertBatch) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_EofMessage) isMoneyLaundry_InnerMessage() {}
 
+func (*MoneyLaundry_MaxBankBatch) isMoneyLaundry_InnerMessage() {}
+
 var File_internal_common_inner_protobuf_moneylaundry_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\"\xc5\x02\n" +
+	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\x1a,internal/common/inner/protobuf/maxbank.proto\"\x85\x03\n" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
@@ -267,8 +286,9 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\ftransactions\x18\x04 \x01(\v2\x1a.protobuf.TransactionBatchH\x00R\ftransactions\x12O\n" +
 	"\x10to_convert_batch\x18\x05 \x01(\v2#.protobuf.ToConvertTransactionBatchH\x00R\x0etoConvertBatch\x120\n" +
 	"\veof_message\x18\x06 \x01(\v2\r.protobuf.EOFH\x00R\n" +
-	"eofMessageB\x0f\n" +
-	"\rinner_message*\xca\x04\n" +
+	"eofMessage\x12>\n" +
+	"\x0emax_bank_batch\x18\a \x01(\v2\x16.protobuf.MaxBankBatchH\x00R\fmaxBankBatchB\x0f\n" +
+	"\rinner_message*\xdd\x04\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -293,7 +313,8 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\x11TRANSACTION_BATCH\x10\x13\x12 \n" +
 	"\x1cTO_CONVERT_TRANSACTION_BATCH\x10\x14\x12\x19\n" +
 	"\x15SUSPICIOUS_PATH_BATCH\x10\x15\x12\x1c\n" +
-	"\x18SUSPICIOUS_ACCOUNT_BATCH\x10\x16B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x18SUSPICIOUS_ACCOUNT_BATCH\x10\x16\x12\x11\n" +
+	"\rMAXBANK_BATCH\x10\x17B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
@@ -315,17 +336,19 @@ var file_internal_common_inner_protobuf_moneylaundry_proto_goTypes = []any{
 	(*TransactionBatch)(nil),          // 2: protobuf.TransactionBatch
 	(*ToConvertTransactionBatch)(nil), // 3: protobuf.ToConvertTransactionBatch
 	(*EOF)(nil),                       // 4: protobuf.EOF
+	(*MaxBankBatch)(nil),              // 5: protobuf.MaxBankBatch
 }
 var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	0, // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
 	2, // 1: protobuf.MoneyLaundry.transactions:type_name -> protobuf.TransactionBatch
 	3, // 2: protobuf.MoneyLaundry.to_convert_batch:type_name -> protobuf.ToConvertTransactionBatch
 	4, // 3: protobuf.MoneyLaundry.eof_message:type_name -> protobuf.EOF
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 4: protobuf.MoneyLaundry.max_bank_batch:type_name -> protobuf.MaxBankBatch
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_moneylaundry_proto_init() }
@@ -336,10 +359,12 @@ func file_internal_common_inner_protobuf_moneylaundry_proto_init() {
 	file_internal_common_inner_protobuf_transaction_proto_init()
 	file_internal_common_inner_protobuf_conversion_proto_init()
 	file_internal_common_inner_protobuf_eof_proto_init()
+	file_internal_common_inner_protobuf_maxbank_proto_init()
 	file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes[0].OneofWrappers = []any{
 		(*MoneyLaundry_Transactions)(nil),
 		(*MoneyLaundry_ToConvertBatch)(nil),
 		(*MoneyLaundry_EofMessage)(nil),
+		(*MoneyLaundry_MaxBankBatch)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

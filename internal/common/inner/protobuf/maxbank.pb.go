@@ -267,6 +267,50 @@ func (x *MaxBankResult) GetAmount() string {
 	return ""
 }
 
+type MaxBankBatch struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MaxBankMessage []*MaxBank             `protobuf:"bytes,1,rep,name=max_bank_message,json=maxBankMessage,proto3" json:"max_bank_message,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MaxBankBatch) Reset() {
+	*x = MaxBankBatch{}
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MaxBankBatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MaxBankBatch) ProtoMessage() {}
+
+func (x *MaxBankBatch) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MaxBankBatch.ProtoReflect.Descriptor instead.
+func (*MaxBankBatch) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *MaxBankBatch) GetMaxBankMessage() []*MaxBank {
+	if x != nil {
+		return x.MaxBankMessage
+	}
+	return nil
+}
+
 type MaxBankResultBatch struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Results       []*MaxBankResult       `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
@@ -276,7 +320,7 @@ type MaxBankResultBatch struct {
 
 func (x *MaxBankResultBatch) Reset() {
 	*x = MaxBankResultBatch{}
-	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[4]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +332,7 @@ func (x *MaxBankResultBatch) String() string {
 func (*MaxBankResultBatch) ProtoMessage() {}
 
 func (x *MaxBankResultBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[4]
+	mi := &file_internal_common_inner_protobuf_maxbank_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +345,7 @@ func (x *MaxBankResultBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MaxBankResultBatch.ProtoReflect.Descriptor instead.
 func (*MaxBankResultBatch) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{4}
+	return file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MaxBankResultBatch) GetResults() []*MaxBankResult {
@@ -329,7 +373,9 @@ const file_internal_common_inner_protobuf_maxbank_proto_rawDesc = "" +
 	"\rMaxBankResult\x12\x1b\n" +
 	"\tbank_name\x18\x01 \x01(\tR\bbankName\x12\x18\n" +
 	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\x16\n" +
-	"\x06amount\x18\x03 \x01(\tR\x06amount\"G\n" +
+	"\x06amount\x18\x03 \x01(\tR\x06amount\"K\n" +
+	"\fMaxBankBatch\x12;\n" +
+	"\x10max_bank_message\x18\x01 \x03(\v2\x11.protobuf.MaxBankR\x0emaxBankMessage\"G\n" +
 	"\x12MaxBankResultBatch\x121\n" +
 	"\aresults\x18\x01 \x03(\v2\x17.protobuf.MaxBankResultR\aresultsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
@@ -345,23 +391,25 @@ func file_internal_common_inner_protobuf_maxbank_proto_rawDescGZIP() []byte {
 	return file_internal_common_inner_protobuf_maxbank_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_maxbank_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_internal_common_inner_protobuf_maxbank_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_internal_common_inner_protobuf_maxbank_proto_goTypes = []any{
 	(*MaxBank)(nil),            // 0: protobuf.MaxBank
 	(*BankMetadata)(nil),       // 1: protobuf.BankMetadata
 	(*TransferSummary)(nil),    // 2: protobuf.TransferSummary
 	(*MaxBankResult)(nil),      // 3: protobuf.MaxBankResult
-	(*MaxBankResultBatch)(nil), // 4: protobuf.MaxBankResultBatch
+	(*MaxBankBatch)(nil),       // 4: protobuf.MaxBankBatch
+	(*MaxBankResultBatch)(nil), // 5: protobuf.MaxBankResultBatch
 }
 var file_internal_common_inner_protobuf_maxbank_proto_depIdxs = []int32{
 	1, // 0: protobuf.MaxBank.bank_metadata:type_name -> protobuf.BankMetadata
 	2, // 1: protobuf.MaxBank.transfer_summary:type_name -> protobuf.TransferSummary
-	3, // 2: protobuf.MaxBankResultBatch.results:type_name -> protobuf.MaxBankResult
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 2: protobuf.MaxBankBatch.max_bank_message:type_name -> protobuf.MaxBank
+	3, // 3: protobuf.MaxBankResultBatch.results:type_name -> protobuf.MaxBankResult
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_maxbank_proto_init() }
@@ -379,7 +427,7 @@ func file_internal_common_inner_protobuf_maxbank_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_maxbank_proto_rawDesc), len(file_internal_common_inner_protobuf_maxbank_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
