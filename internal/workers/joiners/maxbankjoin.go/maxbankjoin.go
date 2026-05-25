@@ -73,7 +73,7 @@ func (j *MaxBankJoin) handleMessage(msg middleware.Message, ack, nack func()) {
 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_MAXBANK_RESULT:
-		j.sendMessage(msg, ack, nack)
+		j.sendMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
 		j.handleEOFMessage(moneyLaundry, ack, nack)
 	default:
@@ -98,9 +98,11 @@ func (j *MaxBankJoin) handleSignals() {
 	j.resultExchange.Close()
 }
 
-func (j *MaxBankJoin) sendMessage(msg middleware.Message, ack, nack func()) error {
-	// TODO: como no hay multiclient por el momento, broadcasteo la clave
-	if err := j.resultExchange.Send(msg); err != nil {
+func (j *MaxBankJoin) sendMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) error {
+	clientID := moneyLaundry.GetClientID()
+	publishKey := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
+
+	if err := j.resultExchange.SendWithKey(publishKey, msg); err != nil {
 		nack()
 		return err
 	}
