@@ -70,6 +70,7 @@ services:
     env:
       INPUT_QUEUE_NAME: max_bank_join_input
       CLIENT_EXCHANGE_NAME: client_results_exchange
+      MAX_BANK_WORKER_AMOUNT: 1
     
 
   period_filter:
@@ -223,4 +224,5 @@ services:
     env:
       INPUT_QUEUE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 0
       MAX_BATCH_WEIGHT: 40000
