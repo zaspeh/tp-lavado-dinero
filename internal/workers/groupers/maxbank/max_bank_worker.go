@@ -7,15 +7,17 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type MaxBankWorker struct {
 	inputQueue     middleware.Middleware
 	outputQueue    middleware.Middleware
-	maxBankStorage *MaxBankStore
+	maxBankStores  map[string]*MaxBankStore
 	maxBatchWeight int
 }
 
@@ -49,7 +51,7 @@ func NewMaxBankWorker(cfg MaxBankWorkerConfig) (*MaxBankWorker, error) {
 	return &MaxBankWorker{
 		inputQueue:     inputExchange,
 		outputQueue:    outputQueue,
-		maxBankStorage: NewBankStore(),
+		maxBankStores:  make(map[string]*MaxBankStore),
 		maxBatchWeight: cfg.MaxBatchWeight,
 	}, nil
 }
@@ -75,58 +77,60 @@ func (w *MaxBankWorker) handleSignals() {
 }
 
 func (w *MaxBankWorker) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_MAXBANK:
-		w.handleMaxBankMessage(moneyLaundry, msg, ack, nack)
+	case protobuf.MessageType_MAXBANK_BATCH:
+		w.handleMaxBankBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
-		w.handleEOF(msg, ack, nack)
+		w.handleEOF(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
 }
 
-func (w *MaxBankWorker) handleMaxBankMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
-	maxBankMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.MaxBank{})
-	if err != nil {
+func (w *MaxBankWorker) handleMaxBankBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
+	maxBankBatch := moneyLaundry.GetMaxBankBatch()
+
+	store := w.getStore(clientID)
+	for _, maxBankMsg := range maxBankBatch.GetMaxBankMessage() {
+		bankID := maxBankMsg.GetFromBank()
+
+		if meta := maxBankMsg.GetBankMetadata(); meta != nil {
+			store.UpdateBankName(bankID, meta.GetBankName())
+			continue
+		}
+
+		if ts := maxBankMsg.GetTransferSummary(); ts != nil {
+			amountStr := ts.GetAmount()
+			amountVal, err := strconv.ParseFloat(amountStr, 64)
+			if err != nil {
+				nack()
+				return
+			}
+
+			store.UpdateMaxTransaction(bankID, ts.GetAccount(), amountVal, amountStr)
+			continue
+		}
+
 		nack()
 		return
 	}
 
-	bankID := maxBankMsg.GetFromBank()
-
-	if meta := maxBankMsg.GetBankMetadata(); meta != nil {
-		w.maxBankStorage.UpdateBankName(bankID, meta.GetBankName())
-		ack()
-		return
-	}
-
-	if ts := maxBankMsg.GetTransferSummary(); ts != nil {
-		amountStr := ts.GetAmount()
-		amountVal, err := strconv.ParseFloat(amountStr, 64)
-		if err != nil {
-			nack()
-			return
-		}
-
-		w.maxBankStorage.UpdateMaxTransaction(bankID, ts.GetAccount(), amountVal, amountStr)
-		ack()
-		return
-	}
-
-	nack()
+	ack()
 }
 
-func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func()) {
+func (w *MaxBankWorker) handleEOF(moneyLaundry *protobuf.MoneyLaundry, originalMsg middleware.Message, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
 	slog.Info("Received EOF message in MaxBankWorker, processing stored data")
-	reader := w.maxBankStorage.Reader()
-	batch := NewBatch(w.maxBatchWeight)
-	var processedBanks []string
+	store := w.getStore(clientID)
+	reader := store.Reader()
+	batcher := w.buildResultBatcher()
 
 	for reader.HasNext() {
 		processedRecord := reader.Get()
@@ -136,38 +140,20 @@ func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func
 			Amount:   processedRecord.AmountString,
 		}
 
-		if batch.IsFull(maxBankResult) {
-			msg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_MAXBANK_RESULT)
-			if err != nil {
-				nack()
-				return
-			}
-			if err := w.outputQueue.Send(*msg); err != nil {
-				nack()
-				return
-			}
-
-			// w.maxBankStorage.Flush(processedBanks)
-			processedBanks = processedBanks[:0]
+		if err := batcher.Add(maxBankResult); err != nil {
+			nack()
+			return
 		}
-
-		batch.Add(maxBankResult)
-		processedBanks = append(processedBanks, processedRecord.BankID)
 		reader.Next()
 	}
 
-	if !batch.isEmpty() {
-		msg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_MAXBANK_RESULT)
-		if err != nil {
-			nack()
-			return
-		}
-		if err := w.outputQueue.Send(*msg); err != nil {
-			nack()
-			return
-		}
-		// w.maxBankStorage.Flush(processedBanks)
+	if err := batcher.Flush(); err != nil {
+		nack()
+		return
 	}
+
+	store.Clear()
+	delete(w.maxBankStores, clientID)
 
 	if err := w.outputQueue.Send(originalMsg); err != nil {
 		nack()
@@ -175,4 +161,29 @@ func (w *MaxBankWorker) handleEOF(originalMsg middleware.Message, ack, nack func
 	}
 
 	ack()
+}
+
+func (w *MaxBankWorker) getStore(clientID string) *MaxBankStore {
+	if store, ok := w.maxBankStores[clientID]; ok {
+		return store
+	}
+
+	store := NewBankStore()
+	w.maxBankStores[clientID] = store
+	return store
+}
+
+func (w *MaxBankWorker) buildResultBatcher() *batch.Batcher[*protobuf.MaxBankResult, *protobuf.MaxBankResultBatch] {
+	sizer := protowrappers.ProtoSizer[*protobuf.MaxBankResult]()
+	wrapper := protowrappers.WrapMaxBankResults
+	resultBatch := batch.New(w.maxBatchWeight, sizer, wrapper)
+	return batch.NewBatcher(resultBatch, w.flushResultBatch)
+}
+
+func (w *MaxBankWorker) flushResultBatch(result *protobuf.MaxBankResultBatch) error {
+	msg, err := serializer.SerializeProtoMessage(result, protobuf.MessageType_MAXBANK_RESULT)
+	if err != nil {
+		return err
+	}
+	return w.outputQueue.Send(*msg)
 }

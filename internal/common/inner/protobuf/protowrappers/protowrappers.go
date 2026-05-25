@@ -48,3 +48,9 @@ func WrapMaxBank(maxBank []*protobuf.MaxBank) *protobuf.MaxBankBatch {
 		MaxBankMessage: maxBank,
 	}
 }
+
+func WrapMaxBankResults(results []*protobuf.MaxBankResult) *protobuf.MaxBankResultBatch {
+	return &protobuf.MaxBankResultBatch{
+		Results: results,
+	}
+}

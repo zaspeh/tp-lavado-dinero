@@ -1,12 +1,9 @@
 package maxbank
 
-import "strconv"
-
 type Reader struct {
-	storage       *MaxBankStore
-	bankIDs       []int32
-	currentBank   int
-	currentRecord int
+	storage     *MaxBankStore
+	bankIDs     []int32
+	currentBank int
 }
 
 func newReader(s *MaxBankStore) *Reader {
@@ -26,22 +23,16 @@ func (r *Reader) HasNext() bool {
 
 func (r *Reader) Get() ProcessedRecord {
 	bankID := r.bankIDs[r.currentBank]
-	records := r.storage.maxTransactions[bankID]
+	record := r.storage.maxTransactions[bankID]
 
 	return ProcessedRecord{
-		// BankName:     r.storage.getBankName(bankID), // Este es el "join de id"
-		BankName:     strconv.Itoa(int(bankID)),
-		Account:      records[r.currentRecord].Account,
-		AmountString: records[r.currentRecord].AmountString,
+		BankID:       bankID,
+		BankName:     r.storage.BankName(bankID),
+		Account:      record.Account,
+		AmountString: record.AmountString,
 	}
 }
 
 func (r *Reader) Next() {
-	bankID := r.bankIDs[r.currentBank]
-	r.currentRecord++
-
-	if r.currentRecord >= len(r.storage.maxTransactions[bankID]) {
-		r.currentBank++
-		r.currentRecord = 0
-	}
+	r.currentBank++
 }
