@@ -86,8 +86,8 @@ services:
       AVG_BY_TYPE_PERIOD_1_END: "2024-01-08T23:59:59Z"
       AVG_BY_TYPE_PERIOD_2_START: "2024-01-09T00:00:00Z"
       AVG_BY_TYPE_PERIOD_2_END: "2024-01-17T23:59:59Z"
-      SCATTER_GATHER_PERIOD_START: "2024-01-01T00:00:00Z"
-      SCATTER_GATHER_PERIOD_END: "2024-01-17T23:59:59Z"
+      SCATTER_GATHER_PERIOD_START: "2022-09-01T00:00:00Z"
+      SCATTER_GATHER_PERIOD_END: "2022-09-05T23:59:59Z"
       PAYMENT_TYPE_PERIOD_START: "2022-09-01T00:00:00Z"
       PAYMENT_TYPE_PERIOD_END: "2022-09-05T23:59:59Z"
       PAYMENT_TYPE_ROUTER_QUEUE_NAME: payment_type_router_input
@@ -125,7 +125,7 @@ services:
       INPUT_EXCHANGE_NAME: group_by_origin
       OUTPUT_QUEUE_NAME: grouped_origin_accounts
 
-      MAX_BATCH_WEIGHT: 8000
+      MAX_BATCH_WEIGHT: 40000
 
   group_by_destination:
     count: 0
@@ -135,7 +135,7 @@ services:
       INPUT_EXCHANGE_NAME: group_by_destination
       OUTPUT_QUEUE_NAME: grouped_destination_accounts
 
-      MAX_BATCH_WEIGHT: 8000
+      MAX_BATCH_WEIGHT: 40000
   
   origin_intermediary_router:
     count: 0
@@ -166,7 +166,7 @@ services:
 
       OUTPUT_QUEUE_NAME: suspicious_paths_output
 
-      MAX_BATCH_WEIGHT: 8000
+      MAX_BATCH_WEIGHT: 40000
 
   avg_by_type:
     count: 0
@@ -223,4 +223,4 @@ services:
     env:
       INPUT_QUEUE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      MAX_BATCH_WEIGHT: 8000
+      MAX_BATCH_WEIGHT: 40000

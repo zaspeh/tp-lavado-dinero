@@ -112,6 +112,7 @@ func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, n
 	case protobuf.MessageType_SCATTERGATHER:
 		odr.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
+		slog.Debug("EOF received, broadcasting to all groupers")
 		odr.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
@@ -172,6 +173,7 @@ func (odr *OriginDestinationRouter) hash(bank int32, account string) uint32 {
 
 func (odr *OriginDestinationRouter) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	for _, key := range odr.groupByOriginExchangeKeys {
+		slog.Debug("sending EOF to Client")
 		if err := odr.groupByOriginExchange.SendWithKey(key, msg); err != nil {
 			nack()
 			return
@@ -179,6 +181,7 @@ func (odr *OriginDestinationRouter) handleEOFMessage(moneyLaundry *protobuf.Mone
 	}
 
 	for _, key := range odr.groupByDestinationExchangeKeys {
+		slog.Debug("sending EOF to Client")
 		if err := odr.groupByDestinationExchange.SendWithKey(key, msg); err != nil {
 			nack()
 			return

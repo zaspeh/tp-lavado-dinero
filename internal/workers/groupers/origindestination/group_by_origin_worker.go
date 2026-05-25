@@ -9,6 +9,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	"google.golang.org/protobuf/proto"
 )
 
 type GroupByOriginWorker struct {
@@ -83,6 +84,7 @@ func (gbow *GroupByOriginWorker) handleMessage(msg middleware.Message, ack, nack
 	case protobuf.MessageType_SCATTERGATHER:
 		gbow.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
+		slog.Debug("EOF Received")
 		gbow.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
@@ -151,6 +153,9 @@ func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLa
 		}
 
 		if !batch.Add(group) {
+			slog.Debug("Sending NACK",
+				"size of group",
+				proto.Size(group))
 			nack()
 			return
 		}
@@ -168,6 +173,8 @@ func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLa
 			return
 		}
 	}
+
+	slog.Debug("Forwarding EOF")
 
 	if err := gbow.outputQueue.Send(msg); err != nil {
 		nack()

@@ -264,7 +264,7 @@ func (pf *PeriodFilterWorker) handleToConvertBatch(moneyLaundry *protobuf.MoneyL
 			continue
 		}
 
-		slog.Debug("Publishing transaction to payment type filter", "timestamp", transactionMsg.GetTimestamp().AsTime())
+		//slog.Debug("Publishing transaction to payment type filter", "timestamp", transactionMsg.GetTimestamp().AsTime())
 		if err := pf.publishToPaymentTypeQueue(transactionMsg); err != nil {
 			nack()
 			return

@@ -83,6 +83,7 @@ func (gbdw *GroupByDestinationWorker) handleMessage(msg middleware.Message, ack,
 	case protobuf.MessageType_SCATTERGATHER:
 		gbdw.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
+		slog.Debug("EOF received")
 		gbdw.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
@@ -113,14 +114,17 @@ func (gbdw *GroupByDestinationWorker) handleScatterGatherMessage(moneyLaundry *p
 
 func (gbdw *GroupByDestinationWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	batch := NewBatch(gbdw.maxBatchWeight)
+	slog.Debug("Creating batch")
 
 	for destination, origins := range gbdw.destinationsStore.GetData() {
 		destinationBank := destination.GetBank()
 		destinationAccount := destination.GetAccount()
-
+		slog.Debug("Analizing destination")
 		if len(origins) < 5 {
+			slog.Debug("Destination with less than five origins, discarding")
 			continue
 		}
+		slog.Debug("Destination with more than five origins, adding to batch")
 
 		group := &protobuf.GroupedAccounts{
 			BaseAccount: &protobuf.Account{
@@ -129,6 +133,7 @@ func (gbdw *GroupByDestinationWorker) handleEOFMessage(moneyLaundry *protobuf.Mo
 			},
 		}
 
+		slog.Debug("Adding origins to destination")
 		for origin := range origins {
 
 			group.RelatedAccounts = append(group.RelatedAccounts, &protobuf.Account{
@@ -138,41 +143,48 @@ func (gbdw *GroupByDestinationWorker) handleEOFMessage(moneyLaundry *protobuf.Mo
 		}
 
 		if batch.IsFull(group) {
+			slog.Debug("Batch is full, serializing message")
 			serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
 			if err != nil {
 				nack()
 				return
 			}
-
+			slog.Debug("Batch is full, sending batch")
 			if err := gbdw.outputQueue.Send(*serializedMsg); err != nil {
 				nack()
 				return
 			}
 		}
 
+		slog.Debug("Batch NOT full, adding group")
 		if !batch.Add(group) {
 			nack()
 			return
 		}
 	}
 
+	slog.Debug("Batch NOT empty after adding all groups")
 	if !batch.IsEmpty() {
+		slog.Debug("serializing Batch")
 		serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
 		if err != nil {
 			nack()
 			return
 		}
 
+		slog.Debug("sending Batch")
 		if err := gbdw.outputQueue.Send(*serializedMsg); err != nil {
 			nack()
 			return
 		}
 	}
 
+	slog.Debug("sending EOF")
 	if err := gbdw.outputQueue.Send(msg); err != nil {
 		nack()
 		return
 	}
 
+	slog.Debug("ack eof message")
 	ack()
 }

@@ -29,12 +29,16 @@ func (b *Batch) Add(
 	item *protobuf.GroupedAccounts,
 ) bool {
 
-	if b.IsFull(item) {
+	itemWeight := proto.Size(item)
+
+	if b.currentWeight+itemWeight > b.maxWeight &&
+		len(b.items) > 0 {
+
 		return false
 	}
 
 	b.items = append(b.items, item)
-	b.currentWeight += proto.Size(item)
+	b.currentWeight += itemWeight
 
 	return true
 }
