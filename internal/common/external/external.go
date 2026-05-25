@@ -18,6 +18,7 @@ import (
 const (
 	transaction uint8 = iota
 	transactionBatch
+	accountBatch
 	microtransactionResult
 	maxBankResult
 	convertedMicroPaymentResult
@@ -92,6 +93,31 @@ func (p *ExternalProtocol) SendTransactionBatch(transactions []request.Transacti
 	buf = append(buf, serializer.SerializeUint16(uint16(len(transactions)))...)
 	for i, tx := range transactions {
 		buf = append(buf, serializer.SerializeUint16(uint16(len(tx.Record)))...)
+		buf = append(buf, payloads[i]...)
+	}
+
+	return p.socket.WriteAll(buf)
+}
+
+// TODO: refactor para evitar logica repetida
+func (p *ExternalProtocol) SendAccountBatch(accounts []request.Account) error {
+	if len(accounts) == 0 {
+		return nil
+	}
+
+	totalSize := p.HeaderSizeForAccounts()
+
+	payloads := make([][]byte, len(accounts))
+	for i, account := range accounts {
+		payloads[i] = serializer.SerializeString(account.Record)
+		totalSize += p.AccountSize(account)
+	}
+
+	buf := make([]byte, 0, totalSize)
+	buf = append(buf, serializer.SerializeUint8(transactionBatch)...)
+	buf = append(buf, serializer.SerializeUint16(uint16(len(accounts)))...)
+	for i, account := range accounts {
+		buf = append(buf, serializer.SerializeUint16(uint16(len(account.Record)))...)
 		buf = append(buf, payloads[i]...)
 	}
 
@@ -231,7 +257,9 @@ func (p *ExternalProtocol) ReceiveMsg() (request.Message, error) {
 	}
 	switch msgType {
 	case transactionBatch:
-		return p.ReceiveTransactionBatch()
+		return p.receiveTransactionBatch()
+	case accountBatch:
+		return p.receiveAccountBatch()
 	case eof:
 		return request.EOF{}, nil
 	default:
@@ -239,7 +267,7 @@ func (p *ExternalProtocol) ReceiveMsg() (request.Message, error) {
 	}
 }
 
-func (p *ExternalProtocol) ReceiveTransactionBatch() (request.TransactionBatch, error) {
+func (p *ExternalProtocol) receiveTransactionBatch() (request.TransactionBatch, error) {
 	batchLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
 	if err != nil {
 		return nil, err
@@ -260,6 +288,30 @@ func (p *ExternalProtocol) ReceiveTransactionBatch() (request.TransactionBatch, 
 		transactions[i] = request.NewTransaction(record)
 	}
 	return request.NewTransactionBatch(transactions), nil
+}
+
+// TODO: refactorizar logica repetida
+func (p *ExternalProtocol) receiveAccountBatch() (request.AccountBatch, error) {
+	batchLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
+	if err != nil {
+		return nil, err
+	}
+	batchLength := serializer.DeserializeUint16(batchLengthBytes)
+	accounts := make([]request.Account, batchLength)
+	for i := range accounts {
+		stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
+		if err != nil {
+			return nil, err
+		}
+		stringLength := serializer.DeserializeUint16(stringLengthBytes)
+		stringBytes, err := p.socket.ReadAll(int(stringLength))
+		if err != nil {
+			return nil, err
+		}
+		record := serializer.DeserializeString(stringBytes)
+		accounts[i] = request.NewAccount(record)
+	}
+	return request.NewAccountBatch(accounts), nil
 }
 
 func (p *ExternalProtocol) ReceiveResult() (result.Result, error) {

@@ -217,7 +217,10 @@ func (c *Client) sendTransactionBatch(transactions request.TransactionBatch) err
 }
 
 func (c *Client) sendAccountBatch(accounts request.AccountBatch) error {
-	return nil
+	if err := c.protocol.SendAccountBatch(accounts); err != nil {
+		return err
+	}
+	return c.protocol.WaitAck()
 }
 
 func (c *Client) receiveResults() error {
