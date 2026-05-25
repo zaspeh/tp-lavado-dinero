@@ -35,12 +35,14 @@ type ClientConnection struct {
 	protocol            *external.ExternalProtocol
 	currencyFilterQueue m.Middleware
 	rawDataQueue        m.Middleware
+	maxBankRouter       m.Middleware
 	resultExchange      *m.ExchangeMiddleware
 	EOFamountReceived   int
 	transactionCounter  int
 	MaxBatchWeight      int
 	transactionBatcher  *batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
 	rawDataBatcher      *batch.Batcher[*protobuf.ToConvertTransaction, *protobuf.ToConvertTransactionBatch]
+	accountBatcher      *batch.Batcher[*protobuf.MaxBank, *protobuf.MaxBankBatch]
 }
 
 func New(config ClientConnectionConfig) (*ClientConnection, error) {
@@ -93,9 +95,16 @@ func (cc *ClientConnection) setUpBatchers() {
 		protowrappers.WrapToConvertTransactions,
 	)
 
+	accountBatch := batch.New(
+		cc.MaxBatchWeight,
+		protowrappers.ProtoSizer[*protobuf.MaxBank](),
+		protowrappers.WrapMaxBank,
+	)
+
 	// Set up despues de inicializacion para tener acceso a cc.sendTransactionBatch
 	cc.transactionBatcher = batch.NewBatcher(transactionBatch, cc.sendTransactionBatch)
 	cc.rawDataBatcher = batch.NewBatcher(toConvertTransactionBatch, cc.sendToConvertTransactionBatch)
+	cc.accountBatcher = batch.NewBatcher(accountBatch, cc.sendAccountBatch)
 }
 
 func (cc *ClientConnection) Run() error {
@@ -168,7 +177,31 @@ func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConv
 }
 
 func (cc *ClientConnection) HandleAccountBatch(msg request.AccountBatch) error {
-	return nil
+	slog.Debug("Received account batch from client", "clientID", cc.id, "batchSize", len(msg))
+	for _, transaction := range msg {
+		protoMaxBank, err := messagehandler.RawAccountToProtoMaxBank(transaction)
+		if err != nil {
+			return err
+		}
+
+		if err := cc.accountBatcher.Add(protoMaxBank); err != nil {
+			return err
+		}
+	}
+
+	return cc.protocol.SendAck()
+}
+
+func (cc *ClientConnection) sendAccountBatch(batch *protobuf.MaxBankBatch) error {
+	innerMessage := &protobuf.MoneyLaundry_MaxBankBatch{
+		MaxBankBatch: batch,
+	}
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_MAXBANK_BATCH, innerMessage)
+	if err != nil {
+		return err
+	}
+
+	return cc.maxBankRouter.Send(msg)
 }
 
 func (cc *ClientConnection) HandleEOF(msg request.EOF) error {

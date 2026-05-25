@@ -42,3 +42,9 @@ func WrapSuspiciousAccounts(accounts []*protobuf.Account) *protobuf.SuspiciousAc
 		Accounts: accounts,
 	}
 }
+
+func WrapMaxBank(maxBank []*protobuf.MaxBank) *protobuf.MaxBankBatch {
+	return &protobuf.MaxBankBatch{
+		MaxBankMessage: maxBank,
+	}
+}

@@ -128,3 +128,31 @@ func ProtoToSuspiciousAccounts(moneyLaundering *protobuf.MoneyLaundry,
 	}, nil
 
 }
+
+func RawAccountToProtoMaxBank(account request.Account) (*protobuf.MaxBank, error) {
+	reader := csv.NewReader(strings.NewReader(account.Record))
+	fields, err := reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing csv: %w", err)
+	}
+
+	if len(fields) < 5 {
+		return nil, fmt.Errorf("invalid record: expected 5 fields, got %d", len(fields))
+	}
+
+	bankID, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return nil, err
+	}
+
+	bankMetadata := &protobuf.BankMetadata{
+		BankName: fields[0],
+	}
+
+	return &protobuf.MaxBank{
+		FromBank: int32(bankID),
+		Payload: &protobuf.MaxBank_BankMetadata{
+			BankMetadata: bankMetadata,
+		},
+	}, nil
+}
