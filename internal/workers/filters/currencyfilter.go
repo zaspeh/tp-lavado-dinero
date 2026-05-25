@@ -93,6 +93,7 @@ func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 }
 
 func (f *CurrencyFilter) Run() error {
+	go f.coordinator.Run()
 	f.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 		if err != nil {
@@ -123,7 +124,9 @@ func (f *CurrencyFilter) handleTransactionBatchMessage(moneyLaundry *protobuf.Mo
 				nack()
 				return
 			}
+			f.coordinator.RecordSurvivor(clientID)
 		}
+		f.coordinator.RecordProcessed(clientID)
 	}
 	ack()
 }

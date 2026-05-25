@@ -1,6 +1,6 @@
 # Infraestructura Core
 
-global_log_level: info
+global_log_level: debug
 
 gateway:
   env:
@@ -49,7 +49,7 @@ services:
       MAX_BATCH_BYTES: 8000
     
   bank_router:
-    count: 0
+    count: 1
     worker_type: BANK_ROUTER
     env:
       INPUT_QUEUE_NAME: bank_router_input_queue
@@ -57,7 +57,7 @@ services:
       MAX_BANK_WORKER_AMOUNT: 1
 
   max_bank:
-    count: 0
+    count: 1
     worker_type: MAX_BANK
     env:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
@@ -65,7 +65,7 @@ services:
       MAX_BATCH_WEIGHT: 8000 
 
   max_bank_join:
-    count: 0
+    count: 1
     worker_type: MAX_BANK_JOIN
     env:
       INPUT_QUEUE_NAME: max_bank_join_input
@@ -73,7 +73,7 @@ services:
     
 
   period_filter:
-    count: 0
+    count: 1
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -186,7 +186,7 @@ services:
       EXPECTED_EOFS: 1
       
   payment_format_filter:
-    count: 0
+    count: 1
     worker_type: FORMAT_FILTER
     env:
       INPUT_QUEUE_NAME: payment_format_filter_input
@@ -194,7 +194,7 @@ services:
       VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   currency_converter:
-    count: 0
+    count: 1
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
@@ -202,7 +202,7 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 0
+    count: 1
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
@@ -210,7 +210,7 @@ services:
       AMOUNT_TO_FILTER: 1.00
 
   converter_join:
-    count: 0
+    count: 1
     worker_type: CONVERSION_JOIN
     env:
       INPUT_QUEUE_NAME: conversion_join_input_queue

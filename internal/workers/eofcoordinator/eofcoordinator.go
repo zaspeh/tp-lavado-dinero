@@ -122,6 +122,7 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64) e
 	state.EOFSeen = true
 	state.expectedTotal = expectedTotal
 
+	slog.Debug("Handling local EOF - current state", "clientID", clientID, "state", state)
 	if err := c.broadcastLocalCount(clientID, state); err != nil {
 		return err
 	}
@@ -143,8 +144,8 @@ func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func
 		nack()
 		return
 	}
-
-	if err := c.handleRemoteEOF(progressMsg); err != nil {
+	slog.Debug("Received EOF progress message", "message", progressMsg, "from", progressMsg.GetSenderId())
+	if err := c.handlePeerCount(progressMsg); err != nil {
 		slog.Debug("Failed to handle remote EOF progress message", "error", err)
 		nack()
 		return
@@ -153,18 +154,25 @@ func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func
 	ack()
 }
 
-func (c *EOFCoordinator) handleRemoteEOF(coordinationMsg *protobuf.EOFCoordination) error {
+func (c *EOFCoordinator) handlePeerCount(coordinationMsg *protobuf.EOFCoordination) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	clientID := coordinationMsg.GetClientId()
 	state := c.getClientState(clientID)
-	state.EOFSeen = true
 	state.peerCount[int(coordinationMsg.GetSenderId())] = peerCount{
 		processed: coordinationMsg.GetProcessedCount(),
 		survivors: coordinationMsg.GetSurvivorCount(),
 	}
 
+	// Si ya se vio el EOF quiere decir que ya avise mi cuenta al resto.
+	if !state.EOFSeen {
+		if err := c.broadcastLocalCount(clientID, state); err != nil {
+			return err
+		}
+	}
+
+	state.EOFSeen = true
 	return c.tryFlush(clientID, state)
 }
 
@@ -181,6 +189,7 @@ func (c *EOFCoordinator) broadcastLocalCount(clientID string, state *clientState
 		return err
 	}
 	for _, key := range c.publishKeys {
+		slog.Debug("Broadcasting to key", "key", key)
 		if err := c.exchange.SendWithKey(key, message); err != nil {
 			return err
 		}

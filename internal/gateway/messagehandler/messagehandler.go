@@ -57,11 +57,13 @@ func RawTransactionToProtoTransaction(msg request.Transaction) (*protobuf.Transa
 	return transaction, nil
 }
 
-func EOFToProto(clientID string, transactionCounter int) (*m.Message, error) {
-	eofMessage := &pb.EOF{
-		TotalTransactions: uint64(transactionCounter),
+func EOFToProto(clientID string, transactionCounter int) (m.Message, error) {
+	eofMessage := &pb.MoneyLaundry_EofMessage{
+		EofMessage: &pb.EOF{
+			TotalTransactions: uint64(transactionCounter),
+		},
 	}
-	return serializer.SerializeProtoMessageWithClientID(clientID, eofMessage, pb.MessageType_EOF_)
+	return protobuf.SerializeProtoMessageONTRIAL(clientID, pb.MessageType_EOF_, eofMessage)
 }
 
 func ProtoTransactionToProtoConvTransaction(msg *pb.Transaction) *pb.ToConvertTransaction {
