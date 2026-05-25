@@ -1,6 +1,7 @@
 package joiners
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -193,7 +194,8 @@ func (j *JoinMicrotransaction) sendBatch(clientID string, batch []*protobuf.Micr
 		return err
 	}
 
-	return j.resultExchange.Send(*msg) // más adelante tener en cuenta el clientID
+	key := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
+	return j.resultExchange.SendWithKey(key, *msg)
 }
 
 func (j *JoinMicrotransaction) sendEOF(clientID string) error {
@@ -206,5 +208,6 @@ func (j *JoinMicrotransaction) sendEOF(clientID string) error {
 		return err
 	}
 
-	return j.resultExchange.Send(msg)
+	key := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
+	return j.resultExchange.SendWithKey(key, msg)
 }

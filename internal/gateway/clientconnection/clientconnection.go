@@ -16,7 +16,7 @@ import (
 
 const (
 	// TODO CAMBIAR A ENV VAR DESPUES
-	eofAmountExpected = 3
+	eofAmountExpected = 1
 )
 
 type ClientConnectionConfig struct {
@@ -54,7 +54,6 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 		return nil, err
 	}
 
-	// TODO: descomentar cuando el sistema sea multicliente
 	personalKey := config.ClientExchangeName + "." + config.ID
 	exchangeRoutingKeys := []string{config.ClientExchangeName, personalKey}
 	resultExchange, err := m.CreateExchangeMiddleware(config.ClientExchangeName, exchangeRoutingKeys, connSettings)
