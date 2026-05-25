@@ -114,7 +114,7 @@ func (p *ExternalProtocol) SendAccountBatch(accounts []request.Account) error {
 	}
 
 	buf := make([]byte, 0, totalSize)
-	buf = append(buf, serializer.SerializeUint8(transactionBatch)...)
+	buf = append(buf, serializer.SerializeUint8(accountBatch)...)
 	buf = append(buf, serializer.SerializeUint16(uint16(len(accounts)))...)
 	for i, account := range accounts {
 		buf = append(buf, serializer.SerializeUint16(uint16(len(account.Record)))...)
