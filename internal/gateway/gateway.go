@@ -25,6 +25,7 @@ type GatewayConfig struct {
 	CurrencyQueueName  string
 	RawDataQueueName   string
 	ClientExchangeName string
+	MaxBankRouterQueue string
 }
 
 type Gateway struct {
@@ -97,6 +98,7 @@ func (gateway *Gateway) handleIncomingConnection(conn net.Conn) {
 		CurrencyFilterQueueName: gateway.config.CurrencyQueueName,
 		ClientExchangeName:      gateway.config.ClientExchangeName,
 		RawDataQueueName:        gateway.config.RawDataQueueName,
+		MaxBankRouterQueue:      gateway.config.MaxBankRouterQueue,
 	}
 
 	client, err := clientconnection.New(config)

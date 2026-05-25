@@ -6,7 +6,7 @@ import (
 )
 
 func buildBankRouterWorker() (workers.Worker, error) {
-	id, err := getEnvIntStrict("WORKER_ID")
+	id, err := getEnvIntStrict("ID")
 	if err != nil {
 		return nil, err
 	}

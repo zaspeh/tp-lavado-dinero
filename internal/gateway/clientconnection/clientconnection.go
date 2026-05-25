@@ -16,7 +16,7 @@ import (
 
 const (
 	// TODO CAMBIAR A ENV VAR DESPUES
-	eofAmountExpected = 2
+	eofAmountExpected = 3
 )
 
 type ClientConnectionConfig struct {
@@ -28,6 +28,7 @@ type ClientConnectionConfig struct {
 	RawDataQueueName        string
 	ClientExchangeName      string
 	MaxBatchWeight          int
+	MaxBankRouterQueue      string
 }
 
 type ClientConnection struct {
@@ -73,12 +74,21 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 		return nil, err
 	}
 
+	maxBankRouterQueue, err := m.CreateQueueMiddleware(config.MaxBankRouterQueue, connSettings)
+	if err != nil {
+		currencyFilterQueue.Close()
+		resultExchange.Close()
+		rawDataQueue.Close()
+		return nil, err
+	}
+
 	return &ClientConnection{
 		id:                  config.ID,
 		protocol:            config.Protocol,
 		currencyFilterQueue: currencyFilterQueue,
 		resultExchange:      resultExchange,
 		rawDataQueue:        rawDataQueue,
+		maxBankRouter:       maxBankRouterQueue,
 		transactionCounter:  0,
 	}, nil
 }

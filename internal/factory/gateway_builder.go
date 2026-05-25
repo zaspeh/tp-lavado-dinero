@@ -20,6 +20,11 @@ func buildGateway() (*gateway.Gateway, error) {
 		return nil, err
 	}
 
+	maxBankRouterQueueName, err := getEnvStrict("MAX_BANK_ROUTER_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
 	serverHost, err := getEnvStrict("SERVER_HOST")
 	if err != nil {
 		return nil, err
@@ -44,6 +49,7 @@ func buildGateway() (*gateway.Gateway, error) {
 		CurrencyQueueName:  USDQueueName,
 		ClientExchangeName: outputQueueName,
 		RawDataQueueName:   rawDataQueueName,
+		MaxBankRouterQueue: maxBankRouterQueueName,
 		ServerHost:         serverHost,
 		ServerPort:         serverPort,
 		MomHost:            momHost,

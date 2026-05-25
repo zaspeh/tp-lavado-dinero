@@ -36,6 +36,7 @@ def build_gateway(cfg, log_level):
     output_queue_name = cfg['gateway']['env'].get('OUTPUT_QUEUE_NAME')
     client_exchange_name = cfg['gateway']['env'].get('CLIENT_EXCHANGE_NAME')
     raw_input_queue_name = cfg['gateway']['env'].get('RAW_DATA_QUEUE_NAME')
+    max_bank_router_queue_name = cfg['gateway']['env'].get('MAX_BANK_ROUTER_QUEUE_NAME')
     return {
         'build': {
             'context': '.',
@@ -50,6 +51,7 @@ def build_gateway(cfg, log_level):
             f'OUTPUT_QUEUE_NAME={output_queue_name}',
             f'CLIENT_EXCHANGE_NAME={client_exchange_name}',
             f'RAW_DATA_QUEUE_NAME={raw_input_queue_name}',
+            f'MAX_BANK_ROUTER_QUEUE_NAME={max_bank_router_queue_name}',
             f'LOG_LEVEL={log_level}'
         ],
         'ports': [f"{gateway_port}:{gateway_port}"],
