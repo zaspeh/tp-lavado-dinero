@@ -210,6 +210,10 @@ func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobu
 // Funcion a llamar cuando el coordinador indique que ya se recibieron
 // todos los mensajes EOF de los nodos hermanos, para que se haga el flush
 func (f *CurrencyFilter) broadcastEOFMessage(clientID string, newEOFCount uint64) error {
+	if !f.coordinator.IsLeader() {
+		return nil
+	}
+
 	slog.Info("Broadcasting EOF message", "clientID", clientID, "newEOFCount", newEOFCount)
 	eofMessage := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{

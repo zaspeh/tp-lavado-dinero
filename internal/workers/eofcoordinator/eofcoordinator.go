@@ -129,6 +129,13 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64) e
 	return c.tryFlush(clientID, state)
 }
 
+// Logica para que los workers se fijen si enviar o no
+// el eofa los nodos siguientes en el flujo. a cambiar cuanda
+// exista eleccion de lider
+func (c *EOFCoordinator) IsLeader() bool {
+	return c.workerID == 0
+}
+
 func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func()) {
 	progressMsg, err := serializer.DeserializeCoordinationMessage(msg)
 	if err != nil {
