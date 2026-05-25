@@ -17,6 +17,9 @@ type CurrencyFilter struct {
 }
 
 type CurrencyFilterConfig struct {
+	ID                              int
+	WorkerCount                     int
+	WorkerExchangeName              string
 	InputQueueName                  string
 	MicrotransactionFilterQueueName string
 	BankRouterQueueName             string

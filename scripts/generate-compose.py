@@ -95,13 +95,16 @@ def build_worker(svc_name, cfg, i, log_level):
     amqp_port = cfg['rabbitmq']['amqp_port']
     svc_config = cfg['services'][svc_name]
     worker_type = svc_config.get('worker_type', 'UNKNOWN')
+    count = svc_config.get('count', 1)
     
     env_list = [
         f"ID={i}",
         f"LOG_LEVEL={log_level}",
         f"WORKER_TYPE={worker_type}",
         "MOM_HOST=rabbitmq",
-        f"MOM_PORT={amqp_port}"
+        f"MOM_PORT={amqp_port}",
+        f"WORKER_COUNT={count}",
+        f"WORKER_EXCHANGE_NAME={worker_type}"
     ]
     
     if 'env' in svc_config:

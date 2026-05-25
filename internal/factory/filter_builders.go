@@ -9,6 +9,11 @@ import (
 )
 
 func buildCurrencyFilterWorker() (workers.Worker, error) {
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -44,6 +49,11 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	config := filters.CurrencyFilterConfig{
 		InputQueueName:                  inQ,
 		MicrotransactionFilterQueueName: microQ,
@@ -52,6 +62,9 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		MomHost:                         host,
 		MomPort:                         port,
 		CurrencyToFilter:                currency,
+		WorkerCount:                     workerCount,
+		WorkerExchangeName:              workerExchangeName,
+		ID:                              id,
 	}
 
 	return filters.NewCurrencyFilter(config)

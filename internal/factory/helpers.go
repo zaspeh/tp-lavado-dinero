@@ -84,3 +84,17 @@ func getEnvStringSliceStrict(key string) ([]string, error) {
 
 	return strings.Split(valStr, ","), nil
 }
+
+func getCoordinationInformationFromEnv() (int, string, error) {
+	workerCount, err := getEnvIntStrict("WORKER_COUNT")
+	if err != nil {
+		return 0, "", err
+	}
+
+	workerExchangeName, err := getEnvStrict("WORKER_EXCHANGE_NAME")
+	if err != nil {
+		return 0, "", err
+	}
+
+	return workerCount, workerExchangeName, nil
+}

@@ -22,7 +22,7 @@ services:
     max_batch_weight: 8000   
     
   currency_filter:
-    count: 1
+    count: 2
     worker_type: CURRENCY_FILTER
     env:
       INPUT_QUEUE_NAME: currency_filter_input_queue
