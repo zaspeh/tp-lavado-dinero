@@ -223,10 +223,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 
 func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
 	cc.EOFamountReceived++
-	slog.Info(
-		"received EOF from worker",
-		"count", cc.EOFamountReceived,
-	)
+	slog.Info("received EOF from worker")
 	if cc.EOFamountReceived == eofAmountExpected {
 		slog.Info("sending EOF to client")
 		if err := cc.protocol.SendEOF(); err != nil {

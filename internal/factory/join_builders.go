@@ -29,11 +29,17 @@ func buildMaxBankJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	maxBankWorkerAmount, err := getEnvIntStrict("MAX_BANK_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
 	config := maxbankjoin.JoinMaxBankConfig{
-		InputQueueName:     inputQueueName,
-		ClientExchangeName: clienExchangeName,
-		MomHost:            host,
-		MomPort:            port,
+		InputQueueName:      inputQueueName,
+		ClientExchangeName:  clienExchangeName,
+		MomHost:             host,
+		MomPort:             port,
+		MaxBankWorkerAmount: maxBankWorkerAmount,
 	}
 
 	return maxbankjoin.NewMaxBankJoin(config)
@@ -177,12 +183,18 @@ func buildScatterGatherJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	aggregateByIntermediaryWorkerAmount, err := getEnvIntStrict("AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
 	config := scattergatherjoin.ScatterGatherJoinConfig{
-		InputQueueName:     inputQueueName,
-		ClientExchangeName: clientExchangeName,
-		MomHost:            host,
-		MomPort:            port,
-		MaxBatchWeight:     maxBatchWeight,
+		InputQueueName:                      inputQueueName,
+		ClientExchangeName:                  clientExchangeName,
+		MomHost:                             host,
+		MomPort:                             port,
+		MaxBatchWeight:                      maxBatchWeight,
+		AggregateByIntermediaryWorkerAmount: aggregateByIntermediaryWorkerAmount,
 	}
 
 	return scattergatherjoin.NewScatterGatherJoinWorker(config)

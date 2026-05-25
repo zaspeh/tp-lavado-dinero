@@ -18,19 +18,19 @@ type ScatterGatherJoinWorker struct {
 	inputQueue         middleware.Middleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
-
-	store          *ScatterGatherStore
-	maxBatchWeight int
+	store              *ScatterGatherStore
+	maxBatchWeight     int
+	targetEofCount     int
+	clientEOFs         map[string]int
 }
 
 type ScatterGatherJoinConfig struct {
-	InputQueueName string
-
-	ClientExchangeName string
-
-	MomHost        string
-	MomPort        int
-	MaxBatchWeight int
+	InputQueueName                      string
+	ClientExchangeName                  string
+	MomHost                             string
+	MomPort                             int
+	MaxBatchWeight                      int
+	AggregateByIntermediaryWorkerAmount int
 }
 
 func NewScatterGatherJoinWorker(config ScatterGatherJoinConfig) (*ScatterGatherJoinWorker, error) {
@@ -65,6 +65,8 @@ func NewScatterGatherJoinWorker(config ScatterGatherJoinConfig) (*ScatterGatherJ
 		clientExchangeName: config.ClientExchangeName,
 		store:              NewScatterGatherStore(),
 		maxBatchWeight:     config.MaxBatchWeight,
+		targetEofCount:     config.AggregateByIntermediaryWorkerAmount,
+		clientEOFs:         make(map[string]int),
 	}, nil
 }
 
@@ -113,7 +115,7 @@ func (sgj *ScatterGatherJoinWorker) handleMessage(msg middleware.Message, ack, n
 
 	case protobuf.MessageType_EOF_:
 		slog.Info("Received EOF message in ScatterGatherJoin, forwarding to client exchange")
-		sgj.handleEOF(msg, ack, nack)
+		sgj.handleEOF(moneyLaundry, msg, ack, nack)
 
 	default:
 		nack()
@@ -145,13 +147,29 @@ func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *prot
 	ack()
 }
 
-func (sgj *ScatterGatherJoinWorker) handleEOF(msg middleware.Message, ack, nack func()) {
+func (sgj *ScatterGatherJoinWorker) handleEOF(msg *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
+	// Logica agregada por Andres segun entendioa las 2 am
+	// TODO: borrar comentario
+	// ----------------------
+	clientID := msg.GetClientID()
+	clientEOFCount, ok := sgj.clientEOFs[clientID]
+	if !ok {
+		clientEOFCount = 0
+	}
+	clientEOFCount++
+	sgj.clientEOFs[clientID] = clientEOFCount
+	if !(clientEOFCount >= sgj.targetEofCount) {
+		ack()
+		return
+	}
+	// --------------------
+
 	if err := sgj.publishResults(); err != nil {
 		nack()
 		return
 	}
 
-	if err := sgj.resultExchange.Send(msg); err != nil {
+	if err := sgj.resultExchange.Send(rawMsg); err != nil {
 		nack()
 		return
 	}

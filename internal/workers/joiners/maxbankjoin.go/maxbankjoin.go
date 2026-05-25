@@ -8,20 +8,22 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type MaxBankJoin struct {
 	inputQueue         middleware.Middleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
+	targetEofCount     int
+	clientEOFs         map[string]int
 }
 
 type JoinMaxBankConfig struct {
-	InputQueueName     string
-	ClientExchangeName string
-	MomHost            string
-	MomPort            int
+	InputQueueName      string
+	ClientExchangeName  string
+	MomHost             string
+	MomPort             int
+	MaxBankWorkerAmount int
 }
 
 func NewMaxBankJoin(config JoinMaxBankConfig) (*MaxBankJoin, error) {
@@ -45,6 +47,8 @@ func NewMaxBankJoin(config JoinMaxBankConfig) (*MaxBankJoin, error) {
 		inputQueue:         inputQueue,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
+		clientEOFs:         make(map[string]int),
+		targetEofCount:     config.MaxBankWorkerAmount,
 	}, nil
 }
 
@@ -60,7 +64,7 @@ func (j *MaxBankJoin) Run() error {
 }
 
 func (j *MaxBankJoin) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
@@ -69,12 +73,8 @@ func (j *MaxBankJoin) handleMessage(msg middleware.Message, ack, nack func()) {
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_MAXBANK_RESULT:
 		j.sendMessage(msg, ack, nack)
-
 	case protobuf.MessageType_EOF_:
-		// Unicamente para loggeo
-		slog.Info("Received EOF message in MaxBankJoin, forwarding to client exchange")
-		j.sendMessage(msg, ack, nack)
-
+		j.handleEOFMessage(moneyLaundry, ack, nack)
 	default:
 		nack()
 	}
@@ -106,4 +106,33 @@ func (j *MaxBankJoin) sendMessage(msg middleware.Message, ack, nack func()) erro
 
 	ack()
 	return nil
+}
+
+func (j *MaxBankJoin) handleEOFMessage(msg *protobuf.MoneyLaundry, ack, nack func()) {
+	slog.Info("Received EOF message, forwarding to client exchange")
+	clientID := msg.GetClientID()
+	clientEOFCount, ok := j.clientEOFs[clientID]
+	if !ok {
+		clientEOFCount = 0
+	}
+	clientEOFCount++
+	j.clientEOFs[clientID] = clientEOFCount
+
+	if clientEOFCount >= j.targetEofCount {
+		eofMsg := &protobuf.MoneyLaundry_EofMessage{
+			EofMessage: &protobuf.EOF{},
+		}
+
+		serializeMsg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMsg)
+		if err != nil {
+			nack()
+			return
+		}
+
+		if err := j.resultExchange.Send(serializeMsg); err != nil {
+			nack()
+			return
+		}
+	}
+	ack()
 }
