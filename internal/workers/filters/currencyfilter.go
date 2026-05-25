@@ -106,16 +106,13 @@ func (f *CurrencyFilter) handleTransactionBatchMessage(moneyLaundry *protobuf.Mo
 func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobuf.Transaction) error {
 	//q1
 	microtransaction := &protobuf.Microtransaction{
-		ClientID:   clientID,
-		FromBank:   transaction.GetFromBank(),
-		ToBank:     transaction.GetToBank(),
 		Account:    transaction.GetAccount(),
 		ToAccount:  transaction.GetToAccount(),
 		AmountPaid: transaction.GetAmountPaid(),
 	}
 
 	serializedMessage, err := serializer.SerializeProtoMessageWithClientID(
-		transaction.GetClientID(),
+		clientID,
 		microtransaction,
 		protobuf.MessageType_MICROTRANSACTION,
 	)

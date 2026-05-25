@@ -5,12 +5,9 @@ package protobuf;
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 message Microtransaction {
-  string clientID = 1;
-  int32 from_bank = 2;
-  int32 to_bank = 3;
-  string account = 4;
-  string to_account = 5;
-  string amount_paid = 6;
+  string account = 1;
+  string to_account = 2;
+  string amount_paid = 3;
 }
 
 message MicrotransactionResult {

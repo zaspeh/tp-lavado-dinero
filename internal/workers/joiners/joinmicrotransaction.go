@@ -109,11 +109,6 @@ func (j *JoinMicrotransaction) handleSignals() {
 }
 
 func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	slog.Info(
-		"join received microtransaction",
-		"client", moneyLaundry.GetClientID(),
-	)
-
 	microtransaction, err := serializer.DeserializeTransaction(moneyLaundry.Payload, &protobuf.Microtransaction{})
 	if err != nil {
 		nack()
@@ -121,11 +116,6 @@ func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *proto
 	}
 
 	j.results[moneyLaundry.GetClientID()] = append(j.results[moneyLaundry.GetClientID()], microtransaction)
-
-	slog.Info(
-		"join acking microtransaction",
-		"client", moneyLaundry.GetClientID(),
-	)
 
 	ack()
 }
