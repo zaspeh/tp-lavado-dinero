@@ -130,7 +130,7 @@ func (w *MaxBankWorker) handleEOF(moneyLaundry *protobuf.MoneyLaundry, originalM
 	slog.Info("Received EOF message in MaxBankWorker, processing stored data")
 	store := w.getStore(clientID)
 	reader := store.Reader()
-	batcher := w.buildResultBatcher()
+	batcher := w.buildResultBatcher(clientID)
 
 	for reader.HasNext() {
 		processedRecord := reader.Get()
@@ -173,15 +173,18 @@ func (w *MaxBankWorker) getStore(clientID string) *MaxBankStore {
 	return store
 }
 
-func (w *MaxBankWorker) buildResultBatcher() *batch.Batcher[*protobuf.MaxBankResult, *protobuf.MaxBankResultBatch] {
+func (w *MaxBankWorker) buildResultBatcher(clientID string) *batch.Batcher[*protobuf.MaxBankResult, *protobuf.MaxBankResultBatch] {
 	sizer := protowrappers.ProtoSizer[*protobuf.MaxBankResult]()
 	wrapper := protowrappers.WrapMaxBankResults
 	resultBatch := batch.New(w.maxBatchWeight, sizer, wrapper)
-	return batch.NewBatcher(resultBatch, w.flushResultBatch)
+	onFlush := func(batch *protobuf.MaxBankResultBatch) error {
+		return w.flushResultBatch(clientID, batch)
+	}
+	return batch.NewBatcher(resultBatch, onFlush)
 }
 
-func (w *MaxBankWorker) flushResultBatch(result *protobuf.MaxBankResultBatch) error {
-	msg, err := serializer.SerializeProtoMessage(result, protobuf.MessageType_MAXBANK_RESULT)
+func (w *MaxBankWorker) flushResultBatch(clientID string, result *protobuf.MaxBankResultBatch) error {
+	msg, err := serializer.SerializeProtoMessageWithClientID(clientID, result, protobuf.MessageType_MAXBANK_RESULT)
 	if err != nil {
 		return err
 	}
