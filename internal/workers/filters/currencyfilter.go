@@ -6,6 +6,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
 type CurrencyFilter struct {
@@ -14,6 +15,7 @@ type CurrencyFilter struct {
 	bankRouterQueue             middleware.Middleware
 	periodFilterQueue           middleware.Middleware
 	currencyToFilter            string
+	coordinator                 *c.EOFCoordinator
 }
 
 type CurrencyFilterConfig struct {
@@ -61,13 +63,33 @@ func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 		return nil, err
 	}
 
-	return &CurrencyFilter{
+	currencyFilter := &CurrencyFilter{
 		inputQueue:                  inputQueue,
 		microtransactionFilterQueue: microtransactionFilterQueue,
 		bankRouterQueue:             bankRouterQueue,
 		periodFilterQueue:           periodFilterQueue,
 		currencyToFilter:            config.CurrencyToFilter,
-	}, nil
+	}
+
+	coordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: config.WorkerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          config.ID,
+		WorkerCount:       config.WorkerCount,
+		FlushHandler:      currencyFilter.broadcastEOFMessage,
+	}
+
+	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
+	if err != nil {
+		inputQueue.Close()
+		microtransactionFilterQueue.Close()
+		bankRouterQueue.Close()
+		periodFilterQueue.Close()
+		return nil, err
+	}
+
+	currencyFilter.coordinator = coordinator
+	return currencyFilter, nil
 }
 
 func (f *CurrencyFilter) Run() error {
@@ -82,7 +104,7 @@ func (f *CurrencyFilter) Run() error {
 		case protobuf.MessageType_TRANSACTION_BATCH:
 			f.handleTransactionBatchMessage(moneyLaundry, ack, nack)
 		case protobuf.MessageType_EOF_:
-			f.broadcastEOFMessage(msg, ack, nack)
+			f.handleEOFMessage(moneyLaundry, ack, nack)
 		default:
 			nack()
 		}
@@ -102,6 +124,17 @@ func (f *CurrencyFilter) handleTransactionBatchMessage(moneyLaundry *protobuf.Mo
 				return
 			}
 		}
+	}
+	ack()
+}
+
+func (f *CurrencyFilter) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
+	eofMessage := moneyLaundry.GetEofMessage()
+	err := f.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions())
+	if err != nil {
+		nack()
+		return
 	}
 	ack()
 }
@@ -174,27 +207,32 @@ func (f *CurrencyFilter) broadcastToQueues(clientID string, transaction *protobu
 	return nil
 }
 
-func (f *CurrencyFilter) broadcastEOFMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, _ := serializer.DeserializeMoneyLaundering(msg)
-	slog.Info(
-		"broadcasting EOF",
-		"clientID",
-		moneyLaundry.GetClientID(),
-	)
-	if err := f.microtransactionFilterQueue.Send(msg); err != nil {
-		nack()
-		return
+// Funcion a llamar cuando el coordinador indique que ya se recibieron
+// todos los mensajes EOF de los nodos hermanos, para que se haga el flush
+func (f *CurrencyFilter) broadcastEOFMessage(clientID string, newEOFCount uint64) error {
+	slog.Info("Broadcasting EOF message", "clientID", clientID, "newEOFCount", newEOFCount)
+	eofMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: newEOFCount,
+		},
 	}
 
-	if err := f.bankRouterQueue.Send(msg); err != nil {
-		nack()
-		return
+	serializedEOFMessage, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMessage)
+	if err != nil {
+		return err
 	}
 
-	if err := f.periodFilterQueue.Send(msg); err != nil {
-		nack()
-		return
+	if err := f.microtransactionFilterQueue.Send(serializedEOFMessage); err != nil {
+		return err
 	}
 
-	ack()
+	if err := f.bankRouterQueue.Send(serializedEOFMessage); err != nil {
+		return err
+	}
+
+	if err := f.periodFilterQueue.Send(serializedEOFMessage); err != nil {
+		return err
+	}
+
+	return nil
 }

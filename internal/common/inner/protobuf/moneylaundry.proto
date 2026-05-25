@@ -6,6 +6,7 @@ option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 import "internal/common/inner/protobuf/transaction.proto";
 import "internal/common/inner/protobuf/conversion.proto";
+import "internal/common/inner/protobuf/eof.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -45,5 +46,6 @@ message MoneyLaundry {
     oneof inner_message {
         TransactionBatch transactions = 4;
         ToConvertTransactionBatch to_convert_batch = 5;
+        EOF eof_message = 6;
     }
 }

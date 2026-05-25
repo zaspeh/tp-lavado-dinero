@@ -117,6 +117,7 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64) e
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	slog.Info("Handling local EOF", "clientID", clientID, "expectedTotal", expectedTotal)
 	state := c.getClientState(clientID)
 	state.EOFSeen = true
 	state.expectedTotal = expectedTotal

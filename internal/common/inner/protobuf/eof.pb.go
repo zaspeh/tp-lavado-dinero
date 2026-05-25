@@ -23,8 +23,7 @@ const (
 
 type EOF struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	ClientID          string                 `protobuf:"bytes,1,opt,name=clientID,proto3" json:"clientID,omitempty"`
-	TotalTransactions int32                  `protobuf:"varint,2,opt,name=totalTransactions,proto3" json:"totalTransactions,omitempty"`
+	TotalTransactions uint64                 `protobuf:"varint,2,opt,name=totalTransactions,proto3" json:"totalTransactions,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -59,14 +58,7 @@ func (*EOF) Descriptor() ([]byte, []int) {
 	return file_internal_common_inner_protobuf_eof_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *EOF) GetClientID() string {
-	if x != nil {
-		return x.ClientID
-	}
-	return ""
-}
-
-func (x *EOF) GetTotalTransactions() int32 {
+func (x *EOF) GetTotalTransactions() uint64 {
 	if x != nil {
 		return x.TotalTransactions
 	}
@@ -77,10 +69,9 @@ var File_internal_common_inner_protobuf_eof_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_eof_proto_rawDesc = "" +
 	"\n" +
-	"(internal/common/inner/protobuf/eof.proto\x12\bprotobuf\"O\n" +
-	"\x03EOF\x12\x1a\n" +
-	"\bclientID\x18\x01 \x01(\tR\bclientID\x12,\n" +
-	"\x11totalTransactions\x18\x02 \x01(\x05R\x11totalTransactionsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"(internal/common/inner/protobuf/eof.proto\x12\bprotobuf\"3\n" +
+	"\x03EOF\x12,\n" +
+	"\x11totalTransactions\x18\x02 \x01(\x04R\x11totalTransactionsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_eof_proto_rawDescOnce sync.Once

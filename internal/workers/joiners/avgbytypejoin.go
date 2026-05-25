@@ -133,16 +133,16 @@ func (j *AvgByTypeJoin) sendResult(result *protobuf.AvgByTypeResult) error {
 }
 
 func (j *AvgByTypeJoin) sendEOF(clientID string) error {
-	eof := &protobuf.EOF{
-		ClientID: clientID,
+	eof := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{},
 	}
 
-	msg, err := serializer.SerializeProtoMessage(eof, protobuf.MessageType_EOF_)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eof)
 	if err != nil {
 		return err
 	}
 
-	return j.resultExchange.Send(*msg)
+	return j.resultExchange.Send(msg)
 }
 
 func (j *AvgByTypeJoin) handleSignals() {

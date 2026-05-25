@@ -5,6 +5,5 @@ package protobuf;
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 message EOF {
-	string clientID = 1;
-	int32 totalTransactions = 2;
+	uint64 totalTransactions = 2;
 }
