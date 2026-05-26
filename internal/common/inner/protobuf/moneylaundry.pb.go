@@ -51,7 +51,8 @@ const (
 	MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH       MessageType = 24
 	MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH MessageType = 25
 	MessageType_CONVERTED_AMOUNT_BATCH                 MessageType = 26
-	MessageType_CLEANUP                                MessageType = 27
+	MessageType_MICROTRANSACTION_BATCH                 MessageType = 27
+	MessageType_CLEANUP                                MessageType = 28
 )
 
 // Enum value maps for MessageType.
@@ -84,7 +85,8 @@ var (
 		24: "TO_CONVERT_PERIOD_FILTERED_BATCH",
 		25: "TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH",
 		26: "CONVERTED_AMOUNT_BATCH",
-		27: "CLEANUP",
+		27: "MICROTRANSACTION_BATCH",
+		28: "CLEANUP",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                                   0,
@@ -114,7 +116,8 @@ var (
 		"TO_CONVERT_PERIOD_FILTERED_BATCH":       24,
 		"TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH": 25,
 		"CONVERTED_AMOUNT_BATCH":                 26,
-		"CLEANUP":                                27,
+		"MICROTRANSACTION_BATCH":                 27,
+		"CLEANUP":                                28,
 	}
 )
 
@@ -162,6 +165,7 @@ type MoneyLaundry struct {
 	//	*MoneyLaundry_ToConvertPeriodFilteredBatch
 	//	*MoneyLaundry_ToConvertTypeFilteredPaymentBatch
 	//	*MoneyLaundry_ConvertedAmountBatch
+	//	*MoneyLaundry_MicrotransactionsBatch
 	InnerMessage  isMoneyLaundry_InnerMessage `protobuf_oneof:"inner_message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -288,6 +292,15 @@ func (x *MoneyLaundry) GetConvertedAmountBatch() *ConvertedAmountBatch {
 	return nil
 }
 
+func (x *MoneyLaundry) GetMicrotransactionsBatch() *MicrotransactionBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_MicrotransactionsBatch); ok {
+			return x.MicrotransactionsBatch
+		}
+	}
+	return nil
+}
+
 type isMoneyLaundry_InnerMessage interface {
 	isMoneyLaundry_InnerMessage()
 }
@@ -320,6 +333,10 @@ type MoneyLaundry_ConvertedAmountBatch struct {
 	ConvertedAmountBatch *ConvertedAmountBatch `protobuf:"bytes,10,opt,name=converted_amount_batch,json=convertedAmountBatch,proto3,oneof"`
 }
 
+type MoneyLaundry_MicrotransactionsBatch struct {
+	MicrotransactionsBatch *MicrotransactionBatch `protobuf:"bytes,11,opt,name=microtransactions_batch,json=microtransactionsBatch,proto3,oneof"`
+}
+
 func (*MoneyLaundry_Transactions) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ToConvertBatch) isMoneyLaundry_InnerMessage() {}
@@ -334,11 +351,13 @@ func (*MoneyLaundry_ToConvertTypeFilteredPaymentBatch) isMoneyLaundry_InnerMessa
 
 func (*MoneyLaundry_ConvertedAmountBatch) isMoneyLaundry_InnerMessage() {}
 
+func (*MoneyLaundry_MicrotransactionsBatch) isMoneyLaundry_InnerMessage() {}
+
 var File_internal_common_inner_protobuf_moneylaundry_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\x1a,internal/common/inner/protobuf/maxbank.proto\"\xd2\x05\n" +
+	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\x1a,internal/common/inner/protobuf/maxbank.proto\x1a5internal/common/inner/protobuf/microtransaction.proto\"\xae\x06\n" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
@@ -351,8 +370,9 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	" to_convert_period_filtered_batch\x18\b \x01(\v2&.protobuf.ToConvertPeriodFilteredBatchH\x00R\x1ctoConvertPeriodFilteredBatch\x12\x80\x01\n" +
 	"&to_convert_type_filtered_payment_batch\x18\t \x01(\v2+.protobuf.ToConvertTypeFilteredPaymentBatchH\x00R!toConvertTypeFilteredPaymentBatch\x12V\n" +
 	"\x16converted_amount_batch\x18\n" +
-	" \x01(\v2\x1e.protobuf.ConvertedAmountBatchH\x00R\x14convertedAmountBatchB\x0f\n" +
-	"\rinner_message*\xd8\x05\n" +
+	" \x01(\v2\x1e.protobuf.ConvertedAmountBatchH\x00R\x14convertedAmountBatch\x12Z\n" +
+	"\x17microtransactions_batch\x18\v \x01(\v2\x1f.protobuf.MicrotransactionBatchH\x00R\x16microtransactionsBatchB\x0f\n" +
+	"\rinner_message*\xf4\x05\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -381,8 +401,9 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\rMAXBANK_BATCH\x10\x17\x12$\n" +
 	" TO_CONVERT_PERIOD_FILTERED_BATCH\x10\x18\x12*\n" +
 	"&TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH\x10\x19\x12\x1a\n" +
-	"\x16CONVERTED_AMOUNT_BATCH\x10\x1a\x12\v\n" +
-	"\aCLEANUP\x10\x1bB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x16CONVERTED_AMOUNT_BATCH\x10\x1a\x12\x1a\n" +
+	"\x16MICROTRANSACTION_BATCH\x10\x1b\x12\v\n" +
+	"\aCLEANUP\x10\x1cB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
@@ -408,6 +429,7 @@ var file_internal_common_inner_protobuf_moneylaundry_proto_goTypes = []any{
 	(*ToConvertPeriodFilteredBatch)(nil),      // 6: protobuf.ToConvertPeriodFilteredBatch
 	(*ToConvertTypeFilteredPaymentBatch)(nil), // 7: protobuf.ToConvertTypeFilteredPaymentBatch
 	(*ConvertedAmountBatch)(nil),              // 8: protobuf.ConvertedAmountBatch
+	(*MicrotransactionBatch)(nil),             // 9: protobuf.MicrotransactionBatch
 }
 var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	0, // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
@@ -418,11 +440,12 @@ var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	6, // 5: protobuf.MoneyLaundry.to_convert_period_filtered_batch:type_name -> protobuf.ToConvertPeriodFilteredBatch
 	7, // 6: protobuf.MoneyLaundry.to_convert_type_filtered_payment_batch:type_name -> protobuf.ToConvertTypeFilteredPaymentBatch
 	8, // 7: protobuf.MoneyLaundry.converted_amount_batch:type_name -> protobuf.ConvertedAmountBatch
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	9, // 8: protobuf.MoneyLaundry.microtransactions_batch:type_name -> protobuf.MicrotransactionBatch
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_moneylaundry_proto_init() }
@@ -434,6 +457,7 @@ func file_internal_common_inner_protobuf_moneylaundry_proto_init() {
 	file_internal_common_inner_protobuf_conversion_proto_init()
 	file_internal_common_inner_protobuf_eof_proto_init()
 	file_internal_common_inner_protobuf_maxbank_proto_init()
+	file_internal_common_inner_protobuf_microtransaction_proto_init()
 	file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes[0].OneofWrappers = []any{
 		(*MoneyLaundry_Transactions)(nil),
 		(*MoneyLaundry_ToConvertBatch)(nil),
@@ -442,6 +466,7 @@ func file_internal_common_inner_protobuf_moneylaundry_proto_init() {
 		(*MoneyLaundry_ToConvertPeriodFilteredBatch)(nil),
 		(*MoneyLaundry_ToConvertTypeFilteredPaymentBatch)(nil),
 		(*MoneyLaundry_ConvertedAmountBatch)(nil),
+		(*MoneyLaundry_MicrotransactionsBatch)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

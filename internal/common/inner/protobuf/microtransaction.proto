@@ -10,6 +10,10 @@ message Microtransaction {
   string amount_paid = 3;
 }
 
+message MicrotransactionBatch {
+  repeated Microtransaction items = 1;
+}
+
 message MicrotransactionResult {
   repeated Microtransaction transactions = 1;
 }
