@@ -1,8 +1,12 @@
 package socket
 
 import (
+	"errors"
+	"io"
 	"net"
 )
+
+var ErrConnectionClosed = errors.New("socket: connection closed by peer")
 
 type Socket struct {
 	conn net.Conn
@@ -17,6 +21,9 @@ func (s *Socket) WriteAll(data []byte) error {
 	for totalSent < len(data) {
 		sended, err := s.conn.Write(data[totalSent:])
 		if err != nil {
+			if isDisconnection(err) {
+				return ErrConnectionClosed
+			}
 			return err
 		}
 		totalSent += sended
@@ -30,6 +37,9 @@ func (s *Socket) ReadAll(amountToRead int) ([]byte, error) {
 	for total_received < amountToRead {
 		received, err := s.conn.Read(buffer[total_received:])
 		if err != nil {
+			if isDisconnection(err) {
+				return nil, ErrConnectionClosed
+			}
 			return nil, err
 		}
 		total_received += received
@@ -39,4 +49,15 @@ func (s *Socket) ReadAll(amountToRead int) ([]byte, error) {
 
 func (s *Socket) Close() error {
 	return s.conn.Close()
+}
+
+func isDisconnection(err error) bool {
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+	var netErr *net.OpError
+	if errors.As(err, &netErr) {
+		return !netErr.Temporary()
+	}
+	return false
 }
