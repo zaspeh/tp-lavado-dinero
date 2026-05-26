@@ -74,7 +74,7 @@ services:
     
 
   period_filter:
-    count: 2
+    count: 4
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -106,7 +106,7 @@ services:
       AVG_BY_TYPE_WORKER_AMOUNT: 1
 
   origin_destination_router:
-    count: 1
+    count: 2
     worker_type: ORIGIN_DESTINATION_ROUTER
 
     env:

@@ -175,6 +175,7 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		ConnSettings:      connSettings,
 		WorkerID:          config.Query4WorkerID,
 		WorkerCount:       config.Query4WorkerCount,
+		ExpectedEOFs:      0,
 		FlushHandler:      periodFilterWorker.sendQuery4EOFMessage,
 	}
 
@@ -356,6 +357,7 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 	if !pf.scatterGatherPeriod.Contains(periodFilterMsg.GetTimestamp().AsTime()) {
 		return pf.query4Coordinator.RecordProcessed(clientID)
 	}
+
 	scatterGatherMsg := &protobuf.ScatterGather{
 		FromBank:  periodFilterMsg.GetFromBank(),
 		ToBank:    periodFilterMsg.GetToBank(),
@@ -363,7 +365,7 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 		ToAccount: periodFilterMsg.GetToAccount(),
 	}
 
-	serializedMsg, err := serializer.SerializeProtoMessage(scatterGatherMsg, protobuf.MessageType_SCATTERGATHER)
+	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, scatterGatherMsg, protobuf.MessageType_SCATTERGATHER)
 	if err != nil {
 		return err
 	}

@@ -238,7 +238,9 @@ func (c *EOFCoordinator) broadcastEOFCoordination(clientID string, state *client
 }
 
 func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
+	slog.Debug("Trying FLush")
 	if state.eofSeenLocal < c.expectedEOFs {
+		slog.Debug("Seen Local < expectedEofs", state.eofSeenLocal, c.expectedEOFs)
 		return nil
 	}
 
@@ -251,6 +253,7 @@ func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 	}
 
 	if totalProcessed < state.expectedTotal {
+		slog.Debug("totalProcesed < expectedTotal", totalProcessed, state.expectedTotal)
 		return nil
 	}
 

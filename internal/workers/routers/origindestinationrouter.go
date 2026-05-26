@@ -11,6 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
 type OriginDestinationRouter struct {
@@ -22,9 +23,11 @@ type OriginDestinationRouter struct {
 	groupByDestinationExchange     *middleware.ExchangeMiddleware
 	groupByDestinationWorkers      int
 	groupByDestinationExchangeKeys []string
+	coordinator                    *c.EOFCoordinator
 }
 
 type OriginDestinationRouterConfig struct {
+	ID                              int
 	InputQueueName                  string
 	GroupByOriginExchangeName       string
 	GroupByDestinationExchangeName  string
@@ -32,6 +35,8 @@ type OriginDestinationRouterConfig struct {
 	GroupByDestinationWorkersAmount int
 	MomHost                         string
 	MomPort                         int
+	WorkerCount                     int
+	WorkerExchangeName              string
 }
 
 func NewOriginDestinationRouter(config OriginDestinationRouterConfig) (*OriginDestinationRouter, error) {
@@ -68,7 +73,7 @@ func NewOriginDestinationRouter(config OriginDestinationRouterConfig) (*OriginDe
 		return nil, err
 	}
 
-	return &OriginDestinationRouter{
+	originDestinationRouter := &OriginDestinationRouter{
 		inputQueue:                     inputQueue,
 		groupByOriginExchange:          groupByOriginExchange,
 		groupByDestinationExchange:     groupByDestinationExchange,
@@ -76,12 +81,35 @@ func NewOriginDestinationRouter(config OriginDestinationRouterConfig) (*OriginDe
 		groupByDestinationWorkers:      config.GroupByDestinationWorkersAmount,
 		groupByOriginExchangeKeys:      groupByOriginKeys,
 		groupByDestinationExchangeKeys: groupByDestinationKeys,
-	}, nil
+	}
+
+	coordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: config.WorkerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          config.ID,
+		WorkerCount:       config.WorkerCount,
+		ExpectedEOFs:      0,
+		FlushHandler:      originDestinationRouter.handleFlush,
+	}
+
+	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
+	if err != nil {
+		inputQueue.Close()
+		groupByOriginExchange.Close()
+		groupByDestinationExchange.Close()
+		return nil, err
+	}
+
+	originDestinationRouter.coordinator = coordinator
+
+	return originDestinationRouter, nil
 }
 
 func (odr *OriginDestinationRouter) Run() error {
+	slog.Debug("SStarting origin destination router")
 
 	go odr.handleSignals()
+	go odr.coordinator.Run()
 
 	odr.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		odr.handleMessage(msg, ack, nack)
@@ -99,6 +127,8 @@ func (odr *OriginDestinationRouter) handleSignals() {
 
 	odr.groupByOriginExchange.Close()
 	odr.groupByDestinationExchange.Close()
+
+	odr.coordinator.Close()
 }
 
 func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, nack func()) {
@@ -110,6 +140,7 @@ func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, n
 
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_SCATTERGATHER:
+		slog.Debug("Message ScatterGather Received")
 		odr.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
 		slog.Debug("EOF received, broadcasting to all groupers")
@@ -120,6 +151,7 @@ func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, n
 }
 
 func (odr *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
 	scatterGatherMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ScatterGather{})
 	if err != nil {
 		nack()
@@ -132,6 +164,16 @@ func (odr *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *pro
 	}
 
 	if err := odr.publishToGroupByDestination(scatterGatherMsg, msg); err != nil {
+		nack()
+		return
+	}
+
+	if err := odr.coordinator.RecordProcessed(clientID); err != nil {
+		nack()
+		return
+	}
+
+	if err := odr.coordinator.RecordSurvivor(clientID); err != nil {
 		nack()
 		return
 	}
@@ -172,21 +214,46 @@ func (odr *OriginDestinationRouter) hash(bank int32, account string) uint32 {
 }
 
 func (odr *OriginDestinationRouter) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
+	eofMessage := moneyLaundry.GetEofMessage()
+	if err := odr.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
+		nack()
+		return
+	}
+	ack()
+}
+
+func (odr *OriginDestinationRouter) handleFlush(clientID string, totalSurvivors uint64) error {
+	slog.Debug("Checking if im leader")
+	if !odr.coordinator.IsLeader() {
+		return nil
+	}
+
+	slog.Info("Flushing client", "clientID", clientID, "totalSurvivors", totalSurvivors)
+	innerMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: totalSurvivors,
+		},
+	}
+
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, innerMessage)
+	if err != nil {
+		return err
+	}
+
 	for _, key := range odr.groupByOriginExchangeKeys {
 		slog.Debug("sending EOF to Client")
 		if err := odr.groupByOriginExchange.SendWithKey(key, msg); err != nil {
-			nack()
-			return
+			return err
 		}
 	}
 
 	for _, key := range odr.groupByDestinationExchangeKeys {
 		slog.Debug("sending EOF to Client")
 		if err := odr.groupByDestinationExchange.SendWithKey(key, msg); err != nil {
-			nack()
-			return
+			return err
 		}
 	}
 
-	ack()
+	return nil
 }

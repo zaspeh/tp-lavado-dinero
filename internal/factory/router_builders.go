@@ -56,6 +56,10 @@ func buildBankRouterWorker() (workers.Worker, error) {
 }
 
 func buildOriginDestinationRouterWorker() (workers.Worker, error) {
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -90,8 +94,14 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
+	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+
+	if err != nil {
+		return nil, err
+	}
 
 	config := routers.OriginDestinationRouterConfig{
+		ID:                              id,
 		InputQueueName:                  inQ,
 		GroupByOriginExchangeName:       groupByOriginExchangeName,
 		GroupByDestinationExchangeName:  groupByDestinationExchangeName,
@@ -99,6 +109,8 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		GroupByDestinationWorkersAmount: groupByDestinationWorkerAmount,
 		MomHost:                         host,
 		MomPort:                         port,
+		WorkerCount:                     workerCount,
+		WorkerExchangeName:              workerExchangeName,
 	}
 
 	return routers.NewOriginDestinationRouter(config)
