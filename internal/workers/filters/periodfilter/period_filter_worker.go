@@ -8,9 +8,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
 type AvgByTypeRoute struct {
@@ -34,6 +37,9 @@ type PeriodFilterWorker struct {
 	paymentTypePeriod      Period
 	paymentTypeFilterQueue middleware.Middleware
 	paymentTypeRouterQueue middleware.Middleware
+
+	rawCoordinator *c.EOFCoordinator
+	rawBatchers    map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]
 }
 
 type PeriodFilterWorkerConfig struct {
@@ -55,6 +61,10 @@ type PeriodFilterWorkerConfig struct {
 	PaymentTypeRouterQueueName string
 	MomHost                    string
 	MomPort                    int
+
+	RawWorkerID           int
+	RawWorkerCount        int
+	RawWorkerExchangeName string
 }
 
 func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker, error) {
@@ -123,7 +133,7 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 	}
 	createdQueues = append(createdQueues, paymentTypeRouterQueue)
 
-	return &PeriodFilterWorker{
+	periodFilterWorker := &PeriodFilterWorker{
 		usdInputQueue:          usdInputQueue,
 		rawInputQueue:          rawInputQueue,
 		avgByTypeRoutes:        avgByTypeRoutes,
@@ -134,11 +144,31 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		paymentTypePeriod:      config.PaymentTypePeriod,
 		paymentTypeFilterQueue: paymentTypeFilterQueue,
 		paymentTypeRouterQueue: paymentTypeRouterQueue,
-	}, nil
+		rawBatchers:            make(map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]),
+	}
+
+	rawCoordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: config.RawWorkerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          config.RawWorkerID,
+		WorkerCount:       config.RawWorkerCount,
+		FlushHandler:      periodFilterWorker.sendRawEOFMessage,
+	}
+
+	rawCoordinator, err := c.NewEOFCoordinator(rawCoordinatorConfig)
+	if err != nil {
+		closeAllQueues()
+		return nil, err
+	}
+
+	periodFilterWorker.rawCoordinator = rawCoordinator
+
+	return periodFilterWorker, nil
 }
 
 func (pf *PeriodFilterWorker) Run() error {
 	go pf.handleSignals()
+	go pf.rawCoordinator.Run()
 
 	go pf.rawInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		pf.handleRawMessage(msg, ack, nack)
@@ -195,8 +225,7 @@ func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack
 	case protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH:
 		pf.handleToConvertBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
-		// funcionalidad a revisar, hay problemas de EOF
-		pf.handleEOFMessageFromRaw(msg, ack, nack)
+		pf.handleEOFMessageFromRaw(moneyLaundry, ack, nack)
 	default:
 		nack()
 	}
@@ -217,11 +246,6 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 		nack()
 		return
 	}
-
-	// if err := pf.paymentTypeFilterQueue.Send(rawMsg); err != nil {
-	// 	nack()
-	// 	return
-	// }
 
 	if err := pf.paymentTypeRouterQueue.Send(rawMsg); err != nil {
 		nack()
@@ -260,16 +284,37 @@ func (pf *PeriodFilterWorker) handleToConvertBatch(moneyLaundry *protobuf.MoneyL
 	toConvertBatch := moneyLaundry.GetToConvertBatch()
 	clientID := moneyLaundry.GetClientID()
 	items := toConvertBatch.GetItems()
+	batcher := pf.getRawBatcher(clientID)
 	for _, transactionMsg := range items {
 		if !pf.paymentTypePeriod.Contains(transactionMsg.GetTimestamp().AsTime()) {
+			if err := pf.rawCoordinator.RecordProcessed(clientID); err != nil {
+				nack()
+				return
+			}
 			continue
 		}
 
-		//slog.Debug("Publishing transaction to payment type filter", "timestamp", transactionMsg.GetTimestamp().AsTime())
-		if err := pf.publishToPaymentTypeQueue(clientID, transactionMsg); err != nil {
+		filteredPeriodMsg := &protobuf.ToConvertPeriodFiltered{
+			AmountPaid:      transactionMsg.GetAmountPaid(),
+			PaymentCurrency: transactionMsg.GetPaymentCurrency(),
+			PaymentFormat:   transactionMsg.GetPaymentFormat(),
+		}
+		if err := batcher.Add(filteredPeriodMsg); err != nil {
 			nack()
 			return
 		}
+		if err := pf.rawCoordinator.RecordSurvivor(clientID); err != nil {
+			nack()
+			return
+		}
+		if err := pf.rawCoordinator.RecordProcessed(clientID); err != nil {
+			nack()
+			return
+		}
+	}
+	if err := batcher.Flush(); err != nil {
+		nack()
+		return
 	}
 	ack()
 }
@@ -332,25 +377,79 @@ func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protob
 	return pf.paymentTypeRouterQueue.Send(*serializedMsg)
 }
 
-func (pf *PeriodFilterWorker) publishToPaymentTypeQueue(clientID string, transactionMsg *protobuf.ToConvertTransaction) error {
-	filteredPeriodMsg := &protobuf.ToConvertPeriodFiltered{
-		AmountPaid:      transactionMsg.GetAmountPaid(),
-		PaymentCurrency: transactionMsg.GetPaymentCurrency(),
-		PaymentFormat:   transactionMsg.GetPaymentFormat(),
-	}
-	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, filteredPeriodMsg, protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED)
-	if err != nil {
-		return err
+func (pf *PeriodFilterWorker) handleEOFMessageFromRaw(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
+	if batcher := pf.rawBatchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
 	}
 
-	return pf.paymentTypeFilterQueue.Send(*serializedMsg)
-}
-
-func (pf *PeriodFilterWorker) handleEOFMessageFromRaw(msg middleware.Message, ack, nack func()) {
-	slog.Info("Received EOF from raw input")
-	if err := pf.paymentTypeFilterQueue.Send(msg); err != nil {
+	eofMessage := moneyLaundry.GetEofMessage()
+	if err := pf.rawCoordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
 		nack()
 		return
 	}
 	ack()
+}
+
+func (pf *PeriodFilterWorker) getRawBatcher(clientID string) *batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch] {
+	if batcher, ok := pf.rawBatchers[clientID]; ok {
+		return batcher
+	}
+
+	convertedBatch := batch.New(
+		0,
+		protowrappers.ProtoSizer[*protobuf.ToConvertPeriodFiltered](),
+		protowrappers.WrapToConvertPeriodFiltered,
+	)
+
+	onFlush := func(batch *protobuf.ToConvertPeriodFilteredBatch) error {
+		return pf.publishToPaymentTypeQueue(clientID, batch)
+	}
+
+	batcher := batch.NewBatcher(convertedBatch, onFlush)
+	pf.rawBatchers[clientID] = batcher
+	return batcher
+}
+
+func (pf *PeriodFilterWorker) publishToPaymentTypeQueue(clientID string, batch *protobuf.ToConvertPeriodFilteredBatch) error {
+	innerMessage := &protobuf.MoneyLaundry_ToConvertPeriodFilteredBatch{
+		ToConvertPeriodFilteredBatch: batch,
+	}
+	serializedMsg, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH,
+		innerMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return pf.paymentTypeFilterQueue.Send(serializedMsg)
+}
+
+func (pf *PeriodFilterWorker) sendRawEOFMessage(clientID string, newEOFCount uint64) error {
+	if !pf.rawCoordinator.IsLeader() {
+		return nil
+	}
+
+	slog.Info("Broadcasting raw EOF message", "clientID", clientID, "newEOFCount", newEOFCount)
+	eofMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: newEOFCount,
+		},
+	}
+
+	serializedEOFMessage, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_EOF_,
+		eofMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return pf.paymentTypeFilterQueue.Send(serializedEOFMessage)
 }
