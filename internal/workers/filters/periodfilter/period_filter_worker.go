@@ -325,7 +325,7 @@ func (pf *PeriodFilterWorker) handlePeriodFilterBatchMessage(moneyLaundry *proto
 		timestamp := periodFilterMsg.GetTimestamp().AsTime()
 
 		// filtro por periodo Q3
-		err := pf.checkToPublishToPaymentTypeRouter(periodFilterMsg, moneyLaundry.GetClientID(), timestamp)
+		err := pf.checkToPublishToPaymentTypeRouter(periodFilterMsg, clientID, timestamp)
 		if err != nil {
 			nack()
 			return
