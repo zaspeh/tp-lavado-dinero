@@ -211,6 +211,10 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		Query4WorkerID:           id,
 		Query4WorkerCount:        workerCount,
 		Query4WorkerExchangeName: fmt.Sprintf("%s.q4_scatter", workerExchangeName),
+
+		Query3WorkerID:           id,
+		Query3WorkerCount:        workerCount,
+		Query3WorkerExchangeName: fmt.Sprintf("%s.q3_periods", workerExchangeName),
 	}
 
 	return periodfilter.NewPeriodFilterWorker(config)

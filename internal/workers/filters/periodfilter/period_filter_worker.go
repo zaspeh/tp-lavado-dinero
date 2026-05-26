@@ -38,6 +38,7 @@ type PeriodFilterWorker struct {
 	paymentTypeFilterQueue middleware.Middleware
 	paymentTypeRouterQueue middleware.Middleware
 
+	query3Coordinator *c.EOFCoordinator
 	query4Coordinator *c.EOFCoordinator
 
 	rawCoordinator *c.EOFCoordinator
@@ -72,6 +73,11 @@ type PeriodFilterWorkerConfig struct {
 	Query4WorkerID           int
 	Query4WorkerCount        int
 	Query4WorkerExchangeName string
+
+	//Q3
+	Query3WorkerID           int
+	Query3WorkerCount        int
+	Query3WorkerExchangeName string
 }
 
 func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker, error) {
@@ -170,6 +176,27 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 
 	periodFilterWorker.rawCoordinator = rawCoordinator
 
+	query3CoordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: config.Query3WorkerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          config.Query3WorkerID,
+		WorkerCount:       config.Query3WorkerCount,
+		ExpectedEOFs:      0,
+		FlushHandler:      periodFilterWorker.sendQuery3EOFMessage,
+	}
+
+	query3Coordinator, err := c.NewEOFCoordinator(
+		query3CoordinatorConfig,
+	)
+
+	if err != nil {
+		periodFilterWorker.rawCoordinator.Close()
+		closeAllQueues()
+		return nil, err
+	}
+
+	periodFilterWorker.query3Coordinator = query3Coordinator
+
 	query4CoordinatorConfig := c.EOFCoordinatorConfig{
 		PeersExchangeName: config.Query4WorkerExchangeName,
 		ConnSettings:      connSettings,
@@ -185,6 +212,7 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 
 	if err != nil {
 		periodFilterWorker.rawCoordinator.Close()
+		periodFilterWorker.query3Coordinator.Close()
 		closeAllQueues()
 		return nil, err
 	}
@@ -197,6 +225,7 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 func (pf *PeriodFilterWorker) Run() error {
 	go pf.handleSignals()
 	go pf.rawCoordinator.Run()
+	go pf.query3Coordinator.Run()
 	go pf.query4Coordinator.Run()
 
 	go pf.rawInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
@@ -225,6 +254,7 @@ func (pf *PeriodFilterWorker) handleSignals() {
 	pf.paymentTypeFilterQueue.Close()
 	pf.paymentTypeRouterQueue.Close()
 	pf.rawCoordinator.Close()
+	pf.query3Coordinator.Close()
 	pf.query4Coordinator.Close()
 }
 
@@ -280,7 +310,7 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 		return
 	}
 
-	if err := pf.paymentTypeRouterQueue.Send(rawMsg); err != nil {
+	if err := pf.query3Coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
 		nack()
 		return
 	}
@@ -401,6 +431,10 @@ func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg 
 		}
 	}
 
+	if err := pf.query3Coordinator.RecordProcessed(clientID); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -417,7 +451,15 @@ func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protob
 		return err
 	}
 
-	return pf.paymentTypeRouterQueue.Send(*serializedMsg)
+	if err := pf.paymentTypeRouterQueue.Send(*serializedMsg); err != nil {
+		return err
+	}
+
+	if err := pf.query3Coordinator.RecordSurvivor(clientID); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (pf *PeriodFilterWorker) handleEOFMessageFromRaw(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
@@ -519,4 +561,28 @@ func (pf *PeriodFilterWorker) sendQuery4EOFMessage(clientID string, newEOFCount 
 	}
 
 	return pf.originDestinationQueue.Send(serializedEOFMessage)
+}
+
+func (pf *PeriodFilterWorker) sendQuery3EOFMessage(clientID string, newEOFCount uint64) error {
+	if !pf.query3Coordinator.IsLeader() {
+		return nil
+	}
+
+	slog.Info("Broadcasting query3 EOF message", "clientID", clientID, "newEOFCount", newEOFCount)
+	eofMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: newEOFCount,
+		},
+	}
+
+	serializedEOFMessage, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_EOF_,
+		eofMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return pf.paymentTypeRouterQueue.Send(serializedEOFMessage)
 }
