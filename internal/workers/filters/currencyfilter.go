@@ -132,6 +132,14 @@ func (f *CurrencyFilter) handleTransactionBatchMessage(moneyLaundry *protobuf.Mo
 		}
 		f.coordinator.RecordProcessed(clientID)
 	}
+
+	// flush por el momento, idealmente no flusheamos por batch sino
+	// que armamos mas batches cuando este se llene pero genera que se
+	// maneje el coordinador en todas las instancias
+	if err := batcher.Flush(); err != nil {
+		nack()
+		return
+	}
 	ack()
 }
 

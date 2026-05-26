@@ -1,6 +1,7 @@
 package filters
 
 import (
+	"log/slog"
 	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -63,6 +64,7 @@ func (af *AmountFilter) Run() error {
 			af.handleMicrotransactionMessage(moneyLaundering, msg, ack, nack)
 
 		case protobuf.MessageType_EOF_:
+			slog.Info("Received EOF", "clientID", moneyLaundering.GetClientID())
 			if err := af.outputQueue.Send(msg); err != nil {
 				nack()
 				return
