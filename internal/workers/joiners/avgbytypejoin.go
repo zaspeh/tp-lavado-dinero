@@ -1,6 +1,7 @@
 package joiners
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -17,6 +18,8 @@ type AvgByTypeJoin struct {
 
 	expectedEOFs int
 	receivedEOFs map[string]int
+
+	clientExchangeName string
 }
 
 type AvgByTypeJoinConfig struct {
@@ -47,10 +50,11 @@ func NewAvgByTypeJoin(config AvgByTypeJoinConfig) (*AvgByTypeJoin, error) {
 	}
 
 	return &AvgByTypeJoin{
-		inputQueue:     inputQueue,
-		resultExchange: resultExchange,
-		expectedEOFs:   config.ExpectedEOFs,
-		receivedEOFs:   make(map[string]int),
+		inputQueue:         inputQueue,
+		resultExchange:     resultExchange,
+		clientExchangeName: config.ClientExchangeName,
+		expectedEOFs:       config.ExpectedEOFs,
+		receivedEOFs:       make(map[string]int),
 	}, nil
 }
 
@@ -74,7 +78,7 @@ func (j *AvgByTypeJoin) handleMessage(msg middleware.Message, ack, nack func()) 
 	switch moneyLaundry.GetType() {
 
 	case protobuf.MessageType_AVGBYTYPE_RESULT:
-		j.handleResult(msg, ack, nack)
+		j.handleResult(msg, moneyLaundry.GetClientID(), ack, nack)
 
 	case protobuf.MessageType_EOF_:
 		j.handleEOF(moneyLaundry, ack, nack)
@@ -84,12 +88,12 @@ func (j *AvgByTypeJoin) handleMessage(msg middleware.Message, ack, nack func()) 
 	}
 }
 
-func (j *AvgByTypeJoin) handleResult(msg middleware.Message, ack, nack func()) {
+func (j *AvgByTypeJoin) handleResult(msg middleware.Message, clientID string, ack, nack func()) {
 	slog.Info(
 		"received avg by type result",
 	)
-
-	if err := j.resultExchange.Send(msg); err != nil {
+	key := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
+	if err := j.resultExchange.SendWithKey(key, msg); err != nil {
 		nack()
 		return
 	}
@@ -142,7 +146,8 @@ func (j *AvgByTypeJoin) sendEOF(clientID string) error {
 		return err
 	}
 
-	return j.resultExchange.Send(msg)
+	key := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
+	return j.resultExchange.SendWithKey(key, msg)
 }
 
 func (j *AvgByTypeJoin) handleSignals() {
