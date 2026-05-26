@@ -62,15 +62,15 @@ func (j *ConversionJoin) Run() error {
 }
 
 func (j *ConversionJoin) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_CONVERTED_AMOUNT:
-		j.handleConvertedAmountMessage(moneyLaundry, ack, nack)
+	case protobuf.MessageType_CONVERTED_AMOUNT_BATCH:
+		j.handleConvertedAmountBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		j.HandleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
@@ -91,9 +91,10 @@ func (j *ConversionJoin) handleSignals() {
 	j.resultExchange.Close()
 }
 
-func (j *ConversionJoin) handleConvertedAmountMessage(moneyLaundry *protobuf.MoneyLaundry, ack, _ func()) {
+func (j *ConversionJoin) handleConvertedAmountBatch(moneyLaundry *protobuf.MoneyLaundry, ack, _ func()) {
 	clientID := moneyLaundry.GetClientID()
-	j.clientResults[clientID]++
+	batch := moneyLaundry.GetConvertedAmountBatch()
+	j.clientResults[clientID] += len(batch.GetItems())
 	ack()
 }
 

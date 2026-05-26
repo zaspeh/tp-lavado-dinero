@@ -112,7 +112,6 @@ func (j *MaxBankJoin) sendMessage(moneyLaundry *protobuf.MoneyLaundry, msg middl
 }
 
 func (j *MaxBankJoin) handleEOFMessage(msg *protobuf.MoneyLaundry, ack, nack func()) {
-	slog.Info("Received EOF message, forwarding to client exchange")
 	clientID := msg.GetClientID()
 	clientEOFCount, ok := j.clientEOFs[clientID]
 	if !ok {
@@ -122,6 +121,7 @@ func (j *MaxBankJoin) handleEOFMessage(msg *protobuf.MoneyLaundry, ack, nack fun
 	j.clientEOFs[clientID] = clientEOFCount
 
 	if clientEOFCount >= j.targetEofCount {
+		slog.Info("Received EOF message, forwarding to client exchange")
 		eofMsg := &protobuf.MoneyLaundry_EofMessage{
 			EofMessage: &protobuf.EOF{},
 		}
