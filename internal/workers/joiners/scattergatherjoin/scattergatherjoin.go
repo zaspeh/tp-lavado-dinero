@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
@@ -19,7 +20,8 @@ type ScatterGatherJoinWorker struct {
 	inputQueue         middleware.Middleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
-	store              *ScatterGatherStore
+	stores             map[string]*ScatterGatherStore
+	storesMu           sync.RWMutex
 	maxBatchWeight     int
 	targetEofCount     int
 	clientEOFs         map[string]int
@@ -64,7 +66,7 @@ func NewScatterGatherJoinWorker(config ScatterGatherJoinConfig) (*ScatterGatherJ
 		inputQueue:         inputQueue,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
-		store:              NewScatterGatherStore(),
+		stores:             make(map[string]*ScatterGatherStore),
 		maxBatchWeight:     config.MaxBatchWeight,
 		targetEofCount:     config.AggregateByIntermediaryWorkerAmount,
 		clientEOFs:         make(map[string]int),
@@ -125,6 +127,7 @@ func (sgj *ScatterGatherJoinWorker) handleMessage(msg middleware.Message, ack, n
 
 func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	batchMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.SuspiciousPathBatch{})
+	store := sgj.getStore(moneyLaundry.GetClientID())
 	if err != nil {
 		nack()
 		return
@@ -144,7 +147,7 @@ func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *prot
 			},
 		}
 
-		sgj.store.Add(pair, int(path.GetIntermediaryCount()))
+		store.Add(pair, int(path.GetIntermediaryCount()))
 	}
 
 	ack()
@@ -200,13 +203,20 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg *protobuf.MoneyLaundry, rawMsg
 
 func (sgj *ScatterGatherJoinWorker) publishResults(clientID string) error {
 	slog.Debug("Publishing Results")
-	defer sgj.store.Clear()
+	store := sgj.getStore(clientID)
+	defer func() {
+		store.Clear()
+
+		sgj.storesMu.Lock()
+		delete(sgj.stores, clientID)
+		sgj.storesMu.Unlock()
+	}()
 
 	suspiciousAccounts := make(map[model.Account]struct{})
 
 	publishKey := fmt.Sprintf("%s.%s", sgj.clientExchangeName, clientID)
 
-	for pair, count := range sgj.store.GetPaths() {
+	for pair, count := range store.GetPaths() {
 
 		if count < 5 {
 			continue
@@ -260,4 +270,21 @@ func (sgj *ScatterGatherJoinWorker) publishResults(clientID string) error {
 		"flushing",
 	)
 	return batcher.Flush()
+}
+
+func (sgj *ScatterGatherJoinWorker) getStore(
+	clientID string,
+) *ScatterGatherStore {
+
+	sgj.storesMu.Lock()
+	defer sgj.storesMu.Unlock()
+
+	store, ok := sgj.stores[clientID]
+
+	if !ok {
+		store = NewScatterGatherStore()
+		sgj.stores[clientID] = store
+	}
+
+	return store
 }

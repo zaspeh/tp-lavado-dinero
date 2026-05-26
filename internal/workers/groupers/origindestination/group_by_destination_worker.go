@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -12,10 +13,11 @@ import (
 )
 
 type GroupByDestinationWorker struct {
-	inputExchange     *middleware.ExchangeMiddleware
-	outputQueue       middleware.Middleware
-	destinationsStore *AccountStore
-	maxBatchWeight    int
+	inputExchange      *middleware.ExchangeMiddleware
+	outputQueue        middleware.Middleware
+	destinationsStores map[string]*AccountStore
+	storesMu           sync.RWMutex
+	maxBatchWeight     int
 }
 
 type GroupByDestinationWorkerConfig struct {
@@ -46,10 +48,10 @@ func NewGroupByDestinationWorker(config GroupByDestinationWorkerConfig) (*GroupB
 	}
 
 	return &GroupByDestinationWorker{
-		inputExchange:     inputExchange,
-		outputQueue:       outputQueue,
-		destinationsStore: newAccountStore(),
-		maxBatchWeight:    config.MaxBatchWeight,
+		inputExchange:      inputExchange,
+		outputQueue:        outputQueue,
+		destinationsStores: make(map[string]*AccountStore),
+		maxBatchWeight:     config.MaxBatchWeight,
 	}, nil
 }
 
@@ -107,7 +109,9 @@ func (gbdw *GroupByDestinationWorker) handleScatterGatherMessage(moneyLaundry *p
 		Account: scatterGatherMsg.GetToAccount(),
 	}
 
-	gbdw.destinationsStore.Add(destination, origin)
+	store := gbdw.getStore(moneyLaundry.GetClientID())
+
+	store.Add(destination, origin)
 
 	ack()
 }
@@ -115,7 +119,8 @@ func (gbdw *GroupByDestinationWorker) handleScatterGatherMessage(moneyLaundry *p
 func (gbdw *GroupByDestinationWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	batch := NewBatch(gbdw.maxBatchWeight)
 	slog.Debug("Creating batch")
-	data := gbdw.destinationsStore.GetData()
+	store := gbdw.getStore(moneyLaundry.GetClientID())
+	data := store.GetData()
 	totalGroups := 0
 
 	for destination, origins := range data {
@@ -207,6 +212,30 @@ func (gbdw *GroupByDestinationWorker) handleEOFMessage(moneyLaundry *protobuf.Mo
 		return
 	}
 
+	gbdw.storesMu.Lock()
+	delete(
+		gbdw.destinationsStores,
+		moneyLaundry.GetClientID(),
+	)
+	gbdw.storesMu.Unlock()
+
 	slog.Debug("ack eof message")
 	ack()
+}
+
+func (gbdw *GroupByDestinationWorker) getStore(
+	clientID string,
+) *AccountStore {
+
+	gbdw.storesMu.Lock()
+	defer gbdw.storesMu.Unlock()
+
+	store, ok := gbdw.destinationsStores[clientID]
+
+	if !ok {
+		store = newAccountStore()
+		gbdw.destinationsStores[clientID] = store
+	}
+
+	return store
 }

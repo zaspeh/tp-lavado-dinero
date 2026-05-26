@@ -21,7 +21,8 @@ type AggregateByIntermediaryWorker struct {
 
 	outputQueue middleware.Middleware
 
-	store                      *IntermediaryStore
+	stores                     map[string]*IntermediaryStore
+	storesMu                   sync.RWMutex
 	eofMu                      sync.Mutex
 	eofReceivedFromOrigin      bool
 	eofReceivedFromDestination bool
@@ -69,7 +70,7 @@ func NewAggregateByIntermediaryWorker(config AggregateByIntermediaryWorkerConfig
 		originInputExchange:      originInputExchange,
 		destinationInputExchange: destinationInputExchange,
 		outputQueue:              outputQueue,
-		store:                    NewIntermediaryStore(),
+		stores:                   make(map[string]*IntermediaryStore),
 		maxBatchWeight:           config.MaxBatchWeight,
 	}, nil
 }
@@ -149,7 +150,9 @@ func (abi *AggregateByIntermediaryWorker) handleOriginIntermediaryPairMessage(mo
 		Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
 	}
 
-	abi.store.AddOrigin(intermediary, origin)
+	store := abi.getStore(moneyLaundry.GetClientID())
+
+	store.AddOrigin(intermediary, origin)
 
 	ack()
 }
@@ -171,7 +174,9 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationIntermediaryPairMessa
 		Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
 	}
 
-	abi.store.AddDestination(intermediary, destination)
+	store := abi.getStore(moneyLaundry.GetClientID())
+
+	store.AddDestination(intermediary, destination)
 
 	ack()
 }
@@ -267,7 +272,14 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationEOFMessage(moneyLaund
 }
 
 func (abi *AggregateByIntermediaryWorker) publishPairs(clientID string) (uint64, error) {
-	defer abi.store.Clear()
+	store := abi.getStore(clientID)
+	defer func() {
+		store.Clear()
+
+		abi.storesMu.Lock()
+		delete(abi.stores, clientID)
+		abi.storesMu.Unlock()
+	}()
 
 	totalPairs := 0
 
@@ -287,7 +299,7 @@ func (abi *AggregateByIntermediaryWorker) publishPairs(clientID string) (uint64,
 		return abi.outputQueue.Send(*serializedMsg)
 	})
 
-	for pair, intermediaryCount := range abi.store.GetPairs() {
+	for pair, intermediaryCount := range store.GetPairs() {
 		path := &protobuf.SuspiciousPath{
 			Origin: &protobuf.Account{
 				Bank:    pair.Origin.Bank,
@@ -309,4 +321,21 @@ func (abi *AggregateByIntermediaryWorker) publishPairs(clientID string) (uint64,
 	}
 
 	return uint64(totalPairs), batcher.Flush()
+}
+
+func (abi *AggregateByIntermediaryWorker) getStore(
+	clientID string,
+) *IntermediaryStore {
+
+	abi.storesMu.Lock()
+	defer abi.storesMu.Unlock()
+
+	store, ok := abi.stores[clientID]
+
+	if !ok {
+		store = NewIntermediaryStore()
+		abi.stores[clientID] = store
+	}
+
+	return store
 }

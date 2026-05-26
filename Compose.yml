@@ -60,6 +60,27 @@ services:
     - gateway
     networks:
     - money_laundering_network
+  client_1:
+    build:
+      context: .
+      dockerfile: cmd/client/Dockerfile
+    container_name: client_1
+    environment:
+    - ID=1
+    - SERVER_HOST=gateway
+    - SERVER_PORT=8080
+    - INPUT_FILE_TRANSACTIONS=/datasets/client_1_transactions.csv
+    - INPUT_FILE_ACCOUNTS=/datasets/client_1_accounts.csv
+    - OUTPUT_DIR=/outputs
+    - MAX_BATCH_WEIGHT=8000
+    - LOG_LEVEL=debug
+    volumes:
+    - ./datasets:/datasets
+    - ./outputs/client_1:/outputs
+    depends_on:
+    - gateway
+    networks:
+    - money_laundering_network
   currency_filter_0:
     build:
       context: .

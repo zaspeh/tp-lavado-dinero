@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -15,7 +16,8 @@ import (
 type GroupByOriginWorker struct {
 	inputExchange  *middleware.ExchangeMiddleware
 	outputQueue    middleware.Middleware
-	originsStore   *AccountStore
+	originsStores  map[string]*AccountStore
+	storesMu       sync.RWMutex
 	maxBatchWeight int
 }
 
@@ -49,7 +51,7 @@ func NewGroupByOriginWorker(config GroupByOriginWorkerConfig) (*GroupByOriginWor
 	return &GroupByOriginWorker{
 		inputExchange:  inputExchange,
 		outputQueue:    outputQueue,
-		originsStore:   newAccountStore(),
+		originsStores:  make(map[string]*AccountStore),
 		maxBatchWeight: config.MaxBatchWeight,
 	}, nil
 }
@@ -107,15 +109,17 @@ func (gbow *GroupByOriginWorker) handleScatterGatherMessage(moneyLaundry *protob
 		Bank:    scatterGatherMsg.GetToBank(),
 		Account: scatterGatherMsg.GetToAccount(),
 	}
+	store := gbow.getStore(moneyLaundry.GetClientID())
 
-	gbow.originsStore.Add(origin, destination)
+	store.Add(origin, destination)
 
 	ack()
 }
 
 func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	batch := NewBatch(gbow.maxBatchWeight)
-	data := gbow.originsStore.GetData()
+	store := gbow.getStore(moneyLaundry.GetClientID())
+	data := store.GetData()
 	totalGroups := 0
 	for origin, destinations := range data {
 		originBank := origin.GetBank()
@@ -202,5 +206,29 @@ func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLa
 		return
 	}
 
+	gbow.storesMu.Lock()
+	delete(
+		gbow.originsStores,
+		moneyLaundry.GetClientID(),
+	)
+	gbow.storesMu.Unlock()
+
 	ack()
+}
+
+func (gbow *GroupByOriginWorker) getStore(
+	clientID string,
+) *AccountStore {
+
+	gbow.storesMu.Lock()
+	defer gbow.storesMu.Unlock()
+
+	store, ok := gbow.originsStores[clientID]
+
+	if !ok {
+		store = newAccountStore()
+		gbow.originsStores[clientID] = store
+	}
+
+	return store
 }

@@ -16,7 +16,7 @@ rabbitmq:
 # Nodos de la aplicación
 services:
   client:
-    count: 1
+    count: 2
     datasets_dir: ./datasets
     output_dir: ./outputs  
     max_batch_weight: 8000   
