@@ -178,6 +178,10 @@ func (br *BankRouter) handleEOFMessage(moneyLaundryMsg *protobuf.MoneyLaundry, a
 }
 
 func (br *BankRouter) handleFlush(clientID string, totalSurvivors uint64) error {
+	if !br.coordinator.IsLeader() {
+		return nil
+	}
+
 	slog.Info("Flushing client", "clientID", clientID, "totalSurvivors", totalSurvivors)
 	innerMessage := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{

@@ -50,15 +50,15 @@ services:
       MAX_BATCH_BYTES: 8000
     
   bank_router:
-    count: 1
+    count: 2
     worker_type: BANK_ROUTER
     env:
       INPUT_QUEUE_NAME: bank_router_input_queue
       MAX_BANK_EXCHANGE_NAME: max_bank_input_exchange
-      MAX_BANK_WORKER_AMOUNT: 1
+      MAX_BANK_WORKER_AMOUNT: 2
 
   max_bank:
-    count: 1
+    count: 2
     worker_type: MAX_BANK
     env:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
@@ -71,11 +71,11 @@ services:
     env:
       INPUT_QUEUE_NAME: max_bank_join_input
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      MAX_BANK_WORKER_AMOUNT: 1
+      MAX_BANK_WORKER_AMOUNT: 2
     
 
   period_filter:
-    count: 1
+    count: 2
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -99,7 +99,7 @@ services:
       QUERY3_PERIOD_2_END:   "2022-09-15T23:59:59Z"
 
   payment_type_router:
-    count: 0
+    count: 2
     worker_type: PAYMENT_TYPE_ROUTER
     env:
       INPUT_QUEUE_NAME: payment_type_router_input
@@ -188,7 +188,7 @@ services:
       EXPECTED_EOFS: 1
       
   payment_format_filter:
-    count: 1
+    count: 2
     worker_type: FORMAT_FILTER
     env:
       INPUT_QUEUE_NAME: payment_format_filter_input
@@ -196,7 +196,7 @@ services:
       VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   currency_converter:
-    count: 1
+    count: 2
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
@@ -204,7 +204,7 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 1
+    count: 2
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
