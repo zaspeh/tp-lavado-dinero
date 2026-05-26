@@ -259,15 +259,15 @@ func (pf *PeriodFilterWorker) handleSignals() {
 }
 
 func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_PERIODFILTER:
-		pf.handlePeriodFilterMessage(moneyLaundry, ack, nack)
+	case protobuf.MessageType_PERIOD_FILTER_BATCH:
+		pf.handlePeriodFilterBatchMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		pf.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
@@ -318,27 +318,24 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 	ack()
 }
 
-func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	periodFilterMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.PeriodFilter{})
+func (pf *PeriodFilterWorker) handlePeriodFilterBatchMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	periodFilterBatch := moneyLaundry.GetPeriodFilterBatch()
 	clientID := moneyLaundry.GetClientID()
-	if err != nil {
-		nack()
-		return
-	}
+	for _, periodFilterMsg := range periodFilterBatch.GetItems() {
+		timestamp := periodFilterMsg.GetTimestamp().AsTime()
 
-	timestamp := periodFilterMsg.GetTimestamp().AsTime()
+		// filtro por periodo Q3
+		err := pf.checkToPublishToPaymentTypeRouter(periodFilterMsg, moneyLaundry.GetClientID(), timestamp)
+		if err != nil {
+			nack()
+			return
+		}
 
-	// filtro por periodo Q3
-	err = pf.checkToPublishToPaymentTypeRouter(periodFilterMsg, moneyLaundry.GetClientID(), timestamp)
-	if err != nil {
-		nack()
-		return
-	}
-
-	err = pf.publishScatterGatherMessage(periodFilterMsg, clientID)
-	if err != nil {
-		nack()
-		return
+		err = pf.publishScatterGatherMessage(periodFilterMsg, clientID)
+		if err != nil {
+			nack()
+			return
+		}
 	}
 
 	ack()

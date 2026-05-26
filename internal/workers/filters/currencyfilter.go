@@ -7,7 +7,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
@@ -264,6 +263,7 @@ func (f *CurrencyFilter) sendToMaxBankRouter(clientID string, transactions []*pr
 }
 
 func (f *CurrencyFilter) sendToPeriodFilters(clientID string, transactions []*protobuf.Transaction) error {
+	periodFilterList := make([]*protobuf.PeriodFilter, 0, len(transactions))
 	for _, transaction := range transactions {
 		periodFilter := &protobuf.PeriodFilter{
 			Timestamp:     transaction.GetTimestamp(),
@@ -274,22 +274,25 @@ func (f *CurrencyFilter) sendToPeriodFilters(clientID string, transactions []*pr
 			AmountPaid:    transaction.GetAmountPaid(),
 			PaymentFormat: transaction.GetPaymentFormat(),
 		}
-
-		serializedPeriodFilter, err := serializer.SerializeProtoMessageWithClientID(
-			clientID,
-			periodFilter,
-			protobuf.MessageType_PERIODFILTER,
-		)
-		if err != nil {
-			return err
-		}
-
-		if err := f.periodFilterQueue.Send(*serializedPeriodFilter); err != nil {
-			return err
-		}
+		periodFilterList = append(periodFilterList, periodFilter)
 	}
 
-	return nil
+	periodFilterBatch := protowrappers.WrapPeriodFilter(periodFilterList)
+	innerMessage := &protobuf.MoneyLaundry_PeriodFilterBatch{
+		PeriodFilterBatch: periodFilterBatch,
+	}
+
+	serializedPeriodFilter, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_PERIOD_FILTER_BATCH,
+		innerMessage,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return f.periodFilterQueue.Send(serializedPeriodFilter)
 }
 
 // Funcion a llamar cuando el coordinador indique que ya se recibieron
