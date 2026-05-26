@@ -143,7 +143,8 @@ func (cc *ClientConnection) Run() error {
 func (cc *ClientConnection) handleDisconection(err error) error {
 	if errors.Is(err, socket.ErrConnectionClosed) {
 		slog.Info("client disconnected", "clientID", cc.id)
-		return cc.broadcastCleanup()
+		// return cc.broadcastCleanup()
+		return nil
 	}
 	return err
 }
