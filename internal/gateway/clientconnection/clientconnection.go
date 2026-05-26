@@ -1,12 +1,14 @@
 package clientconnection
 
 import (
+	"errors"
 	"log/slog"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
@@ -131,13 +133,20 @@ func (cc *ClientConnection) Run() error {
 	for {
 		message, err := cc.protocol.ReceiveMsg()
 		if err != nil {
-			return err
+			return cc.handleDisconection(err)
 		}
 		if err = message.Handle(cc); err != nil {
-			// TODO: podria ser un NACK envez de cerrar comunicacion.
-			return err
+			cc.protocol.SendNack()
 		}
 	}
+}
+
+func (cc *ClientConnection) handleDisconection(err error) error {
+	if errors.Is(err, socket.ErrConnectionClosed) {
+		slog.Info("client disconnected", "clientID", cc.id)
+		return nil
+	}
+	return err
 }
 
 func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {
