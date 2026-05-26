@@ -24,30 +24,33 @@ const (
 type MessageType int32
 
 const (
-	MessageType_EOF_                             MessageType = 0
-	MessageType_TRANSACTION                      MessageType = 1
-	MessageType_MICROTRANSACTION                 MessageType = 2
-	MessageType_MAXBANK                          MessageType = 3
-	MessageType_PERIODFILTER                     MessageType = 4
-	MessageType_SCATTERGATHER                    MessageType = 5
-	MessageType_GROUPED_ACCOUNTS_BATCH           MessageType = 6
-	MessageType_INTERMEDIARYPAIR                 MessageType = 7
-	MessageType_AVGBYTYPETRANSACTION             MessageType = 8
-	MessageType_TO_CONVERT_TRANSACTION           MessageType = 9
-	MessageType_TO_CONVERT_PERIOD_FILTERED       MessageType = 10
-	MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT MessageType = 11
-	MessageType_CONVERTED_AMOUNT                 MessageType = 12
-	MessageType_MICROTRANSACTION_RESULT          MessageType = 13
-	MessageType_MAXBANK_RESULT                   MessageType = 14
-	MessageType_CONVERTED_MICRO_PAYMENT_RESULT   MessageType = 15
-	MessageType_AVGBYTYPE_RESULT                 MessageType = 16
-	MessageType_AVGBYTYPE_FIRST_PERIOD           MessageType = 17
-	MessageType_AVGBYTYPE_SECOND_PERIOD          MessageType = 18
-	MessageType_TRANSACTION_BATCH                MessageType = 19
-	MessageType_TO_CONVERT_TRANSACTION_BATCH     MessageType = 20
-	MessageType_SUSPICIOUS_PATH_BATCH            MessageType = 21
-	MessageType_SUSPICIOUS_ACCOUNT_BATCH         MessageType = 22
-	MessageType_MAXBANK_BATCH                    MessageType = 23
+	MessageType_EOF_                                   MessageType = 0
+	MessageType_TRANSACTION                            MessageType = 1
+	MessageType_MICROTRANSACTION                       MessageType = 2
+	MessageType_MAXBANK                                MessageType = 3
+	MessageType_PERIODFILTER                           MessageType = 4
+	MessageType_SCATTERGATHER                          MessageType = 5
+	MessageType_GROUPED_ACCOUNTS_BATCH                 MessageType = 6
+	MessageType_INTERMEDIARYPAIR                       MessageType = 7
+	MessageType_AVGBYTYPETRANSACTION                   MessageType = 8
+	MessageType_TO_CONVERT_TRANSACTION                 MessageType = 9
+	MessageType_TO_CONVERT_PERIOD_FILTERED             MessageType = 10
+	MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT       MessageType = 11
+	MessageType_CONVERTED_AMOUNT                       MessageType = 12
+	MessageType_MICROTRANSACTION_RESULT                MessageType = 13
+	MessageType_MAXBANK_RESULT                         MessageType = 14
+	MessageType_CONVERTED_MICRO_PAYMENT_RESULT         MessageType = 15
+	MessageType_AVGBYTYPE_RESULT                       MessageType = 16
+	MessageType_AVGBYTYPE_FIRST_PERIOD                 MessageType = 17
+	MessageType_AVGBYTYPE_SECOND_PERIOD                MessageType = 18
+	MessageType_TRANSACTION_BATCH                      MessageType = 19
+	MessageType_TO_CONVERT_TRANSACTION_BATCH           MessageType = 20
+	MessageType_SUSPICIOUS_PATH_BATCH                  MessageType = 21
+	MessageType_SUSPICIOUS_ACCOUNT_BATCH               MessageType = 22
+	MessageType_MAXBANK_BATCH                          MessageType = 23
+	MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH       MessageType = 24
+	MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH MessageType = 25
+	MessageType_CONVERTED_AMOUNT_BATCH                 MessageType = 26
 )
 
 // Enum value maps for MessageType.
@@ -77,32 +80,38 @@ var (
 		21: "SUSPICIOUS_PATH_BATCH",
 		22: "SUSPICIOUS_ACCOUNT_BATCH",
 		23: "MAXBANK_BATCH",
+		24: "TO_CONVERT_PERIOD_FILTERED_BATCH",
+		25: "TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH",
+		26: "CONVERTED_AMOUNT_BATCH",
 	}
 	MessageType_value = map[string]int32{
-		"EOF_":                             0,
-		"TRANSACTION":                      1,
-		"MICROTRANSACTION":                 2,
-		"MAXBANK":                          3,
-		"PERIODFILTER":                     4,
-		"SCATTERGATHER":                    5,
-		"GROUPED_ACCOUNTS_BATCH":           6,
-		"INTERMEDIARYPAIR":                 7,
-		"AVGBYTYPETRANSACTION":             8,
-		"TO_CONVERT_TRANSACTION":           9,
-		"TO_CONVERT_PERIOD_FILTERED":       10,
-		"TO_CONVERT_TYPE_FILTERED_PAYMENT": 11,
-		"CONVERTED_AMOUNT":                 12,
-		"MICROTRANSACTION_RESULT":          13,
-		"MAXBANK_RESULT":                   14,
-		"CONVERTED_MICRO_PAYMENT_RESULT":   15,
-		"AVGBYTYPE_RESULT":                 16,
-		"AVGBYTYPE_FIRST_PERIOD":           17,
-		"AVGBYTYPE_SECOND_PERIOD":          18,
-		"TRANSACTION_BATCH":                19,
-		"TO_CONVERT_TRANSACTION_BATCH":     20,
-		"SUSPICIOUS_PATH_BATCH":            21,
-		"SUSPICIOUS_ACCOUNT_BATCH":         22,
-		"MAXBANK_BATCH":                    23,
+		"EOF_":                                   0,
+		"TRANSACTION":                            1,
+		"MICROTRANSACTION":                       2,
+		"MAXBANK":                                3,
+		"PERIODFILTER":                           4,
+		"SCATTERGATHER":                          5,
+		"GROUPED_ACCOUNTS_BATCH":                 6,
+		"INTERMEDIARYPAIR":                       7,
+		"AVGBYTYPETRANSACTION":                   8,
+		"TO_CONVERT_TRANSACTION":                 9,
+		"TO_CONVERT_PERIOD_FILTERED":             10,
+		"TO_CONVERT_TYPE_FILTERED_PAYMENT":       11,
+		"CONVERTED_AMOUNT":                       12,
+		"MICROTRANSACTION_RESULT":                13,
+		"MAXBANK_RESULT":                         14,
+		"CONVERTED_MICRO_PAYMENT_RESULT":         15,
+		"AVGBYTYPE_RESULT":                       16,
+		"AVGBYTYPE_FIRST_PERIOD":                 17,
+		"AVGBYTYPE_SECOND_PERIOD":                18,
+		"TRANSACTION_BATCH":                      19,
+		"TO_CONVERT_TRANSACTION_BATCH":           20,
+		"SUSPICIOUS_PATH_BATCH":                  21,
+		"SUSPICIOUS_ACCOUNT_BATCH":               22,
+		"MAXBANK_BATCH":                          23,
+		"TO_CONVERT_PERIOD_FILTERED_BATCH":       24,
+		"TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH": 25,
+		"CONVERTED_AMOUNT_BATCH":                 26,
 	}
 )
 
@@ -147,6 +156,9 @@ type MoneyLaundry struct {
 	//	*MoneyLaundry_ToConvertBatch
 	//	*MoneyLaundry_EofMessage
 	//	*MoneyLaundry_MaxBankBatch
+	//	*MoneyLaundry_ToConvertPeriodFilteredBatch
+	//	*MoneyLaundry_ToConvertTypeFilteredPaymentBatch
+	//	*MoneyLaundry_ConvertedAmountBatch
 	InnerMessage  isMoneyLaundry_InnerMessage `protobuf_oneof:"inner_message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -246,6 +258,33 @@ func (x *MoneyLaundry) GetMaxBankBatch() *MaxBankBatch {
 	return nil
 }
 
+func (x *MoneyLaundry) GetToConvertPeriodFilteredBatch() *ToConvertPeriodFilteredBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_ToConvertPeriodFilteredBatch); ok {
+			return x.ToConvertPeriodFilteredBatch
+		}
+	}
+	return nil
+}
+
+func (x *MoneyLaundry) GetToConvertTypeFilteredPaymentBatch() *ToConvertTypeFilteredPaymentBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_ToConvertTypeFilteredPaymentBatch); ok {
+			return x.ToConvertTypeFilteredPaymentBatch
+		}
+	}
+	return nil
+}
+
+func (x *MoneyLaundry) GetConvertedAmountBatch() *ConvertedAmountBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_ConvertedAmountBatch); ok {
+			return x.ConvertedAmountBatch
+		}
+	}
+	return nil
+}
+
 type isMoneyLaundry_InnerMessage interface {
 	isMoneyLaundry_InnerMessage()
 }
@@ -266,6 +305,18 @@ type MoneyLaundry_MaxBankBatch struct {
 	MaxBankBatch *MaxBankBatch `protobuf:"bytes,7,opt,name=max_bank_batch,json=maxBankBatch,proto3,oneof"`
 }
 
+type MoneyLaundry_ToConvertPeriodFilteredBatch struct {
+	ToConvertPeriodFilteredBatch *ToConvertPeriodFilteredBatch `protobuf:"bytes,8,opt,name=to_convert_period_filtered_batch,json=toConvertPeriodFilteredBatch,proto3,oneof"`
+}
+
+type MoneyLaundry_ToConvertTypeFilteredPaymentBatch struct {
+	ToConvertTypeFilteredPaymentBatch *ToConvertTypeFilteredPaymentBatch `protobuf:"bytes,9,opt,name=to_convert_type_filtered_payment_batch,json=toConvertTypeFilteredPaymentBatch,proto3,oneof"`
+}
+
+type MoneyLaundry_ConvertedAmountBatch struct {
+	ConvertedAmountBatch *ConvertedAmountBatch `protobuf:"bytes,10,opt,name=converted_amount_batch,json=convertedAmountBatch,proto3,oneof"`
+}
+
 func (*MoneyLaundry_Transactions) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ToConvertBatch) isMoneyLaundry_InnerMessage() {}
@@ -274,11 +325,17 @@ func (*MoneyLaundry_EofMessage) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_MaxBankBatch) isMoneyLaundry_InnerMessage() {}
 
+func (*MoneyLaundry_ToConvertPeriodFilteredBatch) isMoneyLaundry_InnerMessage() {}
+
+func (*MoneyLaundry_ToConvertTypeFilteredPaymentBatch) isMoneyLaundry_InnerMessage() {}
+
+func (*MoneyLaundry_ConvertedAmountBatch) isMoneyLaundry_InnerMessage() {}
+
 var File_internal_common_inner_protobuf_moneylaundry_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\x1a,internal/common/inner/protobuf/maxbank.proto\"\x85\x03\n" +
+	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\x1a,internal/common/inner/protobuf/maxbank.proto\"\xd2\x05\n" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
@@ -287,8 +344,12 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\x10to_convert_batch\x18\x05 \x01(\v2#.protobuf.ToConvertTransactionBatchH\x00R\x0etoConvertBatch\x120\n" +
 	"\veof_message\x18\x06 \x01(\v2\r.protobuf.EOFH\x00R\n" +
 	"eofMessage\x12>\n" +
-	"\x0emax_bank_batch\x18\a \x01(\v2\x16.protobuf.MaxBankBatchH\x00R\fmaxBankBatchB\x0f\n" +
-	"\rinner_message*\xdd\x04\n" +
+	"\x0emax_bank_batch\x18\a \x01(\v2\x16.protobuf.MaxBankBatchH\x00R\fmaxBankBatch\x12p\n" +
+	" to_convert_period_filtered_batch\x18\b \x01(\v2&.protobuf.ToConvertPeriodFilteredBatchH\x00R\x1ctoConvertPeriodFilteredBatch\x12\x80\x01\n" +
+	"&to_convert_type_filtered_payment_batch\x18\t \x01(\v2+.protobuf.ToConvertTypeFilteredPaymentBatchH\x00R!toConvertTypeFilteredPaymentBatch\x12V\n" +
+	"\x16converted_amount_batch\x18\n" +
+	" \x01(\v2\x1e.protobuf.ConvertedAmountBatchH\x00R\x14convertedAmountBatchB\x0f\n" +
+	"\rinner_message*\xcb\x05\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -314,7 +375,10 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\x1cTO_CONVERT_TRANSACTION_BATCH\x10\x14\x12\x19\n" +
 	"\x15SUSPICIOUS_PATH_BATCH\x10\x15\x12\x1c\n" +
 	"\x18SUSPICIOUS_ACCOUNT_BATCH\x10\x16\x12\x11\n" +
-	"\rMAXBANK_BATCH\x10\x17B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\rMAXBANK_BATCH\x10\x17\x12$\n" +
+	" TO_CONVERT_PERIOD_FILTERED_BATCH\x10\x18\x12*\n" +
+	"&TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH\x10\x19\x12\x1a\n" +
+	"\x16CONVERTED_AMOUNT_BATCH\x10\x1aB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
@@ -331,12 +395,15 @@ func file_internal_common_inner_protobuf_moneylaundry_proto_rawDescGZIP() []byte
 var file_internal_common_inner_protobuf_moneylaundry_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_internal_common_inner_protobuf_moneylaundry_proto_goTypes = []any{
-	(MessageType)(0),                  // 0: protobuf.MessageType
-	(*MoneyLaundry)(nil),              // 1: protobuf.MoneyLaundry
-	(*TransactionBatch)(nil),          // 2: protobuf.TransactionBatch
-	(*ToConvertTransactionBatch)(nil), // 3: protobuf.ToConvertTransactionBatch
-	(*EOF)(nil),                       // 4: protobuf.EOF
-	(*MaxBankBatch)(nil),              // 5: protobuf.MaxBankBatch
+	(MessageType)(0),                          // 0: protobuf.MessageType
+	(*MoneyLaundry)(nil),                      // 1: protobuf.MoneyLaundry
+	(*TransactionBatch)(nil),                  // 2: protobuf.TransactionBatch
+	(*ToConvertTransactionBatch)(nil),         // 3: protobuf.ToConvertTransactionBatch
+	(*EOF)(nil),                               // 4: protobuf.EOF
+	(*MaxBankBatch)(nil),                      // 5: protobuf.MaxBankBatch
+	(*ToConvertPeriodFilteredBatch)(nil),      // 6: protobuf.ToConvertPeriodFilteredBatch
+	(*ToConvertTypeFilteredPaymentBatch)(nil), // 7: protobuf.ToConvertTypeFilteredPaymentBatch
+	(*ConvertedAmountBatch)(nil),              // 8: protobuf.ConvertedAmountBatch
 }
 var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	0, // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
@@ -344,11 +411,14 @@ var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	3, // 2: protobuf.MoneyLaundry.to_convert_batch:type_name -> protobuf.ToConvertTransactionBatch
 	4, // 3: protobuf.MoneyLaundry.eof_message:type_name -> protobuf.EOF
 	5, // 4: protobuf.MoneyLaundry.max_bank_batch:type_name -> protobuf.MaxBankBatch
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 5: protobuf.MoneyLaundry.to_convert_period_filtered_batch:type_name -> protobuf.ToConvertPeriodFilteredBatch
+	7, // 6: protobuf.MoneyLaundry.to_convert_type_filtered_payment_batch:type_name -> protobuf.ToConvertTypeFilteredPaymentBatch
+	8, // 7: protobuf.MoneyLaundry.converted_amount_batch:type_name -> protobuf.ConvertedAmountBatch
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_moneylaundry_proto_init() }
@@ -365,6 +435,9 @@ func file_internal_common_inner_protobuf_moneylaundry_proto_init() {
 		(*MoneyLaundry_ToConvertBatch)(nil),
 		(*MoneyLaundry_EofMessage)(nil),
 		(*MoneyLaundry_MaxBankBatch)(nil),
+		(*MoneyLaundry_ToConvertPeriodFilteredBatch)(nil),
+		(*MoneyLaundry_ToConvertTypeFilteredPaymentBatch)(nil),
+		(*MoneyLaundry_ConvertedAmountBatch)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

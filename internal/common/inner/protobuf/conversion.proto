@@ -23,13 +23,25 @@ message ToConvertPeriodFiltered {
     string payment_format = 3;
 }
 
+message ToConvertPeriodFilteredBatch {
+    repeated ToConvertPeriodFiltered items = 1;
+}
+
 message ToConvertTypeFilteredPayment {
     string amount_paid = 1;
     string payment_currency = 2;
 }
 
+message ToConvertTypeFilteredPaymentBatch {
+    repeated ToConvertTypeFilteredPayment items = 1;
+}
+
 message ConvertedAmount {
     double amount = 1;
+}
+
+message ConvertedAmountBatch {
+    repeated ConvertedAmount items = 1;
 }
 
 message ConvertedMicroPaymentResult {

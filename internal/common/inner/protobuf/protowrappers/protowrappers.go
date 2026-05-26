@@ -30,6 +30,24 @@ func WrapToConvertTransactions(transactions []*protobuf.ToConvertTransaction) *p
 	}
 }
 
+func WrapToConvertPeriodFiltered(items []*protobuf.ToConvertPeriodFiltered) *protobuf.ToConvertPeriodFilteredBatch {
+	return &protobuf.ToConvertPeriodFilteredBatch{
+		Items: items,
+	}
+}
+
+func WrapToConvertTypeFilteredPayment(items []*protobuf.ToConvertTypeFilteredPayment) *protobuf.ToConvertTypeFilteredPaymentBatch {
+	return &protobuf.ToConvertTypeFilteredPaymentBatch{
+		Items: items,
+	}
+}
+
+func WrapConvertedAmounts(items []*protobuf.ConvertedAmount) *protobuf.ConvertedAmountBatch {
+	return &protobuf.ConvertedAmountBatch{
+		Items: items,
+	}
+}
+
 func WrapSuspiciousPaths(paths []*protobuf.SuspiciousPath) *protobuf.SuspiciousPathBatch {
 	return &protobuf.SuspiciousPathBatch{
 		Paths: paths,
