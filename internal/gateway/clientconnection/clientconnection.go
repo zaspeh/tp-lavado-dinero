@@ -143,9 +143,34 @@ func (cc *ClientConnection) Run() error {
 func (cc *ClientConnection) handleDisconection(err error) error {
 	if errors.Is(err, socket.ErrConnectionClosed) {
 		slog.Info("client disconnected", "clientID", cc.id)
-		return nil
+		return cc.broadcastCleanup()
 	}
 	return err
+}
+
+func (cc *ClientConnection) broadcastCleanup() error {
+	cleanupMsg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_CLEANUP, nil)
+	if err != nil {
+		return err
+	}
+
+	if err := cc.currencyFilterQueue.Send(cleanupMsg); err != nil {
+		return err
+	}
+
+	if err := cc.resultExchange.Send(cleanupMsg); err != nil {
+		return err
+	}
+
+	if err := cc.rawDataQueue.Send(cleanupMsg); err != nil {
+		return err
+	}
+
+	if err := cc.maxBankRouter.Send(cleanupMsg); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch) error {

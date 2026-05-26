@@ -9,9 +9,11 @@ import (
 
 func SerializeProtoMessageONTRIAL(clientID string, messageType MessageType, innerMessage isMoneyLaundry_InnerMessage) (middleware.Message, error) {
 	moneyLaundering := &MoneyLaundry{
-		ClientID:     clientID,
-		Type:         messageType,
-		InnerMessage: innerMessage,
+		ClientID: clientID,
+		Type:     messageType,
+	}
+	if innerMessage != nil {
+		moneyLaundering.InnerMessage = innerMessage
 	}
 	return serializeMoneyLaundering(moneyLaundering)
 }
