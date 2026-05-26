@@ -1,6 +1,7 @@
 package scattergatherjoin
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -128,8 +129,10 @@ func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *prot
 		nack()
 		return
 	}
+	slog.Debug("Handling SuspiciousPathBatch")
 
 	for _, path := range batchMsg.GetPaths() {
+		slog.Debug("Handling SuspiciousPathBatch Origin", path.GetOrigin().GetBank(), path.GetOrigin().GetAccount(), "Destination", path.GetDestination().GetBank(), path.GetDestination().GetAccount())
 		pair := model.OriginDestinationPair{
 			Origin: model.Account{
 				Bank:    path.GetOrigin().GetBank(),
@@ -151,6 +154,7 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg *protobuf.MoneyLaundry, rawMsg
 	// Logica agregada por Andres segun entendioa las 2 am
 	// TODO: borrar comentario
 	// ----------------------
+	slog.Debug("Handling EOF")
 	clientID := msg.GetClientID()
 	clientEOFCount, ok := sgj.clientEOFs[clientID]
 	if !ok {
@@ -164,12 +168,27 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg *protobuf.MoneyLaundry, rawMsg
 	}
 	// --------------------
 
-	if err := sgj.publishResults(); err != nil {
+	if err := sgj.publishResults(clientID); err != nil {
 		nack()
 		return
 	}
 
-	if err := sgj.resultExchange.Send(rawMsg); err != nil {
+	slog.Debug(
+		"sending EOF",
+	)
+	slog.Info("sending EOF for client", "client_id", clientID)
+	eofMsg := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{},
+	}
+
+	serializeMsg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMsg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	publishKey := fmt.Sprintf("%s.%s", sgj.clientExchangeName, clientID)
+	if err := sgj.resultExchange.SendWithKey(publishKey, serializeMsg); err != nil {
 		nack()
 		return
 	}
@@ -177,12 +196,16 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg *protobuf.MoneyLaundry, rawMsg
 	ack()
 }
 
-func (sgj *ScatterGatherJoinWorker) publishResults() error {
+func (sgj *ScatterGatherJoinWorker) publishResults(clientID string) error {
+	slog.Debug("Publishing Results")
 	defer sgj.store.Clear()
 
 	suspiciousAccounts := make(map[model.Account]struct{})
 
+	publishKey := fmt.Sprintf("%s.%s", sgj.clientExchangeName, clientID)
+
 	for pair, count := range sgj.store.GetPaths() {
+
 		if count < 5 {
 			continue
 		}
@@ -211,11 +234,16 @@ func (sgj *ScatterGatherJoinWorker) publishResults() error {
 				return err
 			}
 
-			return sgj.resultExchange.Send(*serializedMsg)
+			return sgj.resultExchange.SendWithKey(publishKey, *serializedMsg)
 		},
 	)
 
 	for account := range suspiciousAccounts {
+		slog.Debug(
+			"adding suspicious account to response",
+			"account", account.GetAccount(),
+			"bank", account.GetBank(),
+		)
 		protoAccount := &protobuf.Account{
 			Bank:    account.GetBank(),
 			Account: account.GetAccount(),
@@ -226,5 +254,8 @@ func (sgj *ScatterGatherJoinWorker) publishResults() error {
 		}
 	}
 
+	slog.Debug(
+		"flushing",
+	)
 	return batcher.Flush()
 }
