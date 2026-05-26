@@ -115,14 +115,17 @@ func (gbow *GroupByOriginWorker) handleScatterGatherMessage(moneyLaundry *protob
 
 func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	batch := NewBatch(gbow.maxBatchWeight)
-
-	for origin, destinations := range gbow.originsStore.GetData() {
+	data := gbow.originsStore.GetData()
+	totalGroups := 0
+	for origin, destinations := range data {
 		originBank := origin.GetBank()
 		originAccount := origin.GetAccount()
 
 		if len(destinations) < 5 {
 			continue
 		}
+
+		totalGroups++
 
 		group := &protobuf.GroupedAccounts{
 			BaseAccount: &protobuf.Account{
@@ -140,7 +143,7 @@ func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLa
 		}
 
 		if batch.IsFull(group) {
-			serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
+			serializedMsg, err := serializer.SerializeProtoMessageWithClientID(moneyLaundry.GetClientID(), batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
 			if err != nil {
 				nack()
 				return
@@ -162,7 +165,7 @@ func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLa
 	}
 
 	if !batch.IsEmpty() {
-		serializedMsg, err := serializer.SerializeProtoMessage(batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
+		serializedMsg, err := serializer.SerializeProtoMessageWithClientID(moneyLaundry.GetClientID(), batch.Get(), protobuf.MessageType_GROUPED_ACCOUNTS_BATCH)
 		if err != nil {
 			nack()
 			return
@@ -174,9 +177,27 @@ func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLa
 		}
 	}
 
-	slog.Debug("Forwarding EOF")
+	slog.Debug("Creating new EOF")
 
-	if err := gbow.outputQueue.Send(msg); err != nil {
+	innerMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: uint64(totalGroups),
+		},
+	}
+
+	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage)
+	if err != nil {
+		nack()
+		return
+	}
+
+	slog.Debug(
+		"Forwarding EOF",
+		"groups",
+		totalGroups,
+	)
+
+	if err := gbow.outputQueue.Send(eofMsg); err != nil {
 		nack()
 		return
 	}

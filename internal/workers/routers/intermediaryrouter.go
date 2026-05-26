@@ -11,6 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
 type IntermediaryRouter struct {
@@ -18,14 +19,18 @@ type IntermediaryRouter struct {
 	aggregateByIntermediaryExchange     *middleware.ExchangeMiddleware
 	aggregateByIntermediaryWorkers      int
 	aggregateByIntermediaryExchangeKeys []string
+	coordinator                         *c.EOFCoordinator
 }
 
 type IntermediaryRouterConfig struct {
+	ID                            int
 	InputQueueName                string
 	AggregateByIntermediaryName   string
 	AggregateByIntermediaryAmount int
 	MomHost                       string
 	MomPort                       int
+	WorkerCount                   int
+	WorkerExchangeName            string
 }
 
 func NewIntermediaryRouter(config IntermediaryRouterConfig) (*IntermediaryRouter, error) {
@@ -50,16 +55,38 @@ func NewIntermediaryRouter(config IntermediaryRouterConfig) (*IntermediaryRouter
 		return nil, err
 	}
 
-	return &IntermediaryRouter{
+	intermediaryRouter := &IntermediaryRouter{
 		inputQueue:                          inputQueue,
 		aggregateByIntermediaryExchange:     aggregateByIntermediaryExchange,
 		aggregateByIntermediaryWorkers:      config.AggregateByIntermediaryAmount,
 		aggregateByIntermediaryExchangeKeys: aggregateByIntermediaryKeys,
-	}, nil
+	}
+
+	coordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: config.WorkerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          config.ID,
+		WorkerCount:       config.WorkerCount,
+		ExpectedEOFs:      2,
+		FlushHandler:      intermediaryRouter.handleFlush,
+	}
+
+	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
+
+	if err != nil {
+		inputQueue.Close()
+		aggregateByIntermediaryExchange.Close()
+		return nil, err
+	}
+	intermediaryRouter.coordinator = coordinator
+
+	return intermediaryRouter, nil
 }
 
 func (ir *IntermediaryRouter) Run() error {
 	go ir.handleSignals()
+
+	go ir.coordinator.Run()
 
 	ir.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		ir.handleMessage(msg, ack, nack)
@@ -75,6 +102,7 @@ func (ir *IntermediaryRouter) handleSignals() {
 	slog.Info("shutdown signal received")
 	ir.inputQueue.Close()
 	ir.aggregateByIntermediaryExchange.Close()
+	ir.coordinator.Close()
 }
 
 func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack func()) {
@@ -95,6 +123,8 @@ func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack fu
 }
 
 func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
+	slog.Debug("Client ID", clientID)
 	batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.GroupedAccountsBatch{})
 	if err != nil {
 		nack()
@@ -113,7 +143,7 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 
 			workerKey := ir.selectWorkerKey(intermediary)
 
-			serializedMsg, err := serializer.SerializeProtoMessage(match, protobuf.MessageType_INTERMEDIARYPAIR)
+			serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, match, protobuf.MessageType_INTERMEDIARYPAIR)
 			if err != nil {
 				nack()
 				return
@@ -123,17 +153,26 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 				nack()
 				return
 			}
+
+			if err := ir.coordinator.RecordSurvivor(clientID); err != nil {
+				nack()
+				return
+			}
+		}
+		if err := ir.coordinator.RecordProcessed(clientID); err != nil {
+			nack()
+			return
 		}
 	}
 	ack()
 }
 
 func (ir *IntermediaryRouter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
-	for _, key := range ir.aggregateByIntermediaryExchangeKeys {
-		if err := ir.aggregateByIntermediaryExchange.SendWithKey(key, msg); err != nil {
-			nack()
-			return
-		}
+	clientID := moneyLaundry.GetClientID()
+	eofMessage := moneyLaundry.GetEofMessage()
+	if err := ir.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
+		nack()
+		return
 	}
 	ack()
 }
@@ -143,4 +182,30 @@ func (ir *IntermediaryRouter) selectWorkerKey(intermediary *protobuf.Account) st
 	h.Write([]byte(fmt.Sprintf("%d-%s", intermediary.GetBank(), intermediary.GetAccount())))
 
 	return ir.aggregateByIntermediaryExchangeKeys[h.Sum32()%uint32(ir.aggregateByIntermediaryWorkers)]
+}
+
+func (ir *IntermediaryRouter) handleFlush(clientID string, totalSurvivors uint64) error {
+	if !ir.coordinator.IsLeader() {
+		return nil
+	}
+
+	slog.Info("Flushing client", "clientID", clientID, "totalSurvivors", totalSurvivors)
+	innerMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: totalSurvivors,
+		},
+	}
+
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, innerMessage)
+	if err != nil {
+		return err
+	}
+
+	for _, key := range ir.aggregateByIntermediaryExchangeKeys {
+		if err := ir.aggregateByIntermediaryExchange.SendWithKey(key, msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

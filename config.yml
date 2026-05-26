@@ -108,18 +108,17 @@ services:
   origin_destination_router:
     count: 2
     worker_type: ORIGIN_DESTINATION_ROUTER
-
     env:
       INPUT_QUEUE_NAME: origin_destination_router
 
       GROUP_BY_ORIGIN_EXCHANGE_NAME: group_by_origin
       GROUP_BY_DESTINATION_EXCHANGE_NAME: group_by_destination
 
-      GROUP_BY_ORIGIN_WORKER_AMOUNT: 1
-      GROUP_BY_DESTINATION_WORKER_AMOUNT: 1
+      GROUP_BY_ORIGIN_WORKER_AMOUNT: 2
+      GROUP_BY_DESTINATION_WORKER_AMOUNT: 2
   
   group_by_origin:
-    count: 1
+    count: 2
     worker_type: GROUP_BY_ORIGIN
 
     env:
@@ -129,7 +128,7 @@ services:
       MAX_BATCH_WEIGHT: 40000
 
   group_by_destination:
-    count: 1
+    count: 2
     worker_type: GROUP_BY_DESTINATION
 
     env:
@@ -139,8 +138,9 @@ services:
       MAX_BATCH_WEIGHT: 40000
   
   origin_intermediary_router:
-    count: 1
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
+    worker_exchange_name: ORIGIN_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_origin_accounts
@@ -149,8 +149,9 @@ services:
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
 
   destination_intermediary_router:
-    count: 1
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
+    worker_exchange_name: DESTINATION_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_destination_accounts
