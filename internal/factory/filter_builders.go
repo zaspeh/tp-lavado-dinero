@@ -1,6 +1,8 @@
 package factory
 
 import (
+	"fmt"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/conversionamountfilter"
@@ -71,6 +73,11 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 }
 
 func buildPeriodFilterWorker() (workers.Worker, error) {
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -164,6 +171,11 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	config := periodfilter.PeriodFilterWorkerConfig{
 		UsdInputQueueName: usdInputQ,
 		RawInputQueueName: rawInputQ,
@@ -191,6 +203,10 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 
 		MomHost: host,
 		MomPort: port,
+
+		RawWorkerID:           id,
+		RawWorkerCount:        workerCount,
+		RawWorkerExchangeName: fmt.Sprintf("%s.q5_raw", workerExchangeName),
 	}
 
 	return periodfilter.NewPeriodFilterWorker(config)
@@ -234,6 +250,11 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 }
 
 func buildFormatFilterWorker() (workers.Worker, error) {
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -259,12 +280,20 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	config := formatfilter.FormatFilterConfig{
 		InputQueueName:  inputQueueName,
 		OutputQueueName: outputQueueName,
 		MomHost:         host,
 		MomPort:         port,
 		AllowedFormats:  allowedFormats,
+		WorkerID:        id,
+		WorkerCount:     workerCount,
+		WorkerExchange:  workerExchangeName,
 	}
 
 	return formatfilter.NewFormatFilterWorker(config)
@@ -310,6 +339,11 @@ func buildAvgByTypeWorker() (workers.Worker, error) {
 }
 
 func buildAmountConvertedFilterWorker() (workers.Worker, error) {
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -335,12 +369,20 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	config := conversionamountfilter.AmountFilterConfig{
 		InputQueueName:  inputQueueName,
 		OutputQueueName: outputQueueName,
 		MomHost:         host,
 		MomPort:         port,
 		AmountToFilter:  amountToFilter,
+		WorkerID:        id,
+		WorkerCount:     workerCount,
+		WorkerExchange:  workerExchangeName,
 	}
 
 	return conversionamountfilter.NewAmountFilter(config)
