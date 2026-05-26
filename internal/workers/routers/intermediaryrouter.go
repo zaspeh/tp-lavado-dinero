@@ -124,7 +124,7 @@ func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack fu
 
 func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	clientID := moneyLaundry.GetClientID()
-	slog.Debug("ClientID", clientID)
+	slog.Debug("ClientID", "clientID", clientID)
 	batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.GroupedAccountsBatch{})
 	if err != nil {
 		nack()
