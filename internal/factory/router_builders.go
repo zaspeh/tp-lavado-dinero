@@ -117,6 +117,11 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 }
 
 func buildPaymentTypeRouterWorker() (workers.Worker, error) {
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -142,12 +147,20 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	config := routers.PaymentTypeRouterConfig{
 		InputQueueName:          inputQueue,
 		PaymentTypeExchangeName: exchangeName,
 		AvgByTypeWorkerAmount:   avgByTypeWorkerAmount,
 		MomHost:                 host,
 		MomPort:                 port,
+		WorkerID:                id,
+		WorkerCount:             workerCount,
+		WorkerExchangeName:      workerExchangeName,
 	}
 
 	return routers.NewPaymentTypeRouter(config)
