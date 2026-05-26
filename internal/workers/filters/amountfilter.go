@@ -10,6 +10,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
 type AmountFilter struct {
@@ -17,6 +18,7 @@ type AmountFilter struct {
 	outputQueue middleware.Middleware
 
 	AmountToFilter float64
+	coordinator    *c.EOFCoordinator
 }
 
 type AmountFilterConfig struct {
@@ -27,6 +29,10 @@ type AmountFilterConfig struct {
 	MomPort int
 
 	AmountToFilter float64
+
+	WorkerID           int
+	WorkerCount        int
+	WorkerExchangeName string
 }
 
 func NewAmountFilter(config AmountFilterConfig) (*AmountFilter, error) {
@@ -46,11 +52,30 @@ func NewAmountFilter(config AmountFilterConfig) (*AmountFilter, error) {
 		return nil, err
 	}
 
-	return &AmountFilter{
+	amountFilter := &AmountFilter{
 		inputQueue:     inputQueue,
 		outputQueue:    outputQueue,
 		AmountToFilter: config.AmountToFilter,
-	}, nil
+	}
+
+	coordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: config.WorkerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          config.WorkerID,
+		WorkerCount:       config.WorkerCount,
+		FlushHandler:      amountFilter.sendEOFMessage,
+	}
+
+	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
+	if err != nil {
+		inputQueue.Close()
+		amountFilter.outputQueue.Close()
+		return nil, err
+	}
+
+	amountFilter.coordinator = coordinator
+
+	return amountFilter, nil
 }
 
 func (af *AmountFilter) handleSignals() {
@@ -63,10 +88,12 @@ func (af *AmountFilter) handleSignals() {
 	<-signals
 	slog.Info("shutdown signal received")
 	af.inputQueue.Close()
+	af.coordinator.Close()
 	af.outputQueue.Close()
 }
 
 func (af *AmountFilter) Run() error {
+	go af.coordinator.Run()
 	go af.handleSignals()
 	return af.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		af.handleMessage(msg, ack, nack)
@@ -112,16 +139,58 @@ func (af *AmountFilter) handleMicrotransactionMessage(moneyLaundering *protobuf.
 				nack()
 				return
 			}
+
+			slog.Debug("Microtransaction passed filter", "clientID", clientID, "amount", amount)
+
+			// TODO: Si falla una transacción, se reenvia el batch y podríamos tener duplicados.
+			if err := af.coordinator.RecordSurvivor(clientID); err != nil {
+				nack()
+				return
+			}
+		}
+
+		if err := af.coordinator.RecordProcessed(clientID); err != nil {
+			nack()
+			return
 		}
 	}
+
 	ack()
 }
 
 func (af *AmountFilter) handleEOF(moneyLaundering *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	slog.Info("Received EOF", "clientID", moneyLaundering.GetClientID())
-	if err := af.outputQueue.Send(msg); err != nil {
+
+	eofMessage := moneyLaundering.GetEofMessage()
+
+	if err := af.coordinator.HandleLocalEOF(moneyLaundering.GetClientID(), eofMessage.GetTotalTransactions()); err != nil {
 		nack()
 		return
 	}
 	ack()
+}
+
+func (af *AmountFilter) sendEOFMessage(clientID string, newEOFCount uint64) error {
+	if !af.coordinator.IsLeader() {
+		return nil
+	}
+
+	slog.Info("coordinator triggered flush handler, sending EOF message", "clientID", clientID)
+
+	eofMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: newEOFCount,
+		},
+	}
+
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMessage)
+	if err != nil {
+		return err
+	}
+
+	if err := af.outputQueue.Send(msg); err != nil {
+		return err
+	}
+
+	return nil
 }
