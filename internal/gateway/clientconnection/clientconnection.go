@@ -413,5 +413,13 @@ func (cc *ClientConnection) Close() error {
 	if err != nil {
 		return err
 	}
+	err = cc.rawDataQueue.Close()
+	if err != nil {
+		return err
+	}
+	err = cc.maxBankRouter.Close()
+	if err != nil {
+		return err
+	}
 	return cc.protocol.Close()
 }
