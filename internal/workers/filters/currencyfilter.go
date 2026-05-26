@@ -202,28 +202,31 @@ func (f *CurrencyFilter) broadcastTransactionBatch(clientID string, batch *proto
 }
 
 func (f *CurrencyFilter) sendToMicrotransactionsFilter(clientID string, transactions []*protobuf.Transaction) error {
+	microtransactions := make([]*protobuf.Microtransaction, 0, len(transactions))
 	for _, transaction := range transactions {
 		microtransaction := &protobuf.Microtransaction{
 			Account:    transaction.GetAccount(),
 			ToAccount:  transaction.GetToAccount(),
 			AmountPaid: transaction.GetAmountPaid(),
 		}
-
-		serializedMessage, err := serializer.SerializeProtoMessageWithClientID(
-			clientID,
-			microtransaction,
-			protobuf.MessageType_MICROTRANSACTION,
-		)
-		if err != nil {
-			return err
-		}
-
-		if err := f.microtransactionFilterQueue.Send(*serializedMessage); err != nil {
-			return err
-		}
+		microtransactions = append(microtransactions, microtransaction)
 	}
 
-	return nil
+	microtransactionBatch := protowrappers.WrapToMicrotrasactionBatch(microtransactions)
+	innerMessage := &protobuf.MoneyLaundry_MicrotransactionsBatch{
+		MicrotransactionsBatch: microtransactionBatch,
+	}
+
+	serializedMicrotransactionMessage, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_MICROTRANSACTION_BATCH,
+		innerMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return f.microtransactionFilterQueue.Send(serializedMicrotransactionMessage)
 }
 
 func (f *CurrencyFilter) sendToMaxBankRouter(clientID string, transactions []*protobuf.Transaction) error {

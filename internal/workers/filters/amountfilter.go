@@ -2,7 +2,10 @@ package filters
 
 import (
 	"log/slog"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
@@ -50,56 +53,75 @@ func NewAmountFilter(config AmountFilterConfig) (*AmountFilter, error) {
 	}, nil
 }
 
+func (af *AmountFilter) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(
+		signals,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	<-signals
+	slog.Info("shutdown signal received")
+	af.inputQueue.Close()
+	af.outputQueue.Close()
+}
+
 func (af *AmountFilter) Run() error {
-	af.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
-		moneyLaundering, err := serializer.DeserializeMoneyLaundering(msg)
+	go af.handleSignals()
+	return af.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+		af.handleMessage(msg, ack, nack)
+	})
+}
+
+func (af *AmountFilter) handleMessage(msg middleware.Message, ack, nack func()) {
+	moneyLaundering, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	switch moneyLaundering.GetType() {
+	case protobuf.MessageType_MICROTRANSACTION_BATCH:
+		af.handleMicrotransactionMessage(moneyLaundering, msg, ack, nack)
+	case protobuf.MessageType_EOF_:
+		af.handleEOF(moneyLaundering, msg, ack, nack)
+	default:
+		nack()
+	}
+}
+
+func (af *AmountFilter) handleMicrotransactionMessage(moneyLaundering *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	microtransactionBatch := moneyLaundering.GetMicrotransactionsBatch()
+	clientID := moneyLaundering.GetClientID()
+	for _, microtransaction := range microtransactionBatch.GetItems() {
+		amount, err := strconv.ParseFloat(microtransaction.GetAmountPaid(), 64)
 		if err != nil {
 			nack()
 			return
 		}
 
-		switch moneyLaundering.Type {
-
-		case protobuf.MessageType_MICROTRANSACTION:
-			af.handleMicrotransactionMessage(moneyLaundering, msg, ack, nack)
-
-		case protobuf.MessageType_EOF_:
-			slog.Info("Received EOF", "clientID", moneyLaundering.GetClientID())
-			if err := af.outputQueue.Send(msg); err != nil {
+		if amount < af.AmountToFilter {
+			// TODO: cambiar a batch de ser necesario
+			serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, microtransaction, protobuf.MessageType_MICROTRANSACTION)
+			if err != nil {
 				nack()
 				return
 			}
 
-			ack()
-
-		default:
-			nack()
+			if err := af.outputQueue.Send(*serializedMsg); err != nil {
+				nack()
+				return
+			}
 		}
-	},
-	)
-
-	return nil
+	}
+	ack()
 }
 
-func (af *AmountFilter) handleMicrotransactionMessage(moneyLaundering *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
-	microtransaction, err := serializer.DeserializeTransaction(moneyLaundering.Payload, &protobuf.Microtransaction{})
-	if err != nil {
+func (af *AmountFilter) handleEOF(moneyLaundering *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	slog.Info("Received EOF", "clientID", moneyLaundering.GetClientID())
+	if err := af.outputQueue.Send(msg); err != nil {
 		nack()
 		return
 	}
-
-	amount, err := strconv.ParseFloat(microtransaction.GetAmountPaid(), 64)
-	if err != nil {
-		nack()
-		return
-	}
-
-	if amount < af.AmountToFilter {
-		if err := af.outputQueue.Send(msg); err != nil {
-			nack()
-			return
-		}
-	}
-
 	ack()
 }
