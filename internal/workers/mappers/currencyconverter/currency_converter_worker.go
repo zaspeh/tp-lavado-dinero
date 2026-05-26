@@ -7,9 +7,11 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
 type CurrencyConverterConfig struct {
@@ -18,12 +20,17 @@ type CurrencyConverterConfig struct {
 	MomHost         string
 	MomPort         int
 	Converter       Converter
+	WorkerID        int
+	WorkerCount     int
+	WorkerExchange  string
 }
 
 type CurrencyConverterWorker struct {
 	inputQueue  middleware.Middleware
 	outputQueue middleware.Middleware
 	converter   Converter
+	coordinator *c.EOFCoordinator
+	batchers    map[string]*batch.Batcher[*protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]
 }
 
 func NewCurrencyConverterWorker(cfg CurrencyConverterConfig) (*CurrencyConverterWorker, error) {
@@ -43,15 +50,35 @@ func NewCurrencyConverterWorker(cfg CurrencyConverterConfig) (*CurrencyConverter
 		return nil, err
 	}
 
-	return &CurrencyConverterWorker{
+	worker := &CurrencyConverterWorker{
 		inputQueue:  inputQueue,
 		outputQueue: outputQueue,
 		converter:   cfg.Converter,
-	}, nil
+		batchers:    make(map[string]*batch.Batcher[*protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]),
+	}
+
+	coordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: cfg.WorkerExchange,
+		ConnSettings:      connSettings,
+		WorkerID:          cfg.WorkerID,
+		WorkerCount:       cfg.WorkerCount,
+		FlushHandler:      worker.sendEOFMessage,
+	}
+
+	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
+	if err != nil {
+		inputQueue.Close()
+		outputQueue.Close()
+		return nil, err
+	}
+
+	worker.coordinator = coordinator
+	return worker, nil
 }
 
 func (w *CurrencyConverterWorker) Run() error {
 	go w.handleSignals()
+	go w.coordinator.Run()
 
 	err := w.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		w.handleMessage(msg, ack, nack)
@@ -70,71 +97,146 @@ func (w *CurrencyConverterWorker) handleSignals() {
 }
 
 func (w *CurrencyConverterWorker) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundering, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundering, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundering.GetType() {
-	case protobuf.MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT:
-		w.handleConvertMessage(moneyLaundering, ack, nack)
+	case protobuf.MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH:
+		w.handleConvertBatch(moneyLaundering, ack, nack)
 	case protobuf.MessageType_EOF_:
-		w.handleEOFMessage(msg, ack, nack)
+		w.handleEOFMessage(moneyLaundering, ack, nack)
 	default:
 		nack()
 	}
 }
 
-func (w *CurrencyConverterWorker) handleConvertMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
-	toConvertMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ToConvertTypeFilteredPayment{})
+func (w *CurrencyConverterWorker) handleConvertBatch(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
 	clientID := moneyLaundering.GetClientID()
+	batcher := w.getBatcher(clientID)
+	convertBatch := moneyLaundering.GetToConvertTypeFilteredPaymentBatch()
+	for _, toConvertMsg := range convertBatch.GetItems() {
+		currency := toConvertMsg.GetPaymentCurrency()
+		amount, err := strconv.ParseFloat(toConvertMsg.GetAmountPaid(), 64)
+		if err != nil {
+			nack()
+			return
+		}
 
-	if err != nil {
+		convertedAmount, err := w.converter.ConvertToUSD(currency, amount)
+		if err == ErrorCurrencyNotFound {
+			if err := w.coordinator.RecordProcessed(clientID); err != nil {
+				nack()
+				return
+			}
+			continue
+		}
+		if err != nil {
+			nack()
+			return
+		}
+
+		convertedMsg := &protobuf.ConvertedAmount{Amount: convertedAmount}
+		if err := batcher.Add(convertedMsg); err != nil {
+			nack()
+			return
+		}
+		if err := w.coordinator.RecordSurvivor(clientID); err != nil {
+			nack()
+			return
+		}
+		if err := w.coordinator.RecordProcessed(clientID); err != nil {
+			nack()
+			return
+		}
+	}
+
+	if err := batcher.Flush(); err != nil {
 		nack()
 		return
 	}
-
-	currency := toConvertMsg.GetPaymentCurrency()
-	amount, err := strconv.ParseFloat(toConvertMsg.GetAmountPaid(), 64)
-	if err != nil {
-		nack()
-		return
-	}
-
-	convertedAmount, err := w.converter.ConvertToUSD(currency, amount)
-	if err == ErrorCurrencyNotFound {
-		// SI no se encuentra la moneda, por el momento se filtra
-		ack()
-		return
-	}
-
-	if err := w.sendConvertedMessage(clientID, convertedAmount); err != nil {
-		nack()
-		return
-	}
-
 	ack()
 }
 
-func (w *CurrencyConverterWorker) sendConvertedMessage(clientID string, convertedAmount float64) error {
-	convertedMsg := &protobuf.ConvertedAmount{
-		Amount: convertedAmount,
+func (w *CurrencyConverterWorker) handleEOFMessage(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+	clientID := moneyLaundering.GetClientID()
+	if batcher := w.batchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
 	}
 
-	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, convertedMsg, protobuf.MessageType_CONVERTED_AMOUNT)
+	eofMessage := moneyLaundering.GetEofMessage()
+	if err := w.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
+		nack()
+		return
+	}
+	ack()
+}
+
+func (w *CurrencyConverterWorker) getBatcher(clientID string) *batch.Batcher[*protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch] {
+	if batcher, ok := w.batchers[clientID]; ok {
+		return batcher
+	}
+
+	convertedBatch := batch.New(
+		0,
+		protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+		protowrappers.WrapConvertedAmounts,
+	)
+
+	onFlush := func(batch *protobuf.ConvertedAmountBatch) error {
+		return w.sendConvertedBatch(clientID, batch)
+	}
+
+	batcher := batch.NewBatcher(convertedBatch, onFlush)
+	w.batchers[clientID] = batcher
+	return batcher
+}
+
+func (w *CurrencyConverterWorker) sendConvertedBatch(clientID string, batch *protobuf.ConvertedAmountBatch) error {
+	if len(batch.GetItems()) == 0 {
+		return nil
+	}
+
+	innerMessage := &protobuf.MoneyLaundry_ConvertedAmountBatch{
+		ConvertedAmountBatch: batch,
+	}
+	serializedMsg, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
+		innerMessage,
+	)
 	if err != nil {
 		return err
 	}
 
-	return w.outputQueue.Send(*serializedMsg)
+	return w.outputQueue.Send(serializedMsg)
 }
 
-func (w *CurrencyConverterWorker) handleEOFMessage(msg middleware.Message, ack, nack func()) {
-	slog.Info("EOF message received")
-	if err := w.outputQueue.Send(msg); err != nil {
-		nack()
-		return
+func (w *CurrencyConverterWorker) sendEOFMessage(clientID string, newEOFCount uint64) error {
+	if !w.coordinator.IsLeader() {
+		return nil
 	}
-	ack()
+
+	slog.Info("Sending EOF message", "clientID", clientID, "newEOFCount", newEOFCount)
+	eofMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: newEOFCount,
+		},
+	}
+
+	serializedEOFMessage, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_EOF_,
+		eofMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return w.outputQueue.Send(serializedEOFMessage)
 }
