@@ -16,7 +16,7 @@ import (
 
 const (
 	// TODO CAMBIAR A ENV VAR DESPUES
-	eofAmountExpected = 3
+	eofAmountExpected = 4
 )
 
 type ClientConnectionConfig struct {

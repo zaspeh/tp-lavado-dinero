@@ -38,6 +38,8 @@ type PeriodFilterWorker struct {
 	paymentTypeFilterQueue middleware.Middleware
 	paymentTypeRouterQueue middleware.Middleware
 
+	query4Coordinator *c.EOFCoordinator
+
 	rawCoordinator *c.EOFCoordinator
 	rawBatchers    map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]
 }
@@ -65,6 +67,11 @@ type PeriodFilterWorkerConfig struct {
 	RawWorkerID           int
 	RawWorkerCount        int
 	RawWorkerExchangeName string
+
+	//Q4
+	Query4WorkerID           int
+	Query4WorkerCount        int
+	Query4WorkerExchangeName string
 }
 
 func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker, error) {
@@ -163,12 +170,33 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 
 	periodFilterWorker.rawCoordinator = rawCoordinator
 
+	query4CoordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: config.Query4WorkerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          config.Query4WorkerID,
+		WorkerCount:       config.Query4WorkerCount,
+		FlushHandler:      periodFilterWorker.sendQuery4EOFMessage,
+	}
+
+	query4Coordinator, err := c.NewEOFCoordinator(
+		query4CoordinatorConfig,
+	)
+
+	if err != nil {
+		periodFilterWorker.rawCoordinator.Close()
+		closeAllQueues()
+		return nil, err
+	}
+
+	periodFilterWorker.query4Coordinator = query4Coordinator
+
 	return periodFilterWorker, nil
 }
 
 func (pf *PeriodFilterWorker) Run() error {
 	go pf.handleSignals()
 	go pf.rawCoordinator.Run()
+	go pf.query4Coordinator.Run()
 
 	go pf.rawInputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		pf.handleRawMessage(msg, ack, nack)
@@ -195,6 +223,8 @@ func (pf *PeriodFilterWorker) handleSignals() {
 	pf.originDestinationQueue.Close()
 	pf.paymentTypeFilterQueue.Close()
 	pf.paymentTypeRouterQueue.Close()
+	pf.rawCoordinator.Close()
+	pf.query4Coordinator.Close()
 }
 
 func (pf *PeriodFilterWorker) handleUSDMessage(msg middleware.Message, ack, nack func()) {
@@ -242,7 +272,9 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 		}
 	}
 
-	if err := pf.originDestinationQueue.Send(rawMsg); err != nil {
+	clientID := moneyLaundry.GetClientID()
+	eofMessage := moneyLaundry.GetEofMessage()
+	if err := pf.query4Coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
 		nack()
 		return
 	}
@@ -257,6 +289,7 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 
 func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	periodFilterMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.PeriodFilter{})
+	clientID := moneyLaundry.GetClientID()
 	if err != nil {
 		nack()
 		return
@@ -271,7 +304,7 @@ func (pf *PeriodFilterWorker) handlePeriodFilterMessage(moneyLaundry *protobuf.M
 		return
 	}
 
-	err = pf.publishScatterGatherMessage(periodFilterMsg)
+	err = pf.publishScatterGatherMessage(periodFilterMsg, clientID)
 	if err != nil {
 		nack()
 		return
@@ -319,9 +352,9 @@ func (pf *PeriodFilterWorker) handleToConvertBatch(moneyLaundry *protobuf.MoneyL
 	ack()
 }
 
-func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *protobuf.PeriodFilter) error {
+func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *protobuf.PeriodFilter, clientID string) error {
 	if !pf.scatterGatherPeriod.Contains(periodFilterMsg.GetTimestamp().AsTime()) {
-		return nil
+		return pf.query4Coordinator.RecordProcessed(clientID)
 	}
 	scatterGatherMsg := &protobuf.ScatterGather{
 		FromBank:  periodFilterMsg.GetFromBank(),
@@ -336,6 +369,14 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 	}
 
 	if err := pf.originDestinationQueue.Send(*serializedMsg); err != nil {
+		return err
+	}
+
+	if err := pf.query4Coordinator.RecordProcessed(clientID); err != nil {
+		return err
+	}
+
+	if err := pf.query4Coordinator.RecordSurvivor(clientID); err != nil {
 		return err
 	}
 
@@ -452,4 +493,28 @@ func (pf *PeriodFilterWorker) sendRawEOFMessage(clientID string, newEOFCount uin
 	}
 
 	return pf.paymentTypeFilterQueue.Send(serializedEOFMessage)
+}
+
+func (pf *PeriodFilterWorker) sendQuery4EOFMessage(clientID string, newEOFCount uint64) error {
+	if !pf.query4Coordinator.IsLeader() {
+		return nil
+	}
+
+	slog.Info("Broadcasting query4 EOF message", "clientID", clientID, "newEOFCount", newEOFCount)
+	eofMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: newEOFCount,
+		},
+	}
+
+	serializedEOFMessage, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_EOF_,
+		eofMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return pf.originDestinationQueue.Send(serializedEOFMessage)
 }
