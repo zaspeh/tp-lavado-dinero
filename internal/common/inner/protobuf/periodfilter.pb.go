@@ -114,6 +114,50 @@ func (x *PeriodFilter) GetPaymentFormat() string {
 	return ""
 }
 
+type PeriodFilterBatch struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*PeriodFilter        `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PeriodFilterBatch) Reset() {
+	*x = PeriodFilterBatch{}
+	mi := &file_internal_common_inner_protobuf_periodfilter_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PeriodFilterBatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PeriodFilterBatch) ProtoMessage() {}
+
+func (x *PeriodFilterBatch) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_periodfilter_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PeriodFilterBatch.ProtoReflect.Descriptor instead.
+func (*PeriodFilterBatch) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_periodfilter_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PeriodFilterBatch) GetItems() []*PeriodFilter {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_internal_common_inner_protobuf_periodfilter_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_periodfilter_proto_rawDesc = "" +
@@ -128,7 +172,9 @@ const file_internal_common_inner_protobuf_periodfilter_proto_rawDesc = "" +
 	"to_account\x18\x05 \x01(\tR\ttoAccount\x12\x1f\n" +
 	"\vamount_paid\x18\x06 \x01(\tR\n" +
 	"amountPaid\x12%\n" +
-	"\x0epayment_format\x18\a \x01(\tR\rpaymentFormatB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x0epayment_format\x18\a \x01(\tR\rpaymentFormat\"A\n" +
+	"\x11PeriodFilterBatch\x12,\n" +
+	"\x05items\x18\x01 \x03(\v2\x16.protobuf.PeriodFilterR\x05itemsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_periodfilter_proto_rawDescOnce sync.Once
@@ -142,18 +188,20 @@ func file_internal_common_inner_protobuf_periodfilter_proto_rawDescGZIP() []byte
 	return file_internal_common_inner_protobuf_periodfilter_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_periodfilter_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_internal_common_inner_protobuf_periodfilter_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_internal_common_inner_protobuf_periodfilter_proto_goTypes = []any{
 	(*PeriodFilter)(nil),          // 0: protobuf.PeriodFilter
-	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
+	(*PeriodFilterBatch)(nil),     // 1: protobuf.PeriodFilterBatch
+	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
 var file_internal_common_inner_protobuf_periodfilter_proto_depIdxs = []int32{
-	1, // 0: protobuf.PeriodFilter.timestamp:type_name -> google.protobuf.Timestamp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: protobuf.PeriodFilter.timestamp:type_name -> google.protobuf.Timestamp
+	0, // 1: protobuf.PeriodFilterBatch.items:type_name -> protobuf.PeriodFilter
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_periodfilter_proto_init() }
@@ -167,7 +215,7 @@ func file_internal_common_inner_protobuf_periodfilter_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_periodfilter_proto_rawDesc), len(file_internal_common_inner_protobuf_periodfilter_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

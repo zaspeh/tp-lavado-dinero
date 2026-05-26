@@ -36,6 +36,12 @@ func WrapToMicrotrasactionBatch(transactions []*protobuf.Microtransaction) *prot
 	}
 }
 
+func WrapPeriodFilter(items []*protobuf.ToConvertPeriodFiltered) *protobuf.ToConvertPeriodFilteredBatch {
+	return &protobuf.ToConvertPeriodFilteredBatch{
+		Items: items,
+	}
+}
+
 func WrapToConvertPeriodFiltered(items []*protobuf.ToConvertPeriodFiltered) *protobuf.ToConvertPeriodFilteredBatch {
 	return &protobuf.ToConvertPeriodFilteredBatch{
 		Items: items,

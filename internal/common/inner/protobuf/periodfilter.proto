@@ -15,3 +15,7 @@ message PeriodFilter {
 	string amount_paid = 6;
 	string payment_format = 7;
 }
+
+message PeriodFilterBatch {
+	repeated PeriodFilter items = 1;
+}
