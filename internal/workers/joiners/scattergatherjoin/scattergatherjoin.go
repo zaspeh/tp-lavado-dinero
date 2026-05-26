@@ -156,11 +156,13 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg *protobuf.MoneyLaundry, rawMsg
 	// ----------------------
 	slog.Debug("Handling EOF")
 	clientID := msg.GetClientID()
+	slog.Debug("Handling EOF for client", clientID)
 	clientEOFCount, ok := sgj.clientEOFs[clientID]
 	if !ok {
 		clientEOFCount = 0
 	}
 	clientEOFCount++
+	slog.Debug("client EOF count", clientID)
 	sgj.clientEOFs[clientID] = clientEOFCount
 	if !(clientEOFCount >= sgj.targetEofCount) {
 		ack()

@@ -187,12 +187,33 @@ func (abi *AggregateByIntermediaryWorker) handleOriginEOFMessage(moneyLaundry *p
 		return
 	}
 
-	if err := abi.publishPairs(); err != nil {
+	totalPairs, err := abi.publishPairs(moneyLaundry.GetClientID())
+	if err != nil {
 		nack()
 		return
 	}
 
-	if err := abi.outputQueue.Send(msg); err != nil {
+	slog.Debug("Creating new EOF")
+
+	innerMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: uint64(totalPairs),
+		},
+	}
+
+	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage)
+	if err != nil {
+		nack()
+		return
+	}
+
+	slog.Debug(
+		"Forwarding EOF",
+		"Pairs",
+		totalPairs,
+	)
+
+	if err := abi.outputQueue.Send(eofMsg); err != nil {
 		nack()
 		return
 	}
@@ -211,12 +232,33 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationEOFMessage(moneyLaund
 		return
 	}
 
-	if err := abi.publishPairs(); err != nil {
+	totalPairs, err := abi.publishPairs(moneyLaundry.GetClientID())
+	if err != nil {
 		nack()
 		return
 	}
 
-	if err := abi.outputQueue.Send(msg); err != nil {
+	slog.Debug("Creating new EOF")
+
+	innerMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: uint64(totalPairs),
+		},
+	}
+
+	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage)
+	if err != nil {
+		nack()
+		return
+	}
+
+	slog.Debug(
+		"Forwarding EOF",
+		"Pairs",
+		totalPairs,
+	)
+
+	if err := abi.outputQueue.Send(eofMsg); err != nil {
 		nack()
 		return
 	}
@@ -224,8 +266,10 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationEOFMessage(moneyLaund
 	ack()
 }
 
-func (abi *AggregateByIntermediaryWorker) publishPairs() error {
+func (abi *AggregateByIntermediaryWorker) publishPairs(clientID string) (uint64, error) {
 	defer abi.store.Clear()
+
+	totalPairs := 0
 
 	b := batch.New(
 		abi.maxBatchWeight,
@@ -235,7 +279,7 @@ func (abi *AggregateByIntermediaryWorker) publishPairs() error {
 
 	batcher := batch.NewBatcher(b, func(pb *protobuf.SuspiciousPathBatch) error {
 
-		serializedMsg, err := serializer.SerializeProtoMessage(pb, protobuf.MessageType_SUSPICIOUS_PATH_BATCH)
+		serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, pb, protobuf.MessageType_SUSPICIOUS_PATH_BATCH)
 		if err != nil {
 			return err
 		}
@@ -257,11 +301,12 @@ func (abi *AggregateByIntermediaryWorker) publishPairs() error {
 
 			IntermediaryCount: uint32(intermediaryCount),
 		}
+		totalPairs++
 
 		if err := batcher.Add(path); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return batcher.Flush()
+	return uint64(totalPairs), batcher.Flush()
 }

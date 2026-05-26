@@ -589,7 +589,7 @@ services:
     - WORKER_EXCHANGE_NAME=ORIGIN_INTERMEDIARY_ROUTER
     - INPUT_QUEUE_NAME=grouped_origin_accounts
     - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=origin_intermediary_aggregation
-    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=1
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -610,7 +610,7 @@ services:
     - WORKER_EXCHANGE_NAME=ORIGIN_INTERMEDIARY_ROUTER
     - INPUT_QUEUE_NAME=grouped_origin_accounts
     - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=origin_intermediary_aggregation
-    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=1
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -631,7 +631,7 @@ services:
     - WORKER_EXCHANGE_NAME=DESTINATION_INTERMEDIARY_ROUTER
     - INPUT_QUEUE_NAME=grouped_destination_accounts
     - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=destination_intermediary_aggregation
-    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=1
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -652,7 +652,7 @@ services:
     - WORKER_EXCHANGE_NAME=DESTINATION_INTERMEDIARY_ROUTER
     - INPUT_QUEUE_NAME=grouped_destination_accounts
     - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=destination_intermediary_aggregation
-    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=1
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -669,7 +669,29 @@ services:
     - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
-    - WORKER_COUNT=1
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AGGREGATE_BY_INTERMEDIARY
+    - ORIGIN_INPUT_EXCHANGE_NAME=origin_intermediary_aggregation
+    - DESTINATION_INPUT_EXCHANGE_NAME=destination_intermediary_aggregation
+    - OUTPUT_QUEUE_NAME=suspicious_paths_output
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  aggregate_by_intermediary_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: aggregate_by_intermediary_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
     - WORKER_EXCHANGE_NAME=AGGREGATE_BY_INTERMEDIARY
     - ORIGIN_INPUT_EXCHANGE_NAME=origin_intermediary_aggregation
     - DESTINATION_INPUT_EXCHANGE_NAME=destination_intermediary_aggregation
@@ -841,7 +863,7 @@ services:
     - WORKER_EXCHANGE_NAME=SCATTER_GATHER_JOIN
     - INPUT_QUEUE_NAME=suspicious_paths_output
     - CLIENT_EXCHANGE_NAME=client_results_exchange
-    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=1
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
     - MAX_BATCH_WEIGHT=40000
     depends_on:
       rabbitmq:

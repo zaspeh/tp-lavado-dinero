@@ -146,7 +146,7 @@ services:
       INPUT_QUEUE_NAME: grouped_origin_accounts
 
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: origin_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
 
   destination_intermediary_router:
     count: 2
@@ -156,10 +156,10 @@ services:
     env:
       INPUT_QUEUE_NAME: grouped_destination_accounts
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: destination_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
 
   aggregate_by_intermediary:
-    count: 1
+    count: 2
     worker_type: AGGREGATE_BY_INTERMEDIARY
 
     env:
@@ -225,5 +225,5 @@ services:
     env:
       INPUT_QUEUE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
       MAX_BATCH_WEIGHT: 40000
