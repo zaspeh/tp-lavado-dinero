@@ -40,6 +40,8 @@ enum MessageType {
     TO_CONVERT_PERIOD_FILTERED_BATCH = 24;
     TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH = 25;
     CONVERTED_AMOUNT_BATCH = 26;
+
+    CLEANUP = 27;
 }
 
 message MoneyLaundry {

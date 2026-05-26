@@ -51,6 +51,7 @@ const (
 	MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH       MessageType = 24
 	MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH MessageType = 25
 	MessageType_CONVERTED_AMOUNT_BATCH                 MessageType = 26
+	MessageType_CLEANUP                                MessageType = 27
 )
 
 // Enum value maps for MessageType.
@@ -83,6 +84,7 @@ var (
 		24: "TO_CONVERT_PERIOD_FILTERED_BATCH",
 		25: "TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH",
 		26: "CONVERTED_AMOUNT_BATCH",
+		27: "CLEANUP",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                                   0,
@@ -112,6 +114,7 @@ var (
 		"TO_CONVERT_PERIOD_FILTERED_BATCH":       24,
 		"TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH": 25,
 		"CONVERTED_AMOUNT_BATCH":                 26,
+		"CLEANUP":                                27,
 	}
 )
 
@@ -349,7 +352,7 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"&to_convert_type_filtered_payment_batch\x18\t \x01(\v2+.protobuf.ToConvertTypeFilteredPaymentBatchH\x00R!toConvertTypeFilteredPaymentBatch\x12V\n" +
 	"\x16converted_amount_batch\x18\n" +
 	" \x01(\v2\x1e.protobuf.ConvertedAmountBatchH\x00R\x14convertedAmountBatchB\x0f\n" +
-	"\rinner_message*\xcb\x05\n" +
+	"\rinner_message*\xd8\x05\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -378,7 +381,8 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\rMAXBANK_BATCH\x10\x17\x12$\n" +
 	" TO_CONVERT_PERIOD_FILTERED_BATCH\x10\x18\x12*\n" +
 	"&TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH\x10\x19\x12\x1a\n" +
-	"\x16CONVERTED_AMOUNT_BATCH\x10\x1aB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x16CONVERTED_AMOUNT_BATCH\x10\x1a\x12\v\n" +
+	"\aCLEANUP\x10\x1bB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
