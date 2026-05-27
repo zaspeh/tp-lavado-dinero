@@ -12,8 +12,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
-const eofRoutingKey = "eof"
-
 type AvgByTypeStats struct {
 	Sum   float64
 	Count int
@@ -43,7 +41,7 @@ func NewAvgByTypeFilter(config AvgByTypeFilterConfig) (*AvgByTypeFilter, error) 
 		Port:     config.MomPort,
 	}
 
-	inputKeys := []string{config.InputExchangeName + "." + config.ID, eofRoutingKey}
+	inputKeys := []string{config.InputExchangeName + "." + config.ID}
 
 	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputKeys, connSettings)
 	if err != nil {

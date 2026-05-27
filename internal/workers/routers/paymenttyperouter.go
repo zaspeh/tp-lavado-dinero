@@ -14,8 +14,6 @@ import (
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
-const eofRoutingKey = "eof"
-
 type PaymentTypeRouter struct {
 	inputQueue middleware.Middleware
 
