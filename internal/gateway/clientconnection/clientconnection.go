@@ -94,21 +94,22 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 	}, nil
 }
 
+// TODO: poner el BatchSize en variable de entorno
 func (cc *ClientConnection) setUpBatchers() {
 	transactionBatch := batch.New(
-		cc.MaxBatchWeight,
+		1000000,
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
 		protowrappers.WrapTransactions,
 	)
 
 	toConvertTransactionBatch := batch.New(
-		cc.MaxBatchWeight,
+		1000000,
 		protowrappers.ProtoSizer[*protobuf.ToConvertTransaction](),
 		protowrappers.WrapToConvertTransactions,
 	)
 
 	accountBatch := batch.New(
-		cc.MaxBatchWeight,
+		1000000,
 		protowrappers.ProtoSizer[*protobuf.MaxBank](),
 		protowrappers.WrapMaxBank,
 	)

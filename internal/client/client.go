@@ -81,6 +81,8 @@ func (c *Client) Run() error {
 
 	go c.handleSignals()
 
+	startTimestamp := time.Now()
+
 	slog.Info("starting processTransactions")
 
 	err := c.processTransactions()
@@ -100,6 +102,8 @@ func (c *Client) Run() error {
 	if err != nil {
 		return err
 	}
+
+	slog.Info("finished processing results", "duration", time.Since(startTimestamp).String())
 
 	slog.Info("finished receiveResults")
 
