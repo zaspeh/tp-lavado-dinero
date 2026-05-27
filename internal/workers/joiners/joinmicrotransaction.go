@@ -75,7 +75,7 @@ func (j *JoinMicrotransaction) handleMessage(msg middleware.Message, ack, nack f
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_MICROTRANSACTION:
+	case protobuf.MessageType_MICROTRANSACTION_BATCH:
 		j.handleMicrotransactionMessage(moneyLaundry, ack, nack)
 
 	case protobuf.MessageType_EOF_:
@@ -100,13 +100,13 @@ func (j *JoinMicrotransaction) handleSignals() {
 }
 
 func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	microtransaction, err := serializer.DeserializeTransaction(moneyLaundry.Payload, &protobuf.Microtransaction{})
-	if err != nil {
-		nack()
-		return
-	}
+	batchMsg := moneyLaundry.GetMicrotransactionsBatch()
 
-	j.results[moneyLaundry.GetClientID()] = append(j.results[moneyLaundry.GetClientID()], microtransaction)
+	j.results[moneyLaundry.GetClientID()] =
+		append(
+			j.results[moneyLaundry.GetClientID()],
+			batchMsg.GetItems()...,
+		)
 	ack()
 }
 

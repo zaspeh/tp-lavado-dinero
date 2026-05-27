@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
@@ -19,6 +20,8 @@ type AmountFilter struct {
 
 	AmountToFilter float64
 	coordinator    *c.EOFCoordinator
+
+	microtransactionBatchers map[string]*batch.Batcher[*protobuf.Microtransaction, *protobuf.MicrotransactionBatch]
 }
 
 type AmountFilterConfig struct {
@@ -56,6 +59,8 @@ func NewAmountFilter(config AmountFilterConfig) (*AmountFilter, error) {
 		inputQueue:     inputQueue,
 		outputQueue:    outputQueue,
 		AmountToFilter: config.AmountToFilter,
+
+		microtransactionBatchers: make(map[string]*batch.Batcher[*protobuf.Microtransaction, *protobuf.MicrotransactionBatch]),
 	}
 
 	coordinatorConfig := c.EOFCoordinatorConfig{
@@ -120,6 +125,9 @@ func (af *AmountFilter) handleMessage(msg middleware.Message, ack, nack func()) 
 func (af *AmountFilter) handleMicrotransactionMessage(moneyLaundering *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	microtransactionBatch := moneyLaundering.GetMicrotransactionsBatch()
 	clientID := moneyLaundering.GetClientID()
+
+	batcher := af.getBatcher(clientID)
+
 	for _, microtransaction := range microtransactionBatch.GetItems() {
 		amount, err := strconv.ParseFloat(microtransaction.GetAmountPaid(), 64)
 		if err != nil {
@@ -128,31 +136,21 @@ func (af *AmountFilter) handleMicrotransactionMessage(moneyLaundering *protobuf.
 		}
 
 		if amount < af.AmountToFilter {
-			// TODO: cambiar a batch de ser necesario
-			serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, microtransaction, protobuf.MessageType_MICROTRANSACTION)
-			if err != nil {
+
+			if err := batcher.Add(microtransaction); err != nil {
 				nack()
 				return
 			}
 
-			if err := af.outputQueue.Send(*serializedMsg); err != nil {
-				nack()
-				return
-			}
-
-			slog.Debug("Microtransaction passed filter", "clientID", clientID, "amount", amount)
-
-			// TODO: Si falla una transacción, se reenvia el batch y podríamos tener duplicados.
-			if err := af.coordinator.RecordSurvivor(clientID); err != nil {
-				nack()
-				return
-			}
+			af.coordinator.RecordSurvivor(clientID)
 		}
 
-		if err := af.coordinator.RecordProcessed(clientID); err != nil {
-			nack()
-			return
-		}
+		af.coordinator.RecordProcessed(clientID)
+	}
+
+	if err := batcher.Flush(); err != nil {
+		nack()
+		return
 	}
 
 	ack()
@@ -162,8 +160,16 @@ func (af *AmountFilter) handleEOF(moneyLaundering *protobuf.MoneyLaundry, msg mi
 	slog.Info("Received EOF", "clientID", moneyLaundering.GetClientID())
 
 	eofMessage := moneyLaundering.GetEofMessage()
+	clientID := moneyLaundering.GetClientID()
 
-	if err := af.coordinator.HandleLocalEOF(moneyLaundering.GetClientID(), eofMessage.GetTotalTransactions()); err != nil {
+	if batcher := af.microtransactionBatchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
+	}
+
+	if err := af.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
 		nack()
 		return
 	}
@@ -194,3 +200,60 @@ func (af *AmountFilter) sendEOFMessage(clientID string, newEOFCount uint64) erro
 
 	return nil
 }
+
+func (af *AmountFilter) getBatcher(clientID string) *batch.Batcher[*protobuf.Microtransaction, *protobuf.MicrotransactionBatch] {
+	if batcher, ok := af.microtransactionBatchers[clientID]; ok {
+		return batcher
+	}
+
+	microtransactionBatch := batch.New(
+		0,
+		protowrappers.ProtoSizer[*protobuf.Microtransaction](),
+		protowrappers.WrapToMicrotrasactionBatch,
+	)
+
+	onFlush := func(batch *protobuf.MicrotransactionBatch) error {
+		return af.sendMicrotransactionBatch(clientID, batch)
+	}
+
+	batcher := batch.NewBatcher(
+		microtransactionBatch,
+		onFlush,
+	)
+
+	af.microtransactionBatchers[clientID] = batcher
+
+	return batcher
+}
+
+func (af *AmountFilter) sendMicrotransactionBatch(clientID string, batch *protobuf.MicrotransactionBatch) error {
+
+	if len(batch.GetItems()) == 0 {
+		return nil
+	}
+
+	innerMessage :=
+		&protobuf.MoneyLaundry_MicrotransactionsBatch{
+			MicrotransactionsBatch: batch,
+		}
+
+	serializedMsg, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_MICROTRANSACTION_BATCH,
+		innerMessage,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return af.outputQueue.Send(serializedMsg)
+}
+
+// crear un getBatcher porque es un batch por cliente.
+// en el handlerMicrotransaction(batch)Message, copio lo que hace currencyfilter (
+// agarro el id, extraigo el batch e itero el mensaje que me llegó, si pasa el filtro -> lo agrego al batch)
+// Cuando salgo del loop hago flush de una vez (en un futuro no se hará flush) y listo.
+// cuando creo el batch, le paso una función de envío. (analizar currencyfilter)
+// esto cambia el manejo en el join (habría que guardar los batches y una vez que llega el eof mando la lista de batches).
+// USAR LA SERIALIZACIÓN DE PROTOBUF
