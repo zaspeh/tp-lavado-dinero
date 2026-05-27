@@ -7,12 +7,13 @@
 package protobuf
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -139,6 +140,7 @@ type ToConvertPeriodFiltered struct {
 	AmountPaid      string                 `protobuf:"bytes,1,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
 	PaymentCurrency string                 `protobuf:"bytes,2,opt,name=payment_currency,json=paymentCurrency,proto3" json:"payment_currency,omitempty"`
 	PaymentFormat   string                 `protobuf:"bytes,3,opt,name=payment_format,json=paymentFormat,proto3" json:"payment_format,omitempty"`
+	Timestamp       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -194,6 +196,13 @@ func (x *ToConvertPeriodFiltered) GetPaymentFormat() string {
 	return ""
 }
 
+func (x *ToConvertPeriodFiltered) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
 type ToConvertPeriodFilteredBatch struct {
 	state         protoimpl.MessageState     `protogen:"open.v1"`
 	Items         []*ToConvertPeriodFiltered `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -242,6 +251,7 @@ type ToConvertTypeFilteredPayment struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	AmountPaid      string                 `protobuf:"bytes,1,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
 	PaymentCurrency string                 `protobuf:"bytes,2,opt,name=payment_currency,json=paymentCurrency,proto3" json:"payment_currency,omitempty"`
+	Timestamp       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -288,6 +298,13 @@ func (x *ToConvertTypeFilteredPayment) GetPaymentCurrency() string {
 		return x.PaymentCurrency
 	}
 	return ""
+}
+
+func (x *ToConvertTypeFilteredPayment) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
 }
 
 type ToConvertTypeFilteredPaymentBatch struct {
@@ -478,18 +495,20 @@ const file_internal_common_inner_protobuf_conversion_proto_rawDesc = "" +
 	"\x10payment_currency\x18\x03 \x01(\tR\x0fpaymentCurrency\x12%\n" +
 	"\x0epayment_format\x18\x04 \x01(\tR\rpaymentFormat\"Q\n" +
 	"\x19ToConvertTransactionBatch\x124\n" +
-	"\x05items\x18\x01 \x03(\v2\x1e.protobuf.ToConvertTransactionR\x05items\"\x8c\x01\n" +
+	"\x05items\x18\x01 \x03(\v2\x1e.protobuf.ToConvertTransactionR\x05items\"\xc6\x01\n" +
 	"\x17ToConvertPeriodFiltered\x12\x1f\n" +
 	"\vamount_paid\x18\x01 \x01(\tR\n" +
 	"amountPaid\x12)\n" +
 	"\x10payment_currency\x18\x02 \x01(\tR\x0fpaymentCurrency\x12%\n" +
-	"\x0epayment_format\x18\x03 \x01(\tR\rpaymentFormat\"W\n" +
+	"\x0epayment_format\x18\x03 \x01(\tR\rpaymentFormat\x128\n" +
+	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"W\n" +
 	"\x1cToConvertPeriodFilteredBatch\x127\n" +
-	"\x05items\x18\x01 \x03(\v2!.protobuf.ToConvertPeriodFilteredR\x05items\"j\n" +
+	"\x05items\x18\x01 \x03(\v2!.protobuf.ToConvertPeriodFilteredR\x05items\"\xa4\x01\n" +
 	"\x1cToConvertTypeFilteredPayment\x12\x1f\n" +
 	"\vamount_paid\x18\x01 \x01(\tR\n" +
 	"amountPaid\x12)\n" +
-	"\x10payment_currency\x18\x02 \x01(\tR\x0fpaymentCurrency\"a\n" +
+	"\x10payment_currency\x18\x02 \x01(\tR\x0fpaymentCurrency\x128\n" +
+	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"a\n" +
 	"!ToConvertTypeFilteredPaymentBatch\x12<\n" +
 	"\x05items\x18\x01 \x03(\v2&.protobuf.ToConvertTypeFilteredPaymentR\x05items\")\n" +
 	"\x0fConvertedAmount\x12\x16\n" +
@@ -527,14 +546,16 @@ var file_internal_common_inner_protobuf_conversion_proto_goTypes = []any{
 var file_internal_common_inner_protobuf_conversion_proto_depIdxs = []int32{
 	9, // 0: protobuf.ToConvertTransaction.timestamp:type_name -> google.protobuf.Timestamp
 	0, // 1: protobuf.ToConvertTransactionBatch.items:type_name -> protobuf.ToConvertTransaction
-	2, // 2: protobuf.ToConvertPeriodFilteredBatch.items:type_name -> protobuf.ToConvertPeriodFiltered
-	4, // 3: protobuf.ToConvertTypeFilteredPaymentBatch.items:type_name -> protobuf.ToConvertTypeFilteredPayment
-	6, // 4: protobuf.ConvertedAmountBatch.items:type_name -> protobuf.ConvertedAmount
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	9, // 2: protobuf.ToConvertPeriodFiltered.timestamp:type_name -> google.protobuf.Timestamp
+	2, // 3: protobuf.ToConvertPeriodFilteredBatch.items:type_name -> protobuf.ToConvertPeriodFiltered
+	9, // 4: protobuf.ToConvertTypeFilteredPayment.timestamp:type_name -> google.protobuf.Timestamp
+	4, // 5: protobuf.ToConvertTypeFilteredPaymentBatch.items:type_name -> protobuf.ToConvertTypeFilteredPayment
+	6, // 6: protobuf.ConvertedAmountBatch.items:type_name -> protobuf.ConvertedAmount
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_conversion_proto_init() }

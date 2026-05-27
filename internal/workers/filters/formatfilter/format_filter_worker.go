@@ -129,6 +129,7 @@ func (w *FormatFilterWorker) handlePeriodFilteredBatch(moneyLaundering *protobuf
 		filteredMsg := &protobuf.ToConvertTypeFilteredPayment{
 			AmountPaid:      periodFilteredMsg.GetAmountPaid(),
 			PaymentCurrency: periodFilteredMsg.GetPaymentCurrency(),
+			Timestamp:       periodFilteredMsg.GetTimestamp(),
 		}
 		if err := batcher.Add(filteredMsg); err != nil {
 			nack()

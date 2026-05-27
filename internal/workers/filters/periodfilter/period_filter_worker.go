@@ -359,6 +359,7 @@ func (pf *PeriodFilterWorker) handleToConvertBatch(moneyLaundry *protobuf.MoneyL
 			AmountPaid:      transactionMsg.GetAmountPaid(),
 			PaymentCurrency: transactionMsg.GetPaymentCurrency(),
 			PaymentFormat:   transactionMsg.GetPaymentFormat(),
+			Timestamp:       transactionMsg.GetTimestamp(),
 		}
 		if err := batcher.Add(filteredPeriodMsg); err != nil {
 			nack()

@@ -21,6 +21,7 @@ message ToConvertPeriodFiltered {
     string amount_paid = 1;
     string payment_currency = 2;
     string payment_format = 3;
+    google.protobuf.Timestamp timestamp = 4;
 }
 
 message ToConvertPeriodFilteredBatch {
@@ -30,6 +31,7 @@ message ToConvertPeriodFilteredBatch {
 message ToConvertTypeFilteredPayment {
     string amount_paid = 1;
     string payment_currency = 2;
+    google.protobuf.Timestamp timestamp = 3;
 }
 
 message ToConvertTypeFilteredPaymentBatch {

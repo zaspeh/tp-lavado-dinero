@@ -125,7 +125,8 @@ func (w *CurrencyConverterWorker) handleConvertBatch(moneyLaundering *protobuf.M
 			return
 		}
 
-		convertedAmount, err := w.converter.ConvertToUSD(currency, amount)
+		timestamp := toConvertMsg.GetTimestamp()
+		convertedAmount, err := w.converter.ConvertToUSD(currency, amount, timestamp.AsTime())
 		if err == ErrorCurrencyNotFound {
 			if err := w.coordinator.RecordProcessed(clientID); err != nil {
 				nack()

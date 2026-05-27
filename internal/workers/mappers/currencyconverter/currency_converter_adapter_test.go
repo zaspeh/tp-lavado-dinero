@@ -2,6 +2,7 @@ package currencyconverter
 
 import (
 	"testing"
+	"time"
 )
 
 func TestCurrencyConverter(t *testing.T) {
@@ -13,7 +14,8 @@ func TestCurrencyConverter(t *testing.T) {
 	}
 
 	t.Run("Convert base USD", func(t *testing.T) {
-		got, err := converter.ConvertToUSD("US Dollar", 50.0)
+		date := time.Date(2022, 9, 1, 0, 0, 0, 0, time.UTC)
+		got, err := converter.ConvertToUSD("US Dollar", 50.0, date)
 		if err != nil {
 			t.Errorf("Could not convert currency: %v", err)
 		}
@@ -24,7 +26,13 @@ func TestCurrencyConverter(t *testing.T) {
 
 	t.Run("Convert to other currency", func(t *testing.T) {
 
-		rateMXN, ok := converter.Rates["Mexican Peso"]
+		date := time.Date(2022, 9, 1, 0, 0, 0, 0, time.UTC)
+		rates, err := converter.getRatesForDate(date.Format("2006-01-02"))
+		if err != nil {
+			t.Fatalf("Could not load exchange rates: %v", err)
+		}
+
+		rateMXN, ok := rates["Mexican Peso"]
 		if !ok {
 			t.Fatal("COULD NOT FIND EXCHANGE RATE FOR MXN")
 		}
@@ -32,7 +40,7 @@ func TestCurrencyConverter(t *testing.T) {
 		t.Logf("Actual rate for MXN: %f", rateMXN)
 
 		pesos := 10.0
-		usd, err := converter.ConvertToUSD("Mexican Peso", pesos)
+		usd, err := converter.ConvertToUSD("Mexican Peso", pesos, date)
 
 		if err != nil {
 			t.Errorf("Error to convert: %v", err)
@@ -45,7 +53,8 @@ func TestCurrencyConverter(t *testing.T) {
 	})
 
 	t.Run("Inexistent currency", func(t *testing.T) {
-		_, err := converter.ConvertToUSD("Inexistent Currency", 100)
+		date := time.Date(2022, 9, 1, 0, 0, 0, 0, time.UTC)
+		_, err := converter.ConvertToUSD("Inexistent Currency", 100, date)
 		if err == nil {
 			t.Error("Expected an error for an inexistent currency, but none occurred")
 		}
