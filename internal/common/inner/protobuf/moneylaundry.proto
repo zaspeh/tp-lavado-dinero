@@ -10,6 +10,7 @@ import "internal/common/inner/protobuf/eof.proto";
 import "internal/common/inner/protobuf/maxbank.proto";
 import "internal/common/inner/protobuf/microtransaction.proto";
 import "internal/common/inner/protobuf/periodfilter.proto";
+import "internal/common/inner/protobuf/avgbytypetransaction.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -46,6 +47,7 @@ enum MessageType {
     PERIOD_FILTER_BATCH = 28;
 
     CLEANUP = 29;
+    AVGBYTYPE_TRANSACTION_BATCH = 30;
 }
 
 message MoneyLaundry {
@@ -64,5 +66,6 @@ message MoneyLaundry {
         ConvertedAmountBatch converted_amount_batch = 10;
         MicrotransactionBatch microtransactions_batch = 11;
         PeriodFilterBatch period_filter_batch = 12;
+        AvgByTypeTransactionBatch avgbytype_transaction_batch = 13;
     }
 }

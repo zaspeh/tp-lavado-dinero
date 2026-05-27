@@ -54,6 +54,12 @@ func WrapToConvertTypeFilteredPayment(items []*protobuf.ToConvertTypeFilteredPay
 	}
 }
 
+func WrapAvgByTypeTransactions(items []*protobuf.AvgByTypeTransaction) *protobuf.AvgByTypeTransactionBatch {
+	return &protobuf.AvgByTypeTransactionBatch{
+		Items: items,
+	}
+}
+
 func WrapConvertedAmounts(items []*protobuf.ConvertedAmount) *protobuf.ConvertedAmountBatch {
 	return &protobuf.ConvertedAmountBatch{
 		Items: items,

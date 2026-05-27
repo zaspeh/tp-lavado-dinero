@@ -85,6 +85,9 @@ func (f *AvgByTypeFilter) Run() error {
 			case protobuf.MessageType_AVGBYTYPE_SECOND_PERIOD:
 				f.handleSecondPeriod(moneyLaundry, ack, nack)
 
+			case protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH:
+				f.handleBatch(moneyLaundry, ack, nack)
+
 			case protobuf.MessageType_EOF_:
 				f.handleEOF(moneyLaundry, ack, nack)
 
@@ -105,28 +108,11 @@ func (f *AvgByTypeFilter) handleFirstPeriod(moneyLaundry *protobuf.MoneyLaundry,
 		return
 	}
 
-	amount, err := strconv.ParseFloat(tx.GetAmountPaid(), 64)
-	if err != nil {
+	clientID := moneyLaundry.GetClientID()
+	if err := f.handleFirstPeriodTx(clientID, tx); err != nil {
 		nack()
 		return
 	}
-
-	clientID := moneyLaundry.GetClientID()
-	paymentFormat := tx.GetPaymentFormat()
-
-	if _, exists := f.period1Stats[clientID]; !exists {
-		f.period1Stats[clientID] = make(map[string]*AvgByTypeStats)
-	}
-
-	stats, exists := f.period1Stats[clientID][paymentFormat]
-
-	if !exists {
-		stats = &AvgByTypeStats{}
-		f.period1Stats[clientID][paymentFormat] = stats
-	}
-
-	stats.Sum += amount
-	stats.Count++
 
 	ack()
 }
@@ -140,15 +126,73 @@ func (f *AvgByTypeFilter) handleSecondPeriod(moneyLaundry *protobuf.MoneyLaundry
 	}
 
 	clientID := moneyLaundry.GetClientID()
-	paymentFormat := tx.GetPaymentFormat()
+	if err := f.handleSecondPeriodTx(clientID, tx); err != nil {
+		nack()
+		return
+	}
 
+	ack()
+}
+
+func (f *AvgByTypeFilter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransactionBatch{})
+	if err != nil {
+		nack()
+		return
+	}
+
+	clientID := moneyLaundry.GetClientID()
+	for _, tx := range batch.GetItems() {
+		switch tx.GetPeriod() {
+		case protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_FIRST:
+			if err := f.handleFirstPeriodTx(clientID, tx); err != nil {
+				nack()
+				return
+			}
+		case protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_SECOND:
+			if err := f.handleSecondPeriodTx(clientID, tx); err != nil {
+				nack()
+				return
+			}
+		default:
+			nack()
+			return
+		}
+	}
+
+	ack()
+}
+
+func (f *AvgByTypeFilter) handleFirstPeriodTx(clientID string, tx *protobuf.AvgByTypeTransaction) error {
+	amount, err := strconv.ParseFloat(tx.GetAmountPaid(), 64)
+	if err != nil {
+		return err
+	}
+
+	paymentFormat := tx.GetPaymentFormat()
+	if _, exists := f.period1Stats[clientID]; !exists {
+		f.period1Stats[clientID] = make(map[string]*AvgByTypeStats)
+	}
+
+	stats, exists := f.period1Stats[clientID][paymentFormat]
+	if !exists {
+		stats = &AvgByTypeStats{}
+		f.period1Stats[clientID][paymentFormat] = stats
+	}
+
+	stats.Sum += amount
+	stats.Count++
+	return nil
+}
+
+func (f *AvgByTypeFilter) handleSecondPeriodTx(clientID string, tx *protobuf.AvgByTypeTransaction) error {
+	paymentFormat := tx.GetPaymentFormat()
 	if _, exists := f.period2Transactions[clientID]; !exists {
 		f.period2Transactions[clientID] = make(map[string][]*protobuf.AvgByTypeTransaction)
 	}
 
 	f.period2Transactions[clientID][paymentFormat] = append(f.period2Transactions[clientID][paymentFormat], tx)
-
-	ack()
+	return nil
 }
 
 func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {

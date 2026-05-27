@@ -8,4 +8,15 @@ message AvgByTypeTransaction {
     string account = 1;
     string amount_paid = 2;
     string payment_format = 3;
+    AvgByTypePeriod period = 4;
+}
+
+message AvgByTypeTransactionBatch {
+    repeated AvgByTypeTransaction items = 1;
+}
+
+enum AvgByTypePeriod {
+    AVGBYTYPE_PERIOD_UNSPECIFIED = 0;
+    AVGBYTYPE_PERIOD_FIRST = 1;
+    AVGBYTYPE_PERIOD_SECOND = 2;
 }

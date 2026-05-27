@@ -41,8 +41,9 @@ type PeriodFilterWorker struct {
 	query3Coordinator *c.EOFCoordinator
 	query4Coordinator *c.EOFCoordinator
 
-	rawCoordinator *c.EOFCoordinator
-	rawBatchers    map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]
+	rawCoordinator    *c.EOFCoordinator
+	rawBatchers       map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]
+	avgByTypeBatchers map[string]*batch.Batcher[*protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch]
 }
 
 type PeriodFilterWorkerConfig struct {
@@ -158,6 +159,7 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		paymentTypeFilterQueue: paymentTypeFilterQueue,
 		paymentTypeRouterQueue: paymentTypeRouterQueue,
 		rawBatchers:            make(map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]),
+		avgByTypeBatchers:      make(map[string]*batch.Batcher[*protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch]),
 	}
 
 	rawCoordinatorConfig := c.EOFCoordinatorConfig{
@@ -304,6 +306,12 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 	}
 
 	clientID := moneyLaundry.GetClientID()
+	if batcher := pf.avgByTypeBatchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
+	}
 	eofMessage := moneyLaundry.GetEofMessage()
 	if err := pf.query4Coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
 		nack()
@@ -338,6 +346,12 @@ func (pf *PeriodFilterWorker) handlePeriodFilterBatchMessage(moneyLaundry *proto
 		}
 	}
 
+	if batcher := pf.avgByTypeBatchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
+	}
 	ack()
 }
 
@@ -416,14 +430,14 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, timestamp time.Time) error {
 
 	if pf.query3Period1.Contains(timestamp) {
-		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD)
+		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_FIRST)
 		if err != nil {
 			return err
 		}
 	}
 
 	if pf.query3Period2.Contains(timestamp) {
-		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.MessageType_AVGBYTYPE_SECOND_PERIOD)
+		err := pf.publishToPaymentTypeRouter(periodFilterMsg, clientID, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_SECOND)
 		if err != nil {
 			return err
 		}
@@ -436,20 +450,14 @@ func (pf *PeriodFilterWorker) checkToPublishToPaymentTypeRouter(periodFilterMsg 
 	return nil
 }
 
-func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, messageType protobuf.MessageType) error {
+func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protobuf.PeriodFilter, clientID string, period protobuf.AvgByTypePeriod) error {
 	avgByTypeTransaction := &protobuf.AvgByTypeTransaction{
 		Account:       periodFilterMsg.GetAccount(),
 		AmountPaid:    periodFilterMsg.GetAmountPaid(),
 		PaymentFormat: periodFilterMsg.GetPaymentFormat(),
+		Period:        period,
 	}
-
-	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, avgByTypeTransaction, messageType)
-
-	if err != nil {
-		return err
-	}
-
-	if err := pf.paymentTypeRouterQueue.Send(*serializedMsg); err != nil {
+	if err := pf.getAvgByTypeBatcher(clientID).Add(avgByTypeTransaction); err != nil {
 		return err
 	}
 
@@ -458,6 +466,42 @@ func (pf *PeriodFilterWorker) publishToPaymentTypeRouter(periodFilterMsg *protob
 	}
 
 	return nil
+}
+
+func (pf *PeriodFilterWorker) getAvgByTypeBatcher(clientID string) *batch.Batcher[*protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch] {
+	if batcher, ok := pf.avgByTypeBatchers[clientID]; ok {
+		return batcher
+	}
+
+	avgByTypeBatch := batch.New(
+		0,
+		protowrappers.ProtoSizer[*protobuf.AvgByTypeTransaction](),
+		protowrappers.WrapAvgByTypeTransactions,
+	)
+
+	onFlush := func(batch *protobuf.AvgByTypeTransactionBatch) error {
+		return pf.sendAvgByTypeBatch(clientID, batch)
+	}
+
+	batcher := batch.NewBatcher(avgByTypeBatch, onFlush)
+	pf.avgByTypeBatchers[clientID] = batcher
+	return batcher
+}
+
+func (pf *PeriodFilterWorker) sendAvgByTypeBatch(clientID string, batch *protobuf.AvgByTypeTransactionBatch) error {
+	innerMessage := &protobuf.MoneyLaundry_AvgbytypeTransactionBatch{
+		AvgbytypeTransactionBatch: batch,
+	}
+	serializedMsg, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH,
+		innerMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return pf.paymentTypeRouterQueue.Send(serializedMsg)
 }
 
 func (pf *PeriodFilterWorker) handleEOFMessageFromRaw(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
