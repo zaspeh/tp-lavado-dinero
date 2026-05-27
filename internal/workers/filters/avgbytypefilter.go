@@ -71,7 +71,7 @@ func (f *AvgByTypeFilter) Run() error {
 	f.inputExchange.StartConsuming(
 		func(msg middleware.Message, ack, nack func()) {
 
-			moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+			moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 			if err != nil {
 				nack()
 				return
@@ -79,18 +79,10 @@ func (f *AvgByTypeFilter) Run() error {
 
 			switch moneyLaundry.GetType() {
 
-			case protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD:
-				f.handleFirstPeriod(moneyLaundry, ack, nack)
-
-			case protobuf.MessageType_AVGBYTYPE_SECOND_PERIOD:
-				f.handleSecondPeriod(moneyLaundry, ack, nack)
-
 			case protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH:
 				f.handleBatch(moneyLaundry, ack, nack)
-
 			case protobuf.MessageType_EOF_:
 				f.handleEOF(moneyLaundry, ack, nack)
-
 			default:
 				nack()
 			}
@@ -100,70 +92,7 @@ func (f *AvgByTypeFilter) Run() error {
 	return nil
 }
 
-func (f *AvgByTypeFilter) handleFirstPeriod(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-
-	tx, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
-	if err != nil {
-		nack()
-		return
-	}
-
-	clientID := moneyLaundry.GetClientID()
-	if err := f.handleFirstPeriodTx(clientID, tx); err != nil {
-		nack()
-		return
-	}
-
-	ack()
-}
-
-func (f *AvgByTypeFilter) handleSecondPeriod(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-
-	tx, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
-	if err != nil {
-		nack()
-		return
-	}
-
-	clientID := moneyLaundry.GetClientID()
-	if err := f.handleSecondPeriodTx(clientID, tx); err != nil {
-		nack()
-		return
-	}
-
-	ack()
-}
-
-func (f *AvgByTypeFilter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransactionBatch{})
-	if err != nil {
-		nack()
-		return
-	}
-
-	clientID := moneyLaundry.GetClientID()
-	for _, tx := range batch.GetItems() {
-		switch tx.GetPeriod() {
-		case protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_FIRST:
-			if err := f.handleFirstPeriodTx(clientID, tx); err != nil {
-				nack()
-				return
-			}
-		case protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_SECOND:
-			if err := f.handleSecondPeriodTx(clientID, tx); err != nil {
-				nack()
-				return
-			}
-		default:
-			nack()
-			return
-		}
-	}
-
-	ack()
-}
-
-func (f *AvgByTypeFilter) handleFirstPeriodTx(clientID string, tx *protobuf.AvgByTypeTransaction) error {
+func (f *AvgByTypeFilter) handleFirstPeriod(clientID string, tx *protobuf.AvgByTypeTransaction) error {
 	amount, err := strconv.ParseFloat(tx.GetAmountPaid(), 64)
 	if err != nil {
 		return err
@@ -185,7 +114,7 @@ func (f *AvgByTypeFilter) handleFirstPeriodTx(clientID string, tx *protobuf.AvgB
 	return nil
 }
 
-func (f *AvgByTypeFilter) handleSecondPeriodTx(clientID string, tx *protobuf.AvgByTypeTransaction) error {
+func (f *AvgByTypeFilter) handleSecondPeriod(clientID string, tx *protobuf.AvgByTypeTransaction) error {
 	paymentFormat := tx.GetPaymentFormat()
 	if _, exists := f.period2Transactions[clientID]; !exists {
 		f.period2Transactions[clientID] = make(map[string][]*protobuf.AvgByTypeTransaction)
@@ -193,6 +122,30 @@ func (f *AvgByTypeFilter) handleSecondPeriodTx(clientID string, tx *protobuf.Avg
 
 	f.period2Transactions[clientID][paymentFormat] = append(f.period2Transactions[clientID][paymentFormat], tx)
 	return nil
+}
+
+func (f *AvgByTypeFilter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	avgTypeBatch := moneyLaundry.GetAvgbytypeTransactionBatch()
+	clientID := moneyLaundry.GetClientID()
+	for _, tx := range avgTypeBatch.GetItems() {
+		switch tx.GetPeriod() {
+		case protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_FIRST:
+			if err := f.handleFirstPeriod(clientID, tx); err != nil {
+				nack()
+				return
+			}
+		case protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_SECOND:
+			if err := f.handleSecondPeriod(clientID, tx); err != nil {
+				nack()
+				return
+			}
+		default:
+			nack()
+			return
+		}
+	}
+
+	ack()
 }
 
 func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {

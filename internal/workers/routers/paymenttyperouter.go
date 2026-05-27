@@ -109,47 +109,64 @@ func (r *PaymentTypeRouter) Run() error {
 }
 
 func (r *PaymentTypeRouter) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-
-	case protobuf.MessageType_AVGBYTYPE_FIRST_PERIOD,
-		protobuf.MessageType_AVGBYTYPE_SECOND_PERIOD:
-		r.handleAvgByTypeTransaction(msg, moneyLaundry, ack, nack)
-
+	case protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH:
+		r.handleAvgByTypeBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		r.handleEOFMessage(msg, ack, nack)
-
 	default:
 		nack()
 	}
 }
 
-func (r *PaymentTypeRouter) handleAvgByTypeTransaction(msg middleware.Message, moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	transaction, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeTransaction{})
-	if err != nil {
-		nack()
-		return
-	}
-	workerKey := r.selectWorkerKey(transaction.GetPaymentFormat())
-
-	if err := r.paymentTypeExchange.SendWithKey(workerKey, msg); err != nil {
-		nack()
-		return
+func (r *PaymentTypeRouter) handleAvgByTypeBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	avgTypeBatch := moneyLaundry.GetAvgbytypeTransactionBatch()
+	items := avgTypeBatch.GetItems()
+	clientID := moneyLaundry.GetClientID()
+	batchesByKey := make(map[string][]*protobuf.AvgByTypeTransaction)
+	for _, tx := range items {
+		workerKey := r.selectWorkerKey(tx.GetPaymentFormat())
+		batchesByKey[workerKey] = append(batchesByKey[workerKey], tx)
 	}
 
-	if err := r.coordinator.RecordProcessed(moneyLaundry.GetClientID()); err != nil {
-		nack()
-		return
+	for workerKey, batchMessages := range batchesByKey {
+		inner := &protobuf.MoneyLaundry_AvgbytypeTransactionBatch{
+			AvgbytypeTransactionBatch: &protobuf.AvgByTypeTransactionBatch{
+				Items: batchMessages},
+		}
+
+		msg, err := protobuf.SerializeProtoMessageONTRIAL(
+			clientID,
+			protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH,
+			inner,
+		)
+
+		if err != nil {
+			nack()
+			return
+		}
+
+		if err := r.paymentTypeExchange.SendWithKey(workerKey, msg); err != nil {
+			nack()
+			return
+		}
 	}
 
-	if err := r.coordinator.RecordSurvivor(moneyLaundry.GetClientID()); err != nil {
-		nack()
-		return
+	for range items {
+		if err := r.coordinator.RecordProcessed(clientID); err != nil {
+			nack()
+			return
+		}
+		if err := r.coordinator.RecordSurvivor(clientID); err != nil {
+			nack()
+			return
+		}
 	}
 
 	ack()
@@ -161,7 +178,6 @@ func (r *PaymentTypeRouter) handleEOFMessage(msg middleware.Message, ack, nack f
 		nack()
 		return
 	}
-	slog.Info("routing EOF to payment type workers")
 
 	eofMessage := moneyLaundry.GetEofMessage()
 	if err := r.coordinator.HandleLocalEOF(moneyLaundry.GetClientID(), eofMessage.GetTotalTransactions()); err != nil {
@@ -173,28 +189,21 @@ func (r *PaymentTypeRouter) handleEOFMessage(msg middleware.Message, ack, nack f
 
 func (r *PaymentTypeRouter) handleSignals() {
 	signals := make(chan os.Signal, 1)
-
 	signal.Notify(
 		signals,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 	)
-
 	<-signals
-
 	slog.Info("shutdown signal received")
-
 	r.inputQueue.Close()
 	r.coordinator.Close()
 	r.paymentTypeExchange.Close()
 }
 
 func (r *PaymentTypeRouter) selectWorkerKey(paymentFormat string) string {
-
 	h := fnv.New32a()
-
 	_, _ = h.Write([]byte(paymentFormat))
-
 	return r.avgByTypeExchangeKeys[h.Sum32()%uint32(r.maxWorkersAmount)]
 }
 
