@@ -10,3 +10,7 @@ message ScatterGather {
 	string account = 3;
 	string to_account = 4;
 }
+
+message ScatterGatherBatch {
+    repeated ScatterGather items = 1;
+}

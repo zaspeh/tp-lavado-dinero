@@ -90,3 +90,9 @@ func WrapMaxBankResults(results []*protobuf.MaxBankResult) *protobuf.MaxBankResu
 		Results: results,
 	}
 }
+
+func WrapScatterGather(items []*protobuf.ScatterGather) *protobuf.ScatterGatherBatch {
+	return &protobuf.ScatterGatherBatch{
+		Items: items,
+	}
+}

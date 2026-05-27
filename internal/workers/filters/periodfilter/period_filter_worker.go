@@ -12,7 +12,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
@@ -41,9 +40,10 @@ type PeriodFilterWorker struct {
 	query3Coordinator *c.EOFCoordinator
 	query4Coordinator *c.EOFCoordinator
 
-	rawCoordinator    *c.EOFCoordinator
-	rawBatchers       map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]
-	avgByTypeBatchers map[string]*batch.Batcher[*protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch]
+	rawCoordinator        *c.EOFCoordinator
+	rawBatchers           map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]
+	avgByTypeBatchers     map[string]*batch.Batcher[*protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch]
+	scatterGatherBatchers map[string]*batch.Batcher[*protobuf.ScatterGather, *protobuf.ScatterGatherBatch]
 }
 
 type PeriodFilterWorkerConfig struct {
@@ -160,6 +160,7 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 		paymentTypeRouterQueue: paymentTypeRouterQueue,
 		rawBatchers:            make(map[string]*batch.Batcher[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]),
 		avgByTypeBatchers:      make(map[string]*batch.Batcher[*protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch]),
+		scatterGatherBatchers:  make(map[string]*batch.Batcher[*protobuf.ScatterGather, *protobuf.ScatterGatherBatch]),
 	}
 
 	rawCoordinatorConfig := c.EOFCoordinatorConfig{
@@ -407,12 +408,7 @@ func (pf *PeriodFilterWorker) publishScatterGatherMessage(periodFilterMsg *proto
 		ToAccount: periodFilterMsg.GetToAccount(),
 	}
 
-	serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, scatterGatherMsg, protobuf.MessageType_SCATTERGATHER)
-	if err != nil {
-		return err
-	}
-
-	if err := pf.originDestinationQueue.Send(*serializedMsg); err != nil {
+	if err := pf.getScatterGatherBatcher(clientID).Add(scatterGatherMsg); err != nil {
 		return err
 	}
 
@@ -488,6 +484,26 @@ func (pf *PeriodFilterWorker) getAvgByTypeBatcher(clientID string) *batch.Batche
 	return batcher
 }
 
+func (pf *PeriodFilterWorker) getScatterGatherBatcher(clientID string) *batch.Batcher[*protobuf.ScatterGather, *protobuf.ScatterGatherBatch] {
+	if batcher, ok := pf.scatterGatherBatchers[clientID]; ok {
+		return batcher
+	}
+
+	scatterGatherBatch := batch.New(
+		0,
+		protowrappers.ProtoSizer[*protobuf.ScatterGather](),
+		protowrappers.WrapScatterGather,
+	)
+
+	onFlush := func(batch *protobuf.ScatterGatherBatch) error {
+		return pf.sendScatterGatherBatch(clientID, batch)
+	}
+
+	batcher := batch.NewBatcher(scatterGatherBatch, onFlush)
+	pf.scatterGatherBatchers[clientID] = batcher
+	return batcher
+}
+
 func (pf *PeriodFilterWorker) sendAvgByTypeBatch(clientID string, batch *protobuf.AvgByTypeTransactionBatch) error {
 	innerMessage := &protobuf.MoneyLaundry_AvgbytypeTransactionBatch{
 		AvgbytypeTransactionBatch: batch,
@@ -502,6 +518,22 @@ func (pf *PeriodFilterWorker) sendAvgByTypeBatch(clientID string, batch *protobu
 	}
 
 	return pf.paymentTypeRouterQueue.Send(serializedMsg)
+}
+
+func (pf *PeriodFilterWorker) sendScatterGatherBatch(clientID string, batch *protobuf.ScatterGatherBatch) error {
+	innerMessage := &protobuf.MoneyLaundry_ScattergatherBatch{
+		ScattergatherBatch: batch,
+	}
+	serializedMsg, err := protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_SCATTERGATHER_BATCH,
+		innerMessage,
+	)
+	if err != nil {
+		return err
+	}
+
+	return pf.originDestinationQueue.Send(serializedMsg)
 }
 
 func (pf *PeriodFilterWorker) handleEOFMessageFromRaw(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
