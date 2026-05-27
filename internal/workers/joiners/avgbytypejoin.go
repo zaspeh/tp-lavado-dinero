@@ -127,15 +127,6 @@ func (j *AvgByTypeJoin) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack
 	ack()
 }
 
-func (j *AvgByTypeJoin) sendResult(result *protobuf.AvgByTypeResult) error {
-	msg, err := serializer.SerializeProtoMessage(result, protobuf.MessageType_AVGBYTYPE_RESULT)
-	if err != nil {
-		return err
-	}
-
-	return j.resultExchange.Send(*msg)
-}
-
 func (j *AvgByTypeJoin) sendEOF(clientID string) error {
 	eof := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{},
@@ -152,7 +143,6 @@ func (j *AvgByTypeJoin) sendEOF(clientID string) error {
 
 func (j *AvgByTypeJoin) handleSignals() {
 	signals := make(chan os.Signal, 1)
-
 	signal.Notify(
 		signals,
 		syscall.SIGINT,
@@ -160,9 +150,7 @@ func (j *AvgByTypeJoin) handleSignals() {
 	)
 
 	<-signals
-
 	slog.Info("shutdown signal received")
-
 	j.inputQueue.Close()
 	j.resultExchange.Close()
 }

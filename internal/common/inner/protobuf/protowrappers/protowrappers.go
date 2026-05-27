@@ -60,6 +60,12 @@ func WrapAvgByTypeTransactions(items []*protobuf.AvgByTypeTransaction) *protobuf
 	}
 }
 
+func WrapAvgByTypeResults(items []*protobuf.AvgByTypeResult) *protobuf.AvgByTypeResultBatch {
+	return &protobuf.AvgByTypeResultBatch{
+		Results: items,
+	}
+}
+
 func WrapConvertedAmounts(items []*protobuf.ConvertedAmount) *protobuf.ConvertedAmountBatch {
 	return &protobuf.ConvertedAmountBatch{
 		Items: items,

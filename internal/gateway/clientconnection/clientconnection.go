@@ -332,26 +332,18 @@ func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
 }
 
 func (cc *ClientConnection) handleAvgByTypeResult(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	avgResult, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.AvgByTypeResult{})
+	avgResults, err := messagehandler.ProtoToAvgByTypeResults(moneyLaundry)
 	if err != nil {
 		nack()
 		return
 	}
 
-	slog.Info(
-		"sending avg by type result to client",
-		"account", avgResult.GetAccount(),
-		"amount", avgResult.GetAmountPaid(),
-	)
-
-	msgResult := &result.AvgByTypeResult{
-		Account:    avgResult.GetAccount(),
-		AmountPaid: avgResult.GetAmountPaid(),
-	}
-
-	if err := cc.protocol.SendAvgByTypeResult(msgResult); err != nil {
-		nack()
-		return
+	for i := range avgResults {
+		msgResult := &avgResults[i]
+		if err := cc.protocol.SendAvgByTypeResult(msgResult); err != nil {
+			nack()
+			return
+		}
 	}
 
 	ack()

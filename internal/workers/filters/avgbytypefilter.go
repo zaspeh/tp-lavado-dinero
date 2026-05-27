@@ -7,8 +7,10 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
@@ -162,6 +164,7 @@ func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, na
 	}
 
 	transactionsByFormat := f.period2Transactions[clientID]
+	resultBatcher := f.buildResultBatcher(clientID)
 
 	for paymentFormat, stats := range statsByFormat {
 
@@ -189,25 +192,16 @@ func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, na
 				AmountPaid: tx.GetAmountPaid(),
 			}
 
-			slog.Info(
-				"average calculated",
-				"clientID", clientID,
-				"paymentFormat", paymentFormat,
-				"average", average,
-				"threshold", threshold,
-			)
-
-			msg, err := serializer.SerializeProtoMessageWithClientID(clientID, result, protobuf.MessageType_AVGBYTYPE_RESULT)
-			if err != nil {
-				nack()
-				return
-			}
-
-			if err := f.outputQueue.Send(*msg); err != nil {
+			if err := resultBatcher.Add(result); err != nil {
 				nack()
 				return
 			}
 		}
+	}
+
+	if err := resultBatcher.Flush(); err != nil {
+		nack()
+		return
 	}
 
 	delete(f.period1Stats, clientID)
@@ -227,20 +221,33 @@ func (f *AvgByTypeFilter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, na
 	ack()
 }
 
+func (f *AvgByTypeFilter) buildResultBatcher(clientID string) *batch.Batcher[*protobuf.AvgByTypeResult, *protobuf.AvgByTypeResultBatch] {
+	sizer := protowrappers.ProtoSizer[*protobuf.AvgByTypeResult]()
+	wrapper := protowrappers.WrapAvgByTypeResults
+	resultBatch := batch.New(0, sizer, wrapper)
+	onFlush := func(batch *protobuf.AvgByTypeResultBatch) error {
+		return f.sendResultBatch(clientID, batch)
+	}
+	return batch.NewBatcher(resultBatch, onFlush)
+}
+
+func (f *AvgByTypeFilter) sendResultBatch(clientID string, batch *protobuf.AvgByTypeResultBatch) error {
+	msg, err := serializer.SerializeProtoMessageWithClientID(clientID, batch, protobuf.MessageType_AVGBYTYPE_RESULT)
+	if err != nil {
+		return err
+	}
+	return f.outputQueue.Send(*msg)
+}
+
 func (f *AvgByTypeFilter) handleSignals() {
-
 	signals := make(chan os.Signal, 1)
-
 	signal.Notify(
 		signals,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 	)
-
 	<-signals
-
 	slog.Info("shutdown signal received")
-
 	f.inputExchange.Close()
 	f.outputQueue.Close()
 }

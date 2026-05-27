@@ -94,6 +94,23 @@ func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxB
 	return externalMessage, nil
 }
 
+func ProtoToAvgByTypeResults(moneyLaundering *protobuf.MoneyLaundry) ([]result.AvgByTypeResult, error) {
+	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.AvgByTypeResultBatch{})
+	if err != nil {
+		return nil, err
+	}
+
+	results := batch.GetResults()
+	externalMessage := make([]result.AvgByTypeResult, 0, len(results))
+	for _, r := range results {
+		externalMessage = append(externalMessage, result.AvgByTypeResult{
+			Account:    r.GetAccount(),
+			AmountPaid: r.GetAmountPaid(),
+		})
+	}
+	return externalMessage, nil
+}
+
 func ProtoToConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry) (*result.ConvertedMicroPaymentResult, error) {
 	deserializeMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ConvertedMicroPaymentResult{})
 	if err != nil {

@@ -8,3 +8,7 @@ message AvgByTypeResult {
     string account = 1;
     string amount_paid = 2;
 }
+
+message AvgByTypeResultBatch {
+    repeated AvgByTypeResult results = 1;
+}
