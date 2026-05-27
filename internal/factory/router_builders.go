@@ -201,6 +201,11 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	inputWorkersAmount, err := getEnvIntStrict("INPUT_WORKERS_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
 	config := routers.IntermediaryRouterConfig{
 		ID:                            id,
 		InputQueueName:                inputQueue,
@@ -210,6 +215,7 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		MomPort:                       port,
 		WorkerCount:                   workerCount,
 		WorkerExchangeName:            workerExchangeName,
+		InputWorkersAmount:            inputWorkersAmount,
 	}
 
 	return routers.NewIntermediaryRouter(config)

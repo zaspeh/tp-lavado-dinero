@@ -89,9 +89,6 @@ func (j *AvgByTypeJoin) handleMessage(msg middleware.Message, ack, nack func()) 
 }
 
 func (j *AvgByTypeJoin) handleResult(msg middleware.Message, clientID string, ack, nack func()) {
-	slog.Info(
-		"received avg by type result",
-	)
 	key := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
 	if err := j.resultExchange.SendWithKey(key, msg); err != nil {
 		nack()
@@ -116,6 +113,8 @@ func (j *AvgByTypeJoin) handleEOF(moneyLaundry *protobuf.MoneyLaundry, ack, nack
 		ack()
 		return
 	}
+
+	slog.Info("Received all EOFs for client, forwarding EOF", "clientID", clientID)
 
 	delete(j.receivedEOFs, clientID)
 

@@ -31,6 +31,7 @@ type IntermediaryRouterConfig struct {
 	MomPort                       int
 	WorkerCount                   int
 	WorkerExchangeName            string
+	InputWorkersAmount            int
 }
 
 func NewIntermediaryRouter(config IntermediaryRouterConfig) (*IntermediaryRouter, error) {
@@ -67,7 +68,7 @@ func NewIntermediaryRouter(config IntermediaryRouterConfig) (*IntermediaryRouter
 		ConnSettings:      connSettings,
 		WorkerID:          config.ID,
 		WorkerCount:       config.WorkerCount,
-		ExpectedEOFs:      2,
+		ExpectedEOFs:      config.InputWorkersAmount,
 		FlushHandler:      intermediaryRouter.handleFlush,
 	}
 
