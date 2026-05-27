@@ -12,6 +12,7 @@ import "internal/common/inner/protobuf/microtransaction.proto";
 import "internal/common/inner/protobuf/periodfilter.proto";
 import "internal/common/inner/protobuf/avgbytypetransaction.proto";
 import "internal/common/inner/protobuf/scattergather.proto";
+import "internal/common/inner/protobuf/intermediarypair.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -50,6 +51,7 @@ enum MessageType {
     CLEANUP = 29;
     AVGBYTYPE_TRANSACTION_BATCH = 30;
     SCATTERGATHER_BATCH = 31;
+    INTERMEDIARYPAIR_BATCH = 32;
 }
 
 message MoneyLaundry {
@@ -70,5 +72,6 @@ message MoneyLaundry {
         PeriodFilterBatch period_filter_batch = 12;
         AvgByTypeTransactionBatch avgbytype_transaction_batch = 13;
         ScatterGatherBatch scattergather_batch = 14;
+        IntermediaryPairBatch intermediarypair_batch = 15;
     }
 }

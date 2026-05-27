@@ -10,7 +10,6 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 )
 
@@ -132,14 +131,14 @@ func (odr *OriginDestinationRouter) handleSignals() {
 }
 
 func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_SCATTERGATHER:
+	case protobuf.MessageType_SCATTERGATHER_BATCH:
 		slog.Debug("Message ScatterGather Received")
 		odr.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
@@ -152,47 +151,94 @@ func (odr *OriginDestinationRouter) handleMessage(msg middleware.Message, ack, n
 
 func (odr *OriginDestinationRouter) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	clientID := moneyLaundry.GetClientID()
-	scatterGatherMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ScatterGather{})
-	if err != nil {
+	scatterGatherBatch := moneyLaundry.GetScattergatherBatch()
+
+	if scatterGatherBatch == nil || len(scatterGatherBatch.GetItems()) == 0 {
+		ack()
+		return
+	}
+
+	originBatchesByKey := make(map[string][]*protobuf.ScatterGather)
+	destinationBatchesByKey := make(map[string][]*protobuf.ScatterGather)
+	for _, scatterGatherMessage := range scatterGatherBatch.GetItems() {
+		origin := scatterGatherMessage.GetFromBank()
+		account := scatterGatherMessage.GetAccount()
+
+		workerKey := odr.selectOriginWorker(origin, account)
+		originBatchesByKey[workerKey] = append(originBatchesByKey[workerKey], scatterGatherMessage)
+	}
+
+	for _, scatterGatherMessage := range scatterGatherBatch.GetItems() {
+		destination := scatterGatherMessage.GetToBank()
+		account := scatterGatherMessage.GetToAccount()
+
+		workerKey := odr.selectDestinationWorker(destination, account)
+		destinationBatchesByKey[workerKey] = append(destinationBatchesByKey[workerKey], scatterGatherMessage)
+	}
+
+	if err := odr.publishToGroupByOrigin(originBatchesByKey, clientID); err != nil {
 		nack()
 		return
 	}
 
-	if err := odr.publishToGroupByOrigin(scatterGatherMsg, msg); err != nil {
+	if err := odr.publishToGroupByDestination(destinationBatchesByKey, clientID); err != nil {
 		nack()
 		return
 	}
 
-	if err := odr.publishToGroupByDestination(scatterGatherMsg, msg); err != nil {
-		nack()
-		return
-	}
+	for _, _ = range scatterGatherBatch.GetItems() {
+		if err := odr.coordinator.RecordProcessed(clientID); err != nil {
+			nack()
+			return
+		}
 
-	if err := odr.coordinator.RecordProcessed(clientID); err != nil {
-		nack()
-		return
-	}
-
-	if err := odr.coordinator.RecordSurvivor(clientID); err != nil {
-		nack()
-		return
+		if err := odr.coordinator.RecordSurvivor(clientID); err != nil {
+			nack()
+			return
+		}
 	}
 
 	ack()
 }
 
-func (odr *OriginDestinationRouter) publishToGroupByOrigin(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message) error {
-	originBank := scatterGatherMsg.GetFromBank()
-	originAccount := scatterGatherMsg.GetAccount()
-	workerKey := odr.selectOriginWorker(originBank, originAccount)
-	return odr.groupByOriginExchange.SendWithKey(workerKey, msg)
+func (odr *OriginDestinationRouter) publishToGroupByOrigin(originBatchesByKey map[string][]*protobuf.ScatterGather, clientID string) error {
+	for workerKey, batches := range originBatchesByKey {
+		innerMessage := &protobuf.MoneyLaundry_ScattergatherBatch{
+			ScattergatherBatch: &protobuf.ScatterGatherBatch{
+				Items: batches,
+			},
+		}
+
+		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_SCATTERGATHER_BATCH, innerMessage)
+		if err != nil {
+			return err
+		}
+
+		if err := odr.groupByOriginExchange.SendWithKey(workerKey, msg); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (odr *OriginDestinationRouter) publishToGroupByDestination(scatterGatherMsg *protobuf.ScatterGather, msg middleware.Message) error {
-	destinationBank := scatterGatherMsg.GetToBank()
-	destinationAccount := scatterGatherMsg.GetToAccount()
-	workerKey := odr.selectDestinationWorker(destinationBank, destinationAccount)
-	return odr.groupByDestinationExchange.SendWithKey(workerKey, msg)
+func (odr *OriginDestinationRouter) publishToGroupByDestination(destinationBatchesByKey map[string][]*protobuf.ScatterGather, clientID string) error {
+	for workerKey, batches := range destinationBatchesByKey {
+		innerMessage := &protobuf.MoneyLaundry_ScattergatherBatch{
+			ScattergatherBatch: &protobuf.ScatterGatherBatch{
+				Items: batches,
+			},
+		}
+
+		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_SCATTERGATHER_BATCH, innerMessage)
+		if err != nil {
+			return err
+		}
+
+		if err := odr.groupByDestinationExchange.SendWithKey(workerKey, msg); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (odr *OriginDestinationRouter) selectOriginWorker(bank int32, account string) string {

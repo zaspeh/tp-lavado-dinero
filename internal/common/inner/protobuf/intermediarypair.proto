@@ -2,11 +2,15 @@ syntax = "proto3";
 
 package protobuf;
 
-import "account.proto";
+import "internal/common/inner/protobuf/account.proto";
 
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
 message IntermediaryPair {
   Account intermediary = 1;
   Account account = 2;
+}
+
+message IntermediaryPairBatch {
+    repeated IntermediaryPair items = 1;
 }

@@ -131,6 +131,7 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 		return
 	}
 
+	batchesByKey := make(map[string][]*protobuf.IntermediaryPair)
 	for _, group := range batch.GetGroups() {
 		baseAccount := group.GetBaseAccount()
 
@@ -143,16 +144,7 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 
 			workerKey := ir.selectWorkerKey(intermediary)
 
-			serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, match, protobuf.MessageType_INTERMEDIARYPAIR)
-			if err != nil {
-				nack()
-				return
-			}
-
-			if err := ir.aggregateByIntermediaryExchange.SendWithKey(workerKey, *serializedMsg); err != nil {
-				nack()
-				return
-			}
+			batchesByKey[workerKey] = append(batchesByKey[workerKey], match)
 
 			if err := ir.coordinator.RecordSurvivor(clientID); err != nil {
 				nack()
@@ -164,6 +156,26 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 			return
 		}
 	}
+
+	for workerKey, batchMessages := range batchesByKey {
+		innerMessage := &protobuf.MoneyLaundry_IntermediarypairBatch{
+			IntermediarypairBatch: &protobuf.IntermediaryPairBatch{
+				Items: batchMessages,
+			},
+		}
+
+		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_INTERMEDIARYPAIR_BATCH, innerMessage)
+		if err != nil {
+			nack()
+			return
+		}
+
+		if err := ir.aggregateByIntermediaryExchange.SendWithKey(workerKey, msg); err != nil {
+			nack()
+			return
+		}
+	}
+
 	ack()
 }
 

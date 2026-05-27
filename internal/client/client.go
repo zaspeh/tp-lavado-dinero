@@ -236,7 +236,7 @@ func (c *Client) receiveResults() error {
 			return err
 		}
 
-		slog.Info(
+		slog.Debug(
 			"result received",
 			"type",
 			fmt.Sprintf("%T", msg),

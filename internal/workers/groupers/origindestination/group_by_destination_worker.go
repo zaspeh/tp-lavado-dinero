@@ -75,43 +75,41 @@ func (gbdw *GroupByDestinationWorker) handleSignals() {
 }
 
 func (gbdw *GroupByDestinationWorker) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_SCATTERGATHER:
-		gbdw.handleScatterGatherMessage(moneyLaundry, msg, ack, nack)
+	case protobuf.MessageType_SCATTERGATHER_BATCH:
+		gbdw.handleScatterGatherBatch(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
-		slog.Debug("EOF received")
+		slog.Info("EOF received")
 		gbdw.handleEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
 		nack()
 	}
 }
 
-func (gbdw *GroupByDestinationWorker) handleScatterGatherMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
-	scatterGatherMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.ScatterGather{})
-	if err != nil {
-		nack()
-		return
+func (gbdw *GroupByDestinationWorker) handleScatterGatherBatch(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
+
+	scatterGatherBatch := moneyLaundry.GetScattergatherBatch()
+	store := gbdw.getStore(clientID)
+
+	for _, scatterGatherMsg := range scatterGatherBatch.GetItems() {
+		origin := Account{
+			Bank:    scatterGatherMsg.GetFromBank(),
+			Account: scatterGatherMsg.GetAccount(),
+		}
+		destination := Account{
+			Bank:    scatterGatherMsg.GetToBank(),
+			Account: scatterGatherMsg.GetToAccount(),
+		}
+
+		store.Add(destination, origin)
 	}
-
-	origin := Account{
-		Bank:    scatterGatherMsg.GetFromBank(),
-		Account: scatterGatherMsg.GetAccount(),
-	}
-
-	destination := Account{
-		Bank:    scatterGatherMsg.GetToBank(),
-		Account: scatterGatherMsg.GetToAccount(),
-	}
-
-	store := gbdw.getStore(moneyLaundry.GetClientID())
-
-	store.Add(destination, origin)
 
 	ack()
 }

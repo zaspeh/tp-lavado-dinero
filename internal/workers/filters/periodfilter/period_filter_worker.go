@@ -313,6 +313,14 @@ func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaund
 			return
 		}
 	}
+
+	if batcher := pf.scatterGatherBatchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
+	}
+
 	eofMessage := moneyLaundry.GetEofMessage()
 	if err := pf.query4Coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
 		nack()
@@ -353,6 +361,14 @@ func (pf *PeriodFilterWorker) handlePeriodFilterBatchMessage(moneyLaundry *proto
 			return
 		}
 	}
+
+	if batcher := pf.scatterGatherBatchers[clientID]; batcher != nil {
+		if err := batcher.Flush(); err != nil {
+			nack()
+			return
+		}
+	}
+
 	ack()
 }
 

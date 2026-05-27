@@ -100,15 +100,15 @@ func (abi *AggregateByIntermediaryWorker) handleSignals() {
 }
 
 func (abi *AggregateByIntermediaryWorker) handleOriginMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_INTERMEDIARYPAIR:
-		abi.handleOriginIntermediaryPairMessage(moneyLaundry, ack, nack)
+	case protobuf.MessageType_INTERMEDIARYPAIR_BATCH:
+		abi.handleOriginIntermediaryPairBatch(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		abi.handleOriginEOFMessage(moneyLaundry, msg, ack, nack)
 	default:
@@ -124,7 +124,7 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationMessage(msg middlewar
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_INTERMEDIARYPAIR:
+	case protobuf.MessageType_INTERMEDIARYPAIR_BATCH:
 		abi.handleDestinationIntermediaryPairMessage(moneyLaundry, ack, nack)
 	case protobuf.MessageType_EOF_:
 		abi.handleDestinationEOFMessage(moneyLaundry, msg, ack, nack)
@@ -133,50 +133,46 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationMessage(msg middlewar
 	}
 }
 
-func (abi *AggregateByIntermediaryWorker) handleOriginIntermediaryPairMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	intermediaryPairMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.IntermediaryPair{})
-	if err != nil {
-		nack()
-		return
+func (abi *AggregateByIntermediaryWorker) handleOriginIntermediaryPairBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
+	clientID := moneyLaundry.GetClientID()
+	intermediaryPairBatch := moneyLaundry.GetIntermediarypairBatch()
+	store := abi.getStore(clientID)
+
+	for _, intermediaryPairMsg := range intermediaryPairBatch.GetItems() {
+		origin := model.Account{
+			Bank:    intermediaryPairMsg.GetAccount().GetBank(),
+			Account: intermediaryPairMsg.GetAccount().GetAccount(),
+		}
+
+		intermediary := model.Account{
+			Bank:    intermediaryPairMsg.GetIntermediary().GetBank(),
+			Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
+		}
+
+		store.AddOrigin(intermediary, origin)
 	}
-
-	origin := model.Account{
-		Bank:    intermediaryPairMsg.GetAccount().GetBank(),
-		Account: intermediaryPairMsg.GetAccount().GetAccount(),
-	}
-
-	intermediary := model.Account{
-		Bank:    intermediaryPairMsg.GetIntermediary().GetBank(),
-		Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
-	}
-
-	store := abi.getStore(moneyLaundry.GetClientID())
-
-	store.AddOrigin(intermediary, origin)
 
 	ack()
 }
 
 func (abi *AggregateByIntermediaryWorker) handleDestinationIntermediaryPairMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	intermediaryPairMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.IntermediaryPair{})
-	if err != nil {
-		nack()
-		return
+	clientID := moneyLaundry.GetClientID()
+	intermediaryPairBatch := moneyLaundry.GetIntermediarypairBatch()
+	store := abi.getStore(clientID)
+
+	for _, intermediaryPairMsg := range intermediaryPairBatch.GetItems() {
+		destination := model.Account{
+			Bank:    intermediaryPairMsg.GetAccount().GetBank(),
+			Account: intermediaryPairMsg.GetAccount().GetAccount(),
+		}
+
+		intermediary := model.Account{
+			Bank:    intermediaryPairMsg.GetIntermediary().GetBank(),
+			Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
+		}
+
+		store.AddDestination(intermediary, destination)
 	}
-
-	destination := model.Account{
-		Bank:    intermediaryPairMsg.GetAccount().GetBank(),
-		Account: intermediaryPairMsg.GetAccount().GetAccount(),
-	}
-
-	intermediary := model.Account{
-		Bank:    intermediaryPairMsg.GetIntermediary().GetBank(),
-		Account: intermediaryPairMsg.GetIntermediary().GetAccount(),
-	}
-
-	store := abi.getStore(moneyLaundry.GetClientID())
-
-	store.AddDestination(intermediary, destination)
 
 	ack()
 }

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: suspiciousaccount.proto
+// source: internal/common/inner/protobuf/suspiciousaccount.proto
 
 package protobuf
 
@@ -30,7 +30,7 @@ type SuspiciousAccountBatch struct {
 
 func (x *SuspiciousAccountBatch) Reset() {
 	*x = SuspiciousAccountBatch{}
-	mi := &file_suspiciousaccount_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_suspiciousaccount_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *SuspiciousAccountBatch) String() string {
 func (*SuspiciousAccountBatch) ProtoMessage() {}
 
 func (x *SuspiciousAccountBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_suspiciousaccount_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_suspiciousaccount_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *SuspiciousAccountBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspiciousAccountBatch.ProtoReflect.Descriptor instead.
 func (*SuspiciousAccountBatch) Descriptor() ([]byte, []int) {
-	return file_suspiciousaccount_proto_rawDescGZIP(), []int{0}
+	return file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *SuspiciousAccountBatch) GetAccounts() []*Account {
@@ -65,32 +65,32 @@ func (x *SuspiciousAccountBatch) GetAccounts() []*Account {
 	return nil
 }
 
-var File_suspiciousaccount_proto protoreflect.FileDescriptor
+var File_internal_common_inner_protobuf_suspiciousaccount_proto protoreflect.FileDescriptor
 
-const file_suspiciousaccount_proto_rawDesc = "" +
+const file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDesc = "" +
 	"\n" +
-	"\x17suspiciousaccount.proto\x12\bprotobuf\x1a\raccount.proto\"G\n" +
+	"6internal/common/inner/protobuf/suspiciousaccount.proto\x12\bprotobuf\x1a,internal/common/inner/protobuf/account.proto\"G\n" +
 	"\x16SuspiciousAccountBatch\x12-\n" +
 	"\baccounts\x18\x01 \x03(\v2\x11.protobuf.AccountR\baccountsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
-	file_suspiciousaccount_proto_rawDescOnce sync.Once
-	file_suspiciousaccount_proto_rawDescData []byte
+	file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDescOnce sync.Once
+	file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDescData []byte
 )
 
-func file_suspiciousaccount_proto_rawDescGZIP() []byte {
-	file_suspiciousaccount_proto_rawDescOnce.Do(func() {
-		file_suspiciousaccount_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_suspiciousaccount_proto_rawDesc), len(file_suspiciousaccount_proto_rawDesc)))
+func file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDescGZIP() []byte {
+	file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDescOnce.Do(func() {
+		file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDesc), len(file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDesc)))
 	})
-	return file_suspiciousaccount_proto_rawDescData
+	return file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDescData
 }
 
-var file_suspiciousaccount_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_suspiciousaccount_proto_goTypes = []any{
+var file_internal_common_inner_protobuf_suspiciousaccount_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_internal_common_inner_protobuf_suspiciousaccount_proto_goTypes = []any{
 	(*SuspiciousAccountBatch)(nil), // 0: protobuf.SuspiciousAccountBatch
 	(*Account)(nil),                // 1: protobuf.Account
 }
-var file_suspiciousaccount_proto_depIdxs = []int32{
+var file_internal_common_inner_protobuf_suspiciousaccount_proto_depIdxs = []int32{
 	1, // 0: protobuf.SuspiciousAccountBatch.accounts:type_name -> protobuf.Account
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
@@ -99,27 +99,27 @@ var file_suspiciousaccount_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_suspiciousaccount_proto_init() }
-func file_suspiciousaccount_proto_init() {
-	if File_suspiciousaccount_proto != nil {
+func init() { file_internal_common_inner_protobuf_suspiciousaccount_proto_init() }
+func file_internal_common_inner_protobuf_suspiciousaccount_proto_init() {
+	if File_internal_common_inner_protobuf_suspiciousaccount_proto != nil {
 		return
 	}
-	file_account_proto_init()
+	file_internal_common_inner_protobuf_account_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_suspiciousaccount_proto_rawDesc), len(file_suspiciousaccount_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDesc), len(file_internal_common_inner_protobuf_suspiciousaccount_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_suspiciousaccount_proto_goTypes,
-		DependencyIndexes: file_suspiciousaccount_proto_depIdxs,
-		MessageInfos:      file_suspiciousaccount_proto_msgTypes,
+		GoTypes:           file_internal_common_inner_protobuf_suspiciousaccount_proto_goTypes,
+		DependencyIndexes: file_internal_common_inner_protobuf_suspiciousaccount_proto_depIdxs,
+		MessageInfos:      file_internal_common_inner_protobuf_suspiciousaccount_proto_msgTypes,
 	}.Build()
-	File_suspiciousaccount_proto = out.File
-	file_suspiciousaccount_proto_goTypes = nil
-	file_suspiciousaccount_proto_depIdxs = nil
+	File_internal_common_inner_protobuf_suspiciousaccount_proto = out.File
+	file_internal_common_inner_protobuf_suspiciousaccount_proto_goTypes = nil
+	file_internal_common_inner_protobuf_suspiciousaccount_proto_depIdxs = nil
 }

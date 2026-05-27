@@ -57,6 +57,7 @@ const (
 	MessageType_CLEANUP                                MessageType = 29
 	MessageType_AVGBYTYPE_TRANSACTION_BATCH            MessageType = 30
 	MessageType_SCATTERGATHER_BATCH                    MessageType = 31
+	MessageType_INTERMEDIARYPAIR_BATCH                 MessageType = 32
 )
 
 // Enum value maps for MessageType.
@@ -94,6 +95,7 @@ var (
 		29: "CLEANUP",
 		30: "AVGBYTYPE_TRANSACTION_BATCH",
 		31: "SCATTERGATHER_BATCH",
+		32: "INTERMEDIARYPAIR_BATCH",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                                   0,
@@ -128,6 +130,7 @@ var (
 		"CLEANUP":                                29,
 		"AVGBYTYPE_TRANSACTION_BATCH":            30,
 		"SCATTERGATHER_BATCH":                    31,
+		"INTERMEDIARYPAIR_BATCH":                 32,
 	}
 )
 
@@ -179,6 +182,7 @@ type MoneyLaundry struct {
 	//	*MoneyLaundry_PeriodFilterBatch
 	//	*MoneyLaundry_AvgbytypeTransactionBatch
 	//	*MoneyLaundry_ScattergatherBatch
+	//	*MoneyLaundry_IntermediarypairBatch
 	InnerMessage  isMoneyLaundry_InnerMessage `protobuf_oneof:"inner_message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -341,6 +345,15 @@ func (x *MoneyLaundry) GetScattergatherBatch() *ScatterGatherBatch {
 	return nil
 }
 
+func (x *MoneyLaundry) GetIntermediarypairBatch() *IntermediaryPairBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_IntermediarypairBatch); ok {
+			return x.IntermediarypairBatch
+		}
+	}
+	return nil
+}
+
 type isMoneyLaundry_InnerMessage interface {
 	isMoneyLaundry_InnerMessage()
 }
@@ -389,6 +402,10 @@ type MoneyLaundry_ScattergatherBatch struct {
 	ScattergatherBatch *ScatterGatherBatch `protobuf:"bytes,14,opt,name=scattergather_batch,json=scattergatherBatch,proto3,oneof"`
 }
 
+type MoneyLaundry_IntermediarypairBatch struct {
+	IntermediarypairBatch *IntermediaryPairBatch `protobuf:"bytes,15,opt,name=intermediarypair_batch,json=intermediarypairBatch,proto3,oneof"`
+}
+
 func (*MoneyLaundry_Transactions) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ToConvertBatch) isMoneyLaundry_InnerMessage() {}
@@ -411,11 +428,13 @@ func (*MoneyLaundry_AvgbytypeTransactionBatch) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ScattergatherBatch) isMoneyLaundry_InnerMessage() {}
 
+func (*MoneyLaundry_IntermediarypairBatch) isMoneyLaundry_InnerMessage() {}
+
 var File_internal_common_inner_protobuf_moneylaundry_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\x1a,internal/common/inner/protobuf/maxbank.proto\x1a5internal/common/inner/protobuf/microtransaction.proto\x1a1internal/common/inner/protobuf/periodfilter.proto\x1a9internal/common/inner/protobuf/avgbytypetransaction.proto\x1a2internal/common/inner/protobuf/scattergather.proto\"\xb5\b\n" +
+	"1internal/common/inner/protobuf/moneylaundry.proto\x12\bprotobuf\x1a0internal/common/inner/protobuf/transaction.proto\x1a/internal/common/inner/protobuf/conversion.proto\x1a(internal/common/inner/protobuf/eof.proto\x1a,internal/common/inner/protobuf/maxbank.proto\x1a5internal/common/inner/protobuf/microtransaction.proto\x1a1internal/common/inner/protobuf/periodfilter.proto\x1a9internal/common/inner/protobuf/avgbytypetransaction.proto\x1a2internal/common/inner/protobuf/scattergather.proto\x1a5internal/common/inner/protobuf/intermediarypair.proto\"\x8f\t\n" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
@@ -432,8 +451,9 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\x17microtransactions_batch\x18\v \x01(\v2\x1f.protobuf.MicrotransactionBatchH\x00R\x16microtransactionsBatch\x12M\n" +
 	"\x13period_filter_batch\x18\f \x01(\v2\x1b.protobuf.PeriodFilterBatchH\x00R\x11periodFilterBatch\x12e\n" +
 	"\x1bavgbytype_transaction_batch\x18\r \x01(\v2#.protobuf.AvgByTypeTransactionBatchH\x00R\x19avgbytypeTransactionBatch\x12O\n" +
-	"\x13scattergather_batch\x18\x0e \x01(\v2\x1c.protobuf.ScatterGatherBatchH\x00R\x12scattergatherBatchB\x0f\n" +
-	"\rinner_message*\xc7\x06\n" +
+	"\x13scattergather_batch\x18\x0e \x01(\v2\x1c.protobuf.ScatterGatherBatchH\x00R\x12scattergatherBatch\x12X\n" +
+	"\x16intermediarypair_batch\x18\x0f \x01(\v2\x1f.protobuf.IntermediaryPairBatchH\x00R\x15intermediarypairBatchB\x0f\n" +
+	"\rinner_message*\xe3\x06\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -467,7 +487,8 @@ const file_internal_common_inner_protobuf_moneylaundry_proto_rawDesc = "" +
 	"\x13PERIOD_FILTER_BATCH\x10\x1c\x12\v\n" +
 	"\aCLEANUP\x10\x1d\x12\x1f\n" +
 	"\x1bAVGBYTYPE_TRANSACTION_BATCH\x10\x1e\x12\x17\n" +
-	"\x13SCATTERGATHER_BATCH\x10\x1fB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x13SCATTERGATHER_BATCH\x10\x1f\x12\x1a\n" +
+	"\x16INTERMEDIARYPAIR_BATCH\x10 B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_moneylaundry_proto_rawDescOnce sync.Once
@@ -497,6 +518,7 @@ var file_internal_common_inner_protobuf_moneylaundry_proto_goTypes = []any{
 	(*PeriodFilterBatch)(nil),                 // 10: protobuf.PeriodFilterBatch
 	(*AvgByTypeTransactionBatch)(nil),         // 11: protobuf.AvgByTypeTransactionBatch
 	(*ScatterGatherBatch)(nil),                // 12: protobuf.ScatterGatherBatch
+	(*IntermediaryPairBatch)(nil),             // 13: protobuf.IntermediaryPairBatch
 }
 var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	0,  // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
@@ -511,11 +533,12 @@ var file_internal_common_inner_protobuf_moneylaundry_proto_depIdxs = []int32{
 	10, // 9: protobuf.MoneyLaundry.period_filter_batch:type_name -> protobuf.PeriodFilterBatch
 	11, // 10: protobuf.MoneyLaundry.avgbytype_transaction_batch:type_name -> protobuf.AvgByTypeTransactionBatch
 	12, // 11: protobuf.MoneyLaundry.scattergather_batch:type_name -> protobuf.ScatterGatherBatch
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	13, // 12: protobuf.MoneyLaundry.intermediarypair_batch:type_name -> protobuf.IntermediaryPairBatch
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_moneylaundry_proto_init() }
@@ -531,6 +554,7 @@ func file_internal_common_inner_protobuf_moneylaundry_proto_init() {
 	file_internal_common_inner_protobuf_periodfilter_proto_init()
 	file_internal_common_inner_protobuf_avgbytypetransaction_proto_init()
 	file_internal_common_inner_protobuf_scattergather_proto_init()
+	file_internal_common_inner_protobuf_intermediarypair_proto_init()
 	file_internal_common_inner_protobuf_moneylaundry_proto_msgTypes[0].OneofWrappers = []any{
 		(*MoneyLaundry_Transactions)(nil),
 		(*MoneyLaundry_ToConvertBatch)(nil),
@@ -543,6 +567,7 @@ func file_internal_common_inner_protobuf_moneylaundry_proto_init() {
 		(*MoneyLaundry_PeriodFilterBatch)(nil),
 		(*MoneyLaundry_AvgbytypeTransactionBatch)(nil),
 		(*MoneyLaundry_ScattergatherBatch)(nil),
+		(*MoneyLaundry_IntermediarypairBatch)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

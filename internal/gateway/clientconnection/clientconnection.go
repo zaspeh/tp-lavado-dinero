@@ -308,7 +308,6 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	case protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT:
 		cc.handleConvertedMicroPaymentResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_AVGBYTYPE_RESULT:
-		slog.Info("received avg by type result from exchange")
 		cc.handleAvgByTypeResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_SUSPICIOUS_ACCOUNT_BATCH:
 		cc.handleSuspiciousAccountBatch(moneyLaundry, ack, nack)
