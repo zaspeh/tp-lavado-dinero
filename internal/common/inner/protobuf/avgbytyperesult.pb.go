@@ -7,12 +7,11 @@
 package protobuf
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -126,9 +125,9 @@ const file_internal_common_inner_protobuf_avgbytyperesult_proto_rawDesc = "" +
 	"\x0fAvgByTypeResult\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1f\n" +
 	"\vamount_paid\x18\x02 \x01(\tR\n" +
-	"amountPaid\"F\n" +
-	"\x15AvgByTypeResultBatch\x12-\n" +
-	"\aresults\x18\x01 \x03(\v2\x17.protobuf.AvgByTypeResultR\aresultsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"amountPaid\"K\n" +
+	"\x14AvgByTypeResultBatch\x123\n" +
+	"\aresults\x18\x01 \x03(\v2\x19.protobuf.AvgByTypeResultR\aresultsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_avgbytyperesult_proto_rawDescOnce sync.Once
