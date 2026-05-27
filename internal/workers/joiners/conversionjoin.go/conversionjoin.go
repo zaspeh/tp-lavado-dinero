@@ -103,6 +103,7 @@ func (j *ConversionJoin) HandleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, r
 	slog.Info("Sending EOF for client", "client_id", clientID)
 
 	resultsCount := j.clientResults[clientID]
+	slog.Info("results count for client", "client_id", clientID, "count", resultsCount)
 	resultMsg := &protobuf.ConvertedMicroPaymentResult{
 		Count: int64(resultsCount),
 	}

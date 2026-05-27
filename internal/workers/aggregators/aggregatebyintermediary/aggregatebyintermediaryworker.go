@@ -21,11 +21,11 @@ type AggregateByIntermediaryWorker struct {
 
 	outputQueue middleware.Middleware
 
-	stores                     map[string]*IntermediaryStore
-	storesMu                   sync.RWMutex
-	eofMu                      sync.Mutex
-	eofReceivedFromOrigin      bool
-	eofReceivedFromDestination bool
+	stores                      map[string]*IntermediaryStore
+	storesMu                    sync.RWMutex
+	eofMu                       sync.Mutex
+	eofsReceivedFromOrigin      map[string]bool
+	eofsReceivedFromDestination map[string]bool
 
 	maxBatchWeight int
 }
@@ -67,11 +67,13 @@ func NewAggregateByIntermediaryWorker(config AggregateByIntermediaryWorkerConfig
 	}
 
 	return &AggregateByIntermediaryWorker{
-		originInputExchange:      originInputExchange,
-		destinationInputExchange: destinationInputExchange,
-		outputQueue:              outputQueue,
-		stores:                   make(map[string]*IntermediaryStore),
-		maxBatchWeight:           config.MaxBatchWeight,
+		originInputExchange:         originInputExchange,
+		destinationInputExchange:    destinationInputExchange,
+		outputQueue:                 outputQueue,
+		stores:                      make(map[string]*IntermediaryStore),
+		maxBatchWeight:              config.MaxBatchWeight,
+		eofsReceivedFromOrigin:      make(map[string]bool),
+		eofsReceivedFromDestination: make(map[string]bool),
 	}, nil
 }
 
@@ -180,10 +182,11 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationIntermediaryPairMessa
 func (abi *AggregateByIntermediaryWorker) handleOriginEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	abi.eofMu.Lock()
 	defer abi.eofMu.Unlock()
+	clientID := moneyLaundry.GetClientID()
 
-	abi.eofReceivedFromOrigin = true
+	abi.eofsReceivedFromOrigin[clientID] = true
 
-	if !abi.eofReceivedFromDestination {
+	if !abi.eofsReceivedFromDestination[clientID] {
 		ack()
 		return
 	}
@@ -226,9 +229,11 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationEOFMessage(moneyLaund
 	abi.eofMu.Lock()
 	defer abi.eofMu.Unlock()
 
-	abi.eofReceivedFromDestination = true
+	clientId := moneyLaundry.GetClientID()
 
-	if !abi.eofReceivedFromOrigin {
+	abi.eofsReceivedFromDestination[clientId] = true
+
+	if !abi.eofsReceivedFromOrigin[clientId] {
 		ack()
 		return
 	}

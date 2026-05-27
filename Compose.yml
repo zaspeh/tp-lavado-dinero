@@ -60,6 +60,27 @@ services:
     - gateway
     networks:
     - money_laundering_network
+  client_1:
+    build:
+      context: .
+      dockerfile: cmd/client/Dockerfile
+    container_name: client_1
+    environment:
+    - ID=1
+    - SERVER_HOST=gateway
+    - SERVER_PORT=8080
+    - INPUT_FILE_TRANSACTIONS=/datasets/client_1_transactions.csv
+    - INPUT_FILE_ACCOUNTS=/datasets/client_1_accounts.csv
+    - OUTPUT_DIR=/outputs
+    - MAX_BATCH_WEIGHT=8000
+    - LOG_LEVEL=info
+    volumes:
+    - ./datasets:/datasets
+    - ./outputs/client_1:/outputs
+    depends_on:
+    - gateway
+    networks:
+    - money_laundering_network
   currency_filter_0:
     build:
       context: .
@@ -271,12 +292,6 @@ services:
     - RAW_INPUT_QUEUE_NAME=raw_transactions
     - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
     - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_format_filter_input
-    - AVG_BY_TYPE_PERIOD_1_QUEUE_NAME=avg_by_type_p1
-    - AVG_BY_TYPE_PERIOD_2_QUEUE_NAME=avg_by_type_p2
-    - AVG_BY_TYPE_PERIOD_1_START=2022-09-06T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_1_END=2022-09-15T23:59:59Z
-    - AVG_BY_TYPE_PERIOD_2_START=2022-09-01T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_2_END=2022-09-05T23:59:59Z
     - SCATTER_GATHER_PERIOD_START=2022-09-01T00:00:00Z
     - SCATTER_GATHER_PERIOD_END=2022-09-05T23:59:59Z
     - PAYMENT_TYPE_PERIOD_START=2022-09-01T00:00:00Z
@@ -308,12 +323,6 @@ services:
     - RAW_INPUT_QUEUE_NAME=raw_transactions
     - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
     - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_format_filter_input
-    - AVG_BY_TYPE_PERIOD_1_QUEUE_NAME=avg_by_type_p1
-    - AVG_BY_TYPE_PERIOD_2_QUEUE_NAME=avg_by_type_p2
-    - AVG_BY_TYPE_PERIOD_1_START=2022-09-06T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_1_END=2022-09-15T23:59:59Z
-    - AVG_BY_TYPE_PERIOD_2_START=2022-09-01T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_2_END=2022-09-05T23:59:59Z
     - SCATTER_GATHER_PERIOD_START=2022-09-01T00:00:00Z
     - SCATTER_GATHER_PERIOD_END=2022-09-05T23:59:59Z
     - PAYMENT_TYPE_PERIOD_START=2022-09-01T00:00:00Z
@@ -345,12 +354,6 @@ services:
     - RAW_INPUT_QUEUE_NAME=raw_transactions
     - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
     - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_format_filter_input
-    - AVG_BY_TYPE_PERIOD_1_QUEUE_NAME=avg_by_type_p1
-    - AVG_BY_TYPE_PERIOD_2_QUEUE_NAME=avg_by_type_p2
-    - AVG_BY_TYPE_PERIOD_1_START=2022-09-06T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_1_END=2022-09-15T23:59:59Z
-    - AVG_BY_TYPE_PERIOD_2_START=2022-09-01T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_2_END=2022-09-05T23:59:59Z
     - SCATTER_GATHER_PERIOD_START=2022-09-01T00:00:00Z
     - SCATTER_GATHER_PERIOD_END=2022-09-05T23:59:59Z
     - PAYMENT_TYPE_PERIOD_START=2022-09-01T00:00:00Z
@@ -382,12 +385,6 @@ services:
     - RAW_INPUT_QUEUE_NAME=raw_transactions
     - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
     - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_format_filter_input
-    - AVG_BY_TYPE_PERIOD_1_QUEUE_NAME=avg_by_type_p1
-    - AVG_BY_TYPE_PERIOD_2_QUEUE_NAME=avg_by_type_p2
-    - AVG_BY_TYPE_PERIOD_1_START=2022-09-06T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_1_END=2022-09-15T23:59:59Z
-    - AVG_BY_TYPE_PERIOD_2_START=2022-09-01T00:00:00Z
-    - AVG_BY_TYPE_PERIOD_2_END=2022-09-05T23:59:59Z
     - SCATTER_GATHER_PERIOD_START=2022-09-01T00:00:00Z
     - SCATTER_GATHER_PERIOD_END=2022-09-05T23:59:59Z
     - PAYMENT_TYPE_PERIOD_START=2022-09-01T00:00:00Z

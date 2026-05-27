@@ -1,7 +1,6 @@
 package periodfilter
 
 import (
-	"errors"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -50,9 +49,6 @@ type PeriodFilterWorkerConfig struct {
 	UsdInputQueueName string
 	RawInputQueueName string
 
-	AvgByTypeQueueNames []string
-	AvgByTypePeriods    []Period
-
 	ScatterGatherPeriod              Period
 	OriginDestinationRouterQueueName string
 
@@ -82,9 +78,6 @@ type PeriodFilterWorkerConfig struct {
 }
 
 func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker, error) {
-	if len(config.AvgByTypePeriods) != len(config.AvgByTypeQueueNames) {
-		return nil, errors.New("period count must match avgByType queue count")
-	}
 
 	connSettings := middleware.ConnSettings{
 		Hostname: config.MomHost,
@@ -112,20 +105,6 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 	}
 	createdQueues = append(createdQueues, rawInputQueue)
 
-	var avgByTypeRoutes []AvgByTypeRoute
-	for i, queueName := range config.AvgByTypeQueueNames {
-		queue, err := middleware.CreateQueueMiddleware(queueName, connSettings)
-		if err != nil {
-			closeAllQueues()
-			return nil, err
-		}
-		avgByTypeRoutes = append(avgByTypeRoutes, AvgByTypeRoute{
-			Queue:  queue,
-			Period: config.AvgByTypePeriods[i],
-		})
-		createdQueues = append(createdQueues, queue)
-	}
-
 	originDestinationQueue, err := middleware.CreateQueueMiddleware(config.OriginDestinationRouterQueueName, connSettings)
 	if err != nil {
 		closeAllQueues()
@@ -150,7 +129,6 @@ func NewPeriodFilterWorker(config PeriodFilterWorkerConfig) (*PeriodFilterWorker
 	periodFilterWorker := &PeriodFilterWorker{
 		usdInputQueue:          usdInputQueue,
 		rawInputQueue:          rawInputQueue,
-		avgByTypeRoutes:        avgByTypeRoutes,
 		scatterGatherPeriod:    config.ScatterGatherPeriod,
 		originDestinationQueue: originDestinationQueue,
 		query3Period1:          config.Query3Period1,
@@ -250,9 +228,6 @@ func (pf *PeriodFilterWorker) handleSignals() {
 	slog.Info("shutdown signal received")
 	pf.usdInputQueue.Close()
 	pf.rawInputQueue.Close()
-	for _, route := range pf.avgByTypeRoutes {
-		route.Queue.Close()
-	}
 	pf.originDestinationQueue.Close()
 	pf.paymentTypeFilterQueue.Close()
 	pf.paymentTypeRouterQueue.Close()
@@ -298,13 +273,6 @@ func (pf *PeriodFilterWorker) handleRawMessage(msg middleware.Message, ack, nack
 func (pf *PeriodFilterWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, rawMsg middleware.Message, ack, nack func()) {
 	// At the moment, we just acknowledge and forward the EOF message to all output queues. Depending on the requirements, we might want to implement more complex logic here.
 	//handling errors
-
-	for _, route := range pf.avgByTypeRoutes {
-		if err := route.Queue.Send(rawMsg); err != nil {
-			nack()
-			return
-		}
-	}
 
 	clientID := moneyLaundry.GetClientID()
 	if batcher := pf.avgByTypeBatchers[clientID]; batcher != nil {
