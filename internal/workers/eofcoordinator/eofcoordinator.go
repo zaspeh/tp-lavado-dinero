@@ -40,6 +40,7 @@ type clientState struct {
 	eofSeenLocal   uint32
 	expectedTotal  uint64
 	peerCount      map[int]peerCount
+	flushed        bool
 }
 
 type EOFCoordinator struct {
@@ -239,6 +240,10 @@ func (c *EOFCoordinator) broadcastEOFCoordination(clientID string, state *client
 
 func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 	slog.Debug("Trying FLush")
+	if state.flushed {
+		slog.Debug("Already flushed", "clientID", clientID)
+		return nil
+	}
 	if state.eofSeenLocal < c.expectedEOFs {
 		slog.Debug("Seen Local < expectedEofs", "seen", state.eofSeenLocal, "expected", c.expectedEOFs)
 		return nil
@@ -257,7 +262,11 @@ func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 		return nil
 	}
 
-	return c.flushHandler(clientID, totalSurvivors)
+	if err := c.flushHandler(clientID, totalSurvivors); err != nil {
+		return err
+	}
+	state.flushed = true
+	return nil
 }
 
 func (c *EOFCoordinator) getClientState(clientID string) *clientState {
