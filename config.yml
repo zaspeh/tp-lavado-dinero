@@ -19,7 +19,7 @@ services:
     count: 1
     datasets_dir: ./datasets
     output_dir: ./outputs  
-    max_batch_weight: 8000   
+    max_batch_weight: 1000000   
     
   currency_filter:
     count: 2
@@ -87,9 +87,9 @@ services:
       PAYMENT_TYPE_PERIOD_END: "2022-09-05T23:59:59Z"
       PAYMENT_TYPE_ROUTER_QUEUE_NAME: payment_type_router_input
       QUERY3_PERIOD_1_START: "2022-09-01T00:00:00Z"
-      QUERY3_PERIOD_1_END:   "2022-09-05T23:59:59Z"
+      QUERY3_PERIOD_1_END:   "2022-09-05T23:59:59Z" 
       QUERY3_PERIOD_2_START: "2022-09-06T00:00:00Z"
-      QUERY3_PERIOD_2_END:   "2022-09-15T23:59:59Z"
+      QUERY3_PERIOD_2_END:   "2022-09-14T23:59:59Z"
 
   payment_type_router:
     count: 1

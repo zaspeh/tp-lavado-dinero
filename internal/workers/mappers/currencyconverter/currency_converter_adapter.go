@@ -93,7 +93,7 @@ func (c *CurrencyConverter) getRatesForDate(dateKey string) (map[string]float64,
 
 	finalRates["US Dollar"] = 1.0
 	if btcUSD, ok := bitcoinRatesUSD[dateKey]; ok {
-		finalRates["Bitcoin"] = 1.0 / btcUSD
+		finalRates["Bitcoin"] = btcUSD
 	}
 
 	c.ratesByDate[dateKey] = finalRates

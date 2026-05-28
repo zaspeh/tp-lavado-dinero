@@ -1,4 +1,4 @@
-.PHONY: generate up down logs clean
+.PHONY: generate up down logs clean test
 
 COMPOSE_FILE=Compose.yml
 GENERATOR_SCRIPT=scripts/generate-compose.py
@@ -20,3 +20,6 @@ clean:
 	rm -f $(COMPOSE_FILE)
 	docker compose -f $(COMPOSE_FILE) down -v --remove-orphans
 	docker image prune -f
+
+test:
+	@python3 scripts/verify_outputs.py --all
