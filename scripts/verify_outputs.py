@@ -35,6 +35,14 @@ QUERY_SPECS = {
         "sort": ["account", "amount"],
         "atol": 1e-2,
     },
+    "q4": {
+        "expected": EXPECTED_DIR / "q4_results.csv",
+        "actual": OUTPUTS_DIR / "q4_result.csv",
+        "columns": ["bank", "account"],
+        "types": {"bank": "str", "account": "str"},
+        "sort": ["bank", "account"],
+        "atol": 1e-2,
+    },
     "q5": {
         "expected": EXPECTED_DIR / "q5_results.csv",
         "actual": OUTPUTS_DIR / "q5_result.csv",
