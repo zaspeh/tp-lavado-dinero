@@ -10,4 +10,4 @@
 
 - Patrones Base: https://colab.research.google.com/drive/1bLKHk3lqPw0-6gaPu8phhWIU0gX7PHnt?usp=sharing
 
-- Patron Scatter gather:
+- Patron Scatter gather: https://colab.research.google.com/drive/1n6oZP-nV-vZHZhaE6HYbxxh_r-oMO7Jj?usp=sharing
