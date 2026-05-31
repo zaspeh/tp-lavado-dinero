@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
+	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/procesor"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 )
@@ -12,14 +13,16 @@ type StatelessEngine[T any, V any] struct {
 	receiver    r.Receiver[T]
 	sender      s.Sender[V]
 	coordinator *c.EOFCoordinator
+	procesor    p.Procesor[T, V]
 	wasStopped  atomic.Bool
 }
 
-func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], coordinator *c.EOFCoordinator) *StatelessEngine[T, V] {
+func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], procesor p.Procesor[T, V], coordinator *c.EOFCoordinator) *StatelessEngine[T, V] {
 	return &StatelessEngine[T, V]{
 		receiver:    receiver,
 		sender:      sender,
 		coordinator: coordinator,
+		procesor:    procesor,
 	}
 }
 
@@ -39,13 +42,25 @@ func (e *StatelessEngine[T, V]) Shutdown() {
 func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 	switch event.Type {
 	case r.DataMessage:
-		// Process data message and send results
-		// result := processData(event.Data)
-		// return e.sender.Add(event.ClientID, result)
+		return e.handleDataMessage(event.ClientID, event.Data)
 	case r.EOFMessage:
 		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount)
 	case r.CleanupMessage:
 		// e.coordinator.MarkCleanup(event.ClientID)
+	}
+	return nil
+}
+
+func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) error {
+	for _, item := range data {
+		result, err := e.procesor.Process(clientID, item)
+		if err != nil {
+			return err
+		}
+
+		if err := e.sender.Add(clientID, result); err != nil {
+			return err
+		}
 	}
 	return nil
 }
