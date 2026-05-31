@@ -53,14 +53,24 @@ func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 
 func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) error {
 	for _, item := range data {
-		result, err := e.processor.Process(clientID, item)
+		results, err := e.processor.Process(clientID, item)
 		if err != nil {
 			return err
 		}
 
-		if err := e.sender.Add(clientID, result); err != nil {
+		for _, result := range results {
+			if err := e.sender.Add(clientID, result); err != nil {
+				return err
+			}
+			if err := e.coordinator.RecordSurvivor(clientID); err != nil {
+				return err
+			}
+		}
+
+		if err := e.coordinator.RecordProcessed(clientID); err != nil {
 			return err
 		}
 	}
-	return nil
+
+	return e.sender.Flush(clientID)
 }
