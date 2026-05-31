@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
-	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/procesor"
+	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 )
@@ -13,16 +13,16 @@ type StatelessEngine[T any, V any] struct {
 	receiver    r.Receiver[T]
 	sender      s.Sender[V]
 	coordinator *c.EOFCoordinator
-	procesor    p.Procesor[T, V]
+	processor   p.Processor[T, V]
 	wasStopped  atomic.Bool
 }
 
-func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], procesor p.Procesor[T, V], coordinator *c.EOFCoordinator) *StatelessEngine[T, V] {
+func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.Processor[T, V], coordinator *c.EOFCoordinator) *StatelessEngine[T, V] {
 	return &StatelessEngine[T, V]{
 		receiver:    receiver,
 		sender:      sender,
 		coordinator: coordinator,
-		procesor:    procesor,
+		processor:   processor,
 	}
 }
 
@@ -53,7 +53,7 @@ func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 
 func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) error {
 	for _, item := range data {
-		result, err := e.procesor.Process(clientID, item)
+		result, err := e.processor.Process(clientID, item)
 		if err != nil {
 			return err
 		}
