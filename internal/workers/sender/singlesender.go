@@ -3,6 +3,7 @@ package sender
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 )
 
 type SingleSender[T any, V any] struct {
@@ -52,6 +53,20 @@ func (s *SingleSender[T, V]) Flush(clientID string) error {
 func (s *SingleSender[T, V]) Cleanup(clientID string) error {
 	delete(s.batchers, clientID)
 	return nil
+}
+
+func (s *SingleSender[T, V]) SendEOF(clientID string, survivorCount uint64) error {
+	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
+			TotalTransactions: survivorCount,
+		},
+	}
+
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofInnerMsg)
+	if err != nil {
+		return err
+	}
+	return s.output.Send(msg)
 }
 
 func (s *SingleSender[T, V]) Close() error {
