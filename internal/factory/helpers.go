@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 )
 
@@ -85,16 +86,38 @@ func getEnvStringSliceStrict(key string) ([]string, error) {
 	return strings.Split(valStr, ","), nil
 }
 
-func getCoordinationInformationFromEnv() (int, string, error) {
+func getCoordinationInformationFromEnv() (int, int, string, error) {
+	workerID, err := getEnvIntStrict("ID")
+	if err != nil {
+		return 0, 0, "", err
+	}
+
 	workerCount, err := getEnvIntStrict("WORKER_COUNT")
 	if err != nil {
-		return 0, "", err
+		return 0, 0, "", err
 	}
 
 	workerExchangeName, err := getEnvStrict("WORKER_EXCHANGE_NAME")
 	if err != nil {
-		return 0, "", err
+		return 0, 0, "", err
 	}
 
-	return workerCount, workerExchangeName, nil
+	return workerID, workerCount, workerExchangeName, nil
+}
+
+func getMomConfigFromEnv() (m.ConnSettings, error) {
+	host, err := getEnvStrict("MOM_HOST")
+	if err != nil {
+		return m.ConnSettings{}, err
+	}
+
+	port, err := getEnvIntStrict("MOM_PORT")
+	if err != nil {
+		return m.ConnSettings{}, err
+	}
+
+	return m.ConnSettings{
+		Hostname: host,
+		Port:     port,
+	}, nil
 }

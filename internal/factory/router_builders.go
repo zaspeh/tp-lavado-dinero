@@ -6,11 +6,6 @@ import (
 )
 
 func buildBankRouterWorker() (workers.Worker, error) {
-	id, err := getEnvIntStrict("ID")
-	if err != nil {
-		return nil, err
-	}
-
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -36,7 +31,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +51,6 @@ func buildBankRouterWorker() (workers.Worker, error) {
 }
 
 func buildOriginDestinationRouterWorker() (workers.Worker, error) {
-	id, err := getEnvIntStrict("ID")
-	if err != nil {
-		return nil, err
-	}
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -94,7 +85,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
-	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 
 	if err != nil {
 		return nil, err
@@ -117,11 +108,6 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 }
 
 func buildPaymentTypeRouterWorker() (workers.Worker, error) {
-	id, err := getEnvIntStrict("ID")
-	if err != nil {
-		return nil, err
-	}
-
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -147,7 +133,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -167,10 +153,6 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 }
 
 func buildIntermediaryRouterWorker() (workers.Worker, error) {
-	id, err := getEnvIntStrict("ID")
-	if err != nil {
-		return nil, err
-	}
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -195,7 +177,8 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
-	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 
 	if err != nil {
 		return nil, err

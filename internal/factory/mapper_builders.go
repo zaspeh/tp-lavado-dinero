@@ -6,11 +6,6 @@ import (
 )
 
 func buildCurrencyConverterWorker() (workers.Worker, error) {
-	id, err := getEnvIntStrict("ID")
-	if err != nil {
-		return nil, err
-	}
-
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
 		return nil, err
@@ -41,7 +36,7 @@ func buildCurrencyConverterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {
 		return nil, err
 	}
