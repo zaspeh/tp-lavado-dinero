@@ -15,3 +15,14 @@ func InsertConvertedAmountBatch(clientID string, batch *protobuf.ConvertedAmount
 		innerMessage,
 	)
 }
+
+func InsertMaxBankBatch(clientID string, batch *protobuf.MaxBankBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_MaxBankBatch{
+		MaxBankBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_MAXBANK_BATCH,
+		innerMessage,
+	)
+}

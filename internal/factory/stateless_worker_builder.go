@@ -17,6 +17,7 @@ type statelessWorkerConfig[T, V, B any] struct {
 	id                   int
 	workerCount          int
 	workerExchangeName   string
+	expectedEOFs         int
 	InputQueueName       string
 	OutputQueueName      string
 	InputMessageType     protobuf.MessageType
@@ -27,23 +28,25 @@ type statelessWorkerConfig[T, V, B any] struct {
 	SerializeOutputBatch func(clientID string, batch B) (m.Message, error)
 }
 
-func buildStatelessWorker[T, V, B any](config statelessWorkerConfig[T, V, B]) (*worker.Worker, error) {
-	inputQueue, err := m.CreateQueueMiddleware(config.InputQueueName, config.Mom)
-	if err != nil {
-		return nil, err
-	}
+type statelessWorkerWithSenderConfig[T, V any] struct {
+	Mom                m.ConnSettings
+	id                 int
+	workerCount        int
+	workerExchangeName string
+	expectedEOFs       int
+	InputQueueName     string
+	InputMessageType   protobuf.MessageType
+	ExtractInputItems  func(*protobuf.MoneyLaundry) []T
+	Processor          p.Processor[T, V]
+	Sender             s.Sender[V]
+}
 
+func buildStatelessWorker[T, V, B any](config statelessWorkerConfig[T, V, B]) (*worker.Worker, error) {
 	outputQueue, err := m.CreateQueueMiddleware(config.OutputQueueName, config.Mom)
 	if err != nil {
-		inputQueue.Close()
 		return nil, err
 	}
 
-	receiver := r.NewSingleReceiver(
-		inputQueue,
-		config.InputMessageType,
-		config.ExtractInputItems,
-	)
 	sender := s.NewSingleSender(
 		outputQueue,
 		config.OutputWrapper,
@@ -52,17 +55,45 @@ func buildStatelessWorker[T, V, B any](config statelessWorkerConfig[T, V, B]) (*
 		config.SerializeOutputBatch,
 	)
 
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[T, V]{
+		Mom:                config.Mom,
+		id:                 config.id,
+		workerCount:        config.workerCount,
+		workerExchangeName: config.workerExchangeName,
+		expectedEOFs:       config.expectedEOFs,
+		InputQueueName:     config.InputQueueName,
+		InputMessageType:   config.InputMessageType,
+		ExtractInputItems:  config.ExtractInputItems,
+		Processor:          config.Processor,
+		Sender:             sender,
+	})
+}
+
+func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderConfig[T, V]) (*worker.Worker, error) {
+	inputQueue, err := m.CreateQueueMiddleware(config.InputQueueName, config.Mom)
+	if err != nil {
+		config.Sender.Close()
+		return nil, err
+	}
+
+	receiver := r.NewSingleReceiver(
+		inputQueue,
+		config.InputMessageType,
+		config.ExtractInputItems,
+	)
+
 	coordinatorConfig := c.EOFCoordinatorConfig{
 		PeersExchangeName: config.workerExchangeName,
 		ConnSettings:      config.Mom,
 		WorkerID:          config.id,
 		WorkerCount:       config.workerCount,
+		ExpectedEOFs:      config.expectedEOFs,
 	}
 
-	engine, err := e.NewStatelessEngine(receiver, sender, config.Processor, coordinatorConfig)
+	engine, err := e.NewStatelessEngine(receiver, config.Sender, config.Processor, coordinatorConfig)
 	if err != nil {
 		inputQueue.Close()
-		outputQueue.Close()
+		config.Sender.Close()
 		return nil, err
 	}
 

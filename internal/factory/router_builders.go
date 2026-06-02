@@ -1,17 +1,21 @@
 package factory
 
 import (
+	"fmt"
+
+	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserter"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	processorrouters "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/routers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/routers"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 )
 
 func buildBankRouterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
+	mom, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -36,18 +40,39 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	config := routers.BackRouterConfig{
-		ID:                  id,
-		MomHost:             host,
-		MomPort:             port,
-		InputQueueName:      inQ,
-		MaxBankExchangeName: maxBankExchangeName,
-		MaxBankWorkerAmount: maxBankWorkerAmount,
-		WorkerCount:         workerCount,
-		WorkerExchangeName:  workerExchangeName,
+	maxBankExchangeKeys := make([]string, maxBankWorkerAmount)
+	for i := range maxBankExchangeKeys {
+		maxBankExchangeKeys[i] = fmt.Sprintf("%s.%d", maxBankExchangeName, i)
 	}
 
-	return routers.NewBankRouter(config)
+	maxBankExchange, err := m.CreateExchangeMiddleware(maxBankExchangeName, maxBankExchangeKeys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		maxBankExchange,
+		protowrappers.WrapMaxBank,
+		protowrappers.ProtoSizer[*protobuf.MaxBank](),
+		0,
+		protoinserter.InsertMaxBankBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.MaxBank,
+		sender.RoutedItem[*protobuf.MaxBank],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       2,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_MAXBANK_BATCH,
+		ExtractInputItems:  protoextractors.GetMaxBankBatchItems,
+		Processor:          processorrouters.NewMaxBankRouter(maxBankExchangeKeys),
+		Sender:             routedSender,
+	})
 }
 
 func buildOriginDestinationRouterWorker() (workers.Worker, error) {

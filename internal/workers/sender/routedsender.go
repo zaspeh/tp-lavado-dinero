@@ -106,7 +106,7 @@ func (s *RoutedSender[T, B]) flushBatch(clientID string, route string, batch B) 
 }
 
 func (s *RoutedSender[T, B]) batcherKey(clientID string, route string) string {
-	return fmt.Sprintf("%s.%s", clientID, route)
+	return fmt.Sprintf("%s\x00%s", clientID, route)
 }
 
 func batcherClientID(key string) string {

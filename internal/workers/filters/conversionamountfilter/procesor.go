@@ -14,7 +14,7 @@ func New(amountToFilter float64) *Processor {
 
 func (p *Processor) Process(clientID string, item *protobuf.ConvertedAmount) ([]*protobuf.ConvertedAmount, error) {
 	if item.Amount >= p.AmountToFilter {
-		return []*protobuf.ConvertedAmount{item}, nil
+		return nil, nil
 	}
-	return nil, nil
+	return []*protobuf.ConvertedAmount{item}, nil
 }
