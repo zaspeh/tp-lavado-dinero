@@ -36,6 +36,7 @@ func (e *StatelessEngine[T, V]) Run() error {
 	if e.wasStopped.Load() {
 		return nil
 	}
+	go e.coordinator.Run()
 	return e.receiver.Receive(e.handleEvent)
 }
 
@@ -43,6 +44,7 @@ func (e *StatelessEngine[T, V]) Shutdown() {
 	e.wasStopped.Store(true)
 	e.receiver.Close()
 	e.sender.Close()
+	e.coordinator.Close()
 }
 
 func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
@@ -82,5 +84,8 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) err
 }
 
 func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64) error {
+	if !e.coordinator.IsLeader() {
+		return nil
+	}
 	return e.sender.SendEOF(clientID, survivorCount)
 }

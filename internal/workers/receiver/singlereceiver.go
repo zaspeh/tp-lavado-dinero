@@ -3,7 +3,6 @@ package receiver
 import (
 	"log/slog"
 
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 )
@@ -11,16 +10,23 @@ import (
 type SingleReceiver[T any] struct {
 	input             m.Middleware
 	targetMessageType protobuf.MessageType
+	extractData       func(*protobuf.MoneyLaundry) []T
 }
 
-func NewSingleReceiver[T any](input m.Middleware) Receiver[T] {
+func NewSingleReceiver[T any](
+	input m.Middleware,
+	targetMessageType protobuf.MessageType,
+	extractData func(*protobuf.MoneyLaundry) []T,
+) Receiver[T] {
 	return &SingleReceiver[T]{
-		input: input,
+		input:             input,
+		targetMessageType: targetMessageType,
+		extractData:       extractData,
 	}
 }
 
 func (r *SingleReceiver[T]) Receive(handler func(event Event[T]) error) error {
-	return r.input.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	return r.input.StartConsuming(func(msg m.Message, ack, nack func()) {
 		moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 		if err != nil {
 			slog.Error("Failed to deserialize wrapper", "error", err)
@@ -38,7 +44,7 @@ func (r *SingleReceiver[T]) Receive(handler func(event Event[T]) error) error {
 			event.Type = CleanupMessage
 		case r.targetMessageType:
 			event.Type = DataMessage
-			// event.Data = unmarshaler(moneyLaundry)
+			event.Data = r.extractData(moneyLaundry)
 		default:
 			slog.Debug("Ignored unknown message type", "type", moneyLaundry.GetType())
 			ack()
