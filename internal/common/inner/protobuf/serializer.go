@@ -18,6 +18,16 @@ func SerializeProtoMessageONTRIAL(clientID string, messageType MessageType, inne
 	return serializeMoneyLaundering(moneyLaundering)
 }
 
+func DeserializeMoneyLaunderingONTRIAL(msg middleware.Message) (*MoneyLaundry, error) {
+	var moneyLaundering MoneyLaundry
+	err := proto.Unmarshal(msg.Body, &moneyLaundering)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling money laundry: %w", err)
+	}
+
+	return &moneyLaundering, nil
+}
+
 func serializeMoneyLaundering(moneyLaundering *MoneyLaundry) (middleware.Message, error) {
 	marshalledMoneyLaundering, err := proto.Marshal(moneyLaundering)
 	if err != nil {
@@ -27,14 +37,4 @@ func serializeMoneyLaundering(moneyLaundering *MoneyLaundry) (middleware.Message
 	return middleware.Message{
 		Body: marshalledMoneyLaundering,
 	}, nil
-}
-
-func DeserializeMoneyLaunderingONTRIAL(msg middleware.Message) (*MoneyLaundry, error) {
-	var moneyLaundering MoneyLaundry
-	err := proto.Unmarshal(msg.Body, &moneyLaundering)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling money laundry: %w", err)
-	}
-
-	return &moneyLaundering, nil
 }

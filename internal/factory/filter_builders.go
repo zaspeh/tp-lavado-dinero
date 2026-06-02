@@ -3,8 +3,9 @@ package factory
 import (
 	"fmt"
 
-	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
@@ -332,37 +333,22 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	processor := conversionamountfilter.New(amountToFilter)
-
-	serializer := func(clientID string, batch *protobuf.ConvertedAmountBatch) (m.Message, error) {
-		innerMessage := &protobuf.MoneyLaundry_ConvertedAmountBatch{
-			ConvertedAmountBatch: batch,
-		}
-		return protobuf.SerializeProtoMessageONTRIAL(
-			clientID,
-			protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
-			innerMessage,
-		)
-	}
-
 	return buildStatelessWorker(statelessWorkerConfig[
 		*protobuf.ConvertedAmount,
 		*protobuf.ConvertedAmount,
 		*protobuf.ConvertedAmountBatch,
 	]{
-		Mom:                mom,
-		id:                 id,
-		workerCount:        workerCount,
-		workerExchangeName: workerExchangeName,
-		InputQueueName:     inputQueueName,
-		OutputQueueName:    outputQueueName,
-		InputMessageType:   protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
-		ExtractInputItems: func(msg *protobuf.MoneyLaundry) []*protobuf.ConvertedAmount {
-			return msg.GetConvertedAmountBatch().GetItems()
-		},
-		Processor:            processor,
+		Mom:                  mom,
+		id:                   id,
+		workerCount:          workerCount,
+		workerExchangeName:   workerExchangeName,
+		InputQueueName:       inputQueueName,
+		OutputQueueName:      outputQueueName,
+		InputMessageType:     protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
+		ExtractInputItems:    protoextractors.GetConvertedAmountBatchItems,
+		Processor:            conversionamountfilter.New(amountToFilter),
 		OutputWrapper:        protowrappers.WrapConvertedAmounts,
 		OutputSizer:          protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
-		SerializeOutputBatch: serializer,
+		SerializeOutputBatch: protoinserter.InsertConvertedAmountBatch,
 	})
 }
