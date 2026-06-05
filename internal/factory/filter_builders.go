@@ -5,7 +5,7 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserter"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserters"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
@@ -234,7 +234,7 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 
 			Extractor: protoextractors.GetConvertedAmountBatchItems,
 
-			Serializer: protoinserter.InsertConvertedAmountBatch,
+			Serializer: protoinserters.InsertConvertedAmountBatch,
 
 			Sizer: protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
 		},
@@ -250,7 +250,7 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 
 			Extractor: protoextractors.GetMicrotransactionBatchItems,
 
-			Serializer: protoinserter.InsertMicrotransactionBatch,
+			Serializer: protoinserters.InsertMicrotransactionBatch,
 
 			Sizer: protowrappers.ProtoSizer[*protobuf.Microtransaction](),
 		},

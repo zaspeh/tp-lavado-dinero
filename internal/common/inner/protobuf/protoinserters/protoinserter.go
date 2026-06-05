@@ -1,4 +1,4 @@
-package protoinserter
+package protoinserters
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"

@@ -6,7 +6,7 @@ import (
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserter"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserters"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
@@ -58,7 +58,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		protowrappers.WrapMaxBank,
 		protowrappers.ProtoSizer[*protobuf.MaxBank](),
 		0,
-		protoinserter.InsertMaxBankBatch,
+		protoinserters.InsertMaxBankBatch,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -163,7 +163,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		protowrappers.WrapAvgByTypeTransactions,
 		protowrappers.ProtoSizer[*protobuf.AvgByTypeTransaction](),
 		0,
-		protoinserter.InsertAvgByTypeTransactionBatch,
+		protoinserters.InsertAvgByTypeTransactionBatch,
 	)
 
 	receiver := r.NewSingleReceiver(

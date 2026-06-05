@@ -115,13 +115,10 @@ func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderCo
 
 type AmountFilterPipelineConfig[T filterprocessor.Amountable, B any] struct {
 	MessageType protobuf.MessageType
-
-	Wrapper   batch.Wrapper[T, B]
-	Extractor func(*protobuf.MoneyLaundry) []T
-
-	Serializer func(clientID string, batch B) (middleware.Message, error)
-
-	Sizer batch.Sizer[T]
+	Wrapper     batch.Wrapper[T, B]
+	Extractor   func(*protobuf.MoneyLaundry) []T
+	Serializer  func(clientID string, batch B) (middleware.Message, error)
+	Sizer       batch.Sizer[T]
 }
 
 func buildAmountFilterWorkerGeneric[T filterprocessor.Amountable, B any](cfg AmountFilterPipelineConfig[T, B]) (workers.Worker, error) {
