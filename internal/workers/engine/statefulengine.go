@@ -3,25 +3,29 @@ package engine
 import (
 	"sync/atomic"
 
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 )
 
 type StatefulEngine[T any, V any] struct {
-	receiver   r.Receiver[T]
-	sender     s.Sender[V]
-	processor  p.Processor[T, V]
-	wasStopped atomic.Bool
+	receiver    r.Receiver[T]
+	sender      s.Sender[V]
+	processor   p.StatefulProcessor[T, V]
+	coordinator c.Coordinator
+	wasStopped  atomic.Bool
 }
 
-func NewStatefulEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.Processor[T, V]) (*StatefulEngine[T, V], error) {
+func NewStatefulEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.StatefulProcessor[T, V], coordinator c.Coordinator) (*StatefulEngine[T, V], error) {
 	engine := &StatefulEngine[T, V]{
-		receiver:  receiver,
-		sender:    sender,
-		processor: processor,
+		receiver:    receiver,
+		sender:      sender,
+		processor:   processor,
+		coordinator: coordinator,
 	}
 
+	engine.coordinator.SetFlushHandler(engine.handleTrueEOF)
 	return engine, nil
 }
 
@@ -40,6 +44,7 @@ func (e *StatefulEngine[T, V]) Shutdown() {
 	e.wasStopped.Store(true)
 	e.receiver.Close()
 	e.sender.Close()
+	e.coordinator.Close()
 }
 
 func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
@@ -47,9 +52,9 @@ func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
 	case r.DataMessage:
 		return e.handleDataMessage(event.ClientID, event.Data)
 	case r.EOFMessage:
-		return e.handleEOFMessage(event.ClientID, event.EOFCount)
+		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount)
 	case r.CleanupMessage:
-		// return e.coordinator.HandleCleanup(event.ClientID)
+		return e.handleCleanupMessage(event.ClientID)
 	}
 	return nil
 }
@@ -64,7 +69,27 @@ func (e *StatefulEngine[T, V]) handleDataMessage(clientID string, data []T) erro
 	return nil
 }
 
-func (e *StatefulEngine[T, V]) handleEOFMessage(clientID string, eofCount uint64) error {
-	// return e.coordinator.HandleLocalEOF(clientID, eofCount)
+func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64) error {
+	yield := func(result V) error {
+		return e.sender.Add(clientID, result)
+	}
+
+	if err := e.processor.Finalize(clientID, yield); err != nil {
+		return err
+	}
+
+	if err := e.sender.Flush(clientID); err != nil {
+		return err
+	}
+
+	if e.coordinator.IsLeader() {
+		return e.sender.SendEOF(clientID, eofCount)
+	}
+
 	return nil
+}
+
+func (e *StatefulEngine[T, V]) handleCleanupMessage(clientID string) error {
+	return e.processor.Cleanup(clientID)
+	//TODO: SEGUIR ENVIANDO CLEANUP AL SIGUIENTE
 }

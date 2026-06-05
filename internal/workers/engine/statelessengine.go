@@ -19,12 +19,12 @@ type StatelessEngine[T any, V any] struct {
 
 func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.Processor[T, V], coordinator c.Coordinator) (*StatelessEngine[T, V], error) {
 	engine := &StatelessEngine[T, V]{
-		receiver:  receiver,
-		sender:    sender,
-		processor: processor,
+		receiver:    receiver,
+		sender:      sender,
+		processor:   processor,
+		coordinator: coordinator,
 	}
-	coordinator.SetFlushHandler(engine.handleTrueEOF)
-	engine.coordinator = coordinator
+	engine.coordinator.SetFlushHandler(engine.handleTrueEOF)
 	return engine, nil
 }
 
