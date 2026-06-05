@@ -9,3 +9,7 @@ func GetConvertedAmountBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.Conv
 func GetMaxBankBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.MaxBank {
 	return batch.GetMaxBankBatch().GetMaxBankMessage()
 }
+
+func GetMicrotransactionBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.Microtransaction {
+	return batch.GetMicrotransactionsBatch().GetItems()
+}

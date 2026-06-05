@@ -6,7 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 )
 
@@ -120,4 +122,60 @@ func getMomConfigFromEnv() (m.ConnSettings, error) {
 		Hostname: host,
 		Port:     port,
 	}, nil
+}
+
+func createInputOutputQueues() (m.Middleware, m.Middleware, error) {
+	momConfig, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	inputQueue, err := middleware.CreateQueueMiddleware(inputQueueName, momConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outputQueue, err := middleware.CreateQueueMiddleware(outputQueueName, momConfig)
+	if err != nil {
+		inputQueue.Close()
+		return nil, nil, err
+	}
+
+	return inputQueue, outputQueue, nil
+}
+
+func getCoordinator() (*c.EOFCoordinator, error) {
+	workerID, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	momConfig, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	coordinatorConfig := c.EOFCoordinatorConfig{
+		PeersExchangeName: workerExchangeName,
+		ConnSettings:      momConfig,
+		WorkerID:          workerID,
+		WorkerCount:       workerCount,
+	}
+
+	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return coordinator, nil
 }

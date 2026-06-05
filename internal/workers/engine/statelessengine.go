@@ -17,17 +17,13 @@ type StatelessEngine[T any, V any] struct {
 	wasStopped  atomic.Bool
 }
 
-func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.Processor[T, V], coordinatorConfig c.EOFCoordinatorConfig) (*StatelessEngine[T, V], error) {
+func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.Processor[T, V], coordinator *c.EOFCoordinator) (*StatelessEngine[T, V], error) {
 	engine := &StatelessEngine[T, V]{
 		receiver:  receiver,
 		sender:    sender,
 		processor: processor,
 	}
-	coordinatorConfig.FlushHandler = engine.handleTrueEOF
-	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
-	if err != nil {
-		return nil, err
-	}
+	coordinator.SetFlushHandler(engine.handleTrueEOF)
 	engine.coordinator = coordinator
 	return engine, nil
 }

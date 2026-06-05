@@ -7,7 +7,7 @@ option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 message Microtransaction {
   string account = 1;
   string to_account = 2;
-  string amount_paid = 3;
+  double amount = 3;
 }
 
 message MicrotransactionBatch {

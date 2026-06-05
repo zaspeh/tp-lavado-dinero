@@ -60,6 +60,27 @@ services:
     - gateway
     networks:
     - money_laundering_network
+  client_1:
+    build:
+      context: .
+      dockerfile: cmd/client/Dockerfile
+    container_name: client_1
+    environment:
+    - ID=1
+    - SERVER_HOST=gateway
+    - SERVER_PORT=8080
+    - INPUT_FILE_TRANSACTIONS=/datasets/client_1_transactions.csv
+    - INPUT_FILE_ACCOUNTS=/datasets/client_1_accounts.csv
+    - OUTPUT_DIR=/outputs
+    - MAX_BATCH_WEIGHT=1000000
+    - LOG_LEVEL=info
+    volumes:
+    - ./datasets:/datasets
+    - ./outputs/client_1:/outputs
+    depends_on:
+    - gateway
+    networks:
+    - money_laundering_network
   currency_filter_0:
     build:
       context: .
@@ -117,7 +138,28 @@ services:
     - WORKER_TYPE=AMOUNT_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
-    - WORKER_COUNT=1
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AMOUNT_FILTER
+    - INPUT_QUEUE_NAME=microtransaction_filter_input_queue
+    - OUTPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - AMOUNT_TO_FILTER=50
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  microtransaction_filter_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_filter_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AMOUNT_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
     - WORKER_EXCHANGE_NAME=AMOUNT_FILTER
     - INPUT_QUEUE_NAME=microtransaction_filter_input_queue
     - OUTPUT_QUEUE_NAME=microtransaction_join_input_queue

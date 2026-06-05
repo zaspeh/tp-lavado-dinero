@@ -2,6 +2,7 @@ package filters
 
 import (
 	"log/slog"
+	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -203,10 +204,14 @@ func (f *CurrencyFilter) broadcastTransactionBatch(clientID string, batch *proto
 func (f *CurrencyFilter) sendToMicrotransactionsFilter(clientID string, transactions []*protobuf.Transaction) error {
 	microtransactions := make([]*protobuf.Microtransaction, 0, len(transactions))
 	for _, transaction := range transactions {
+		parsedAmount, err := strconv.ParseFloat(transaction.GetAmountPaid(), 64)
+		if err != nil {
+			continue
+		}
 		microtransaction := &protobuf.Microtransaction{
-			Account:    transaction.GetAccount(),
-			ToAccount:  transaction.GetToAccount(),
-			AmountPaid: transaction.GetAmountPaid(),
+			Account:   transaction.GetAccount(),
+			ToAccount: transaction.GetToAccount(),
+			Amount:    parsedAmount,
 		}
 		microtransactions = append(microtransactions, microtransaction)
 	}

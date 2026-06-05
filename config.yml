@@ -16,7 +16,7 @@ rabbitmq:
 # Nodos de la aplicación
 services:
   client:
-    count: 1
+    count: 2
     datasets_dir: ./datasets
     output_dir: ./outputs  
     max_batch_weight: 1000000   
@@ -32,7 +32,7 @@ services:
       CURRENCY_TO_FILTER: "US Dollar"
 
   microtransaction_filter:
-    count: 1
+    count: 2
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue

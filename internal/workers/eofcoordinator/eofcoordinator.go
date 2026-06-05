@@ -83,6 +83,10 @@ func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 	}, nil
 }
 
+func (c *EOFCoordinator) SetFlushHandler(handler FlushHandler) {
+	c.flushHandler = handler
+}
+
 func (c *EOFCoordinator) Run() error {
 	c.exchange.StartConsuming(func(msg m.Message, ack, nack func()) {
 		c.handleCoordinationMessage(msg, ack, nack)

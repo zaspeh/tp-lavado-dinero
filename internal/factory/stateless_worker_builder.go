@@ -90,7 +90,14 @@ func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderCo
 		ExpectedEOFs:      config.expectedEOFs,
 	}
 
-	engine, err := e.NewStatelessEngine(receiver, config.Sender, config.Processor, coordinatorConfig)
+	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
+	if err != nil {
+		inputQueue.Close()
+		config.Sender.Close()
+		return nil, err
+	}
+
+	engine, err := e.NewStatelessEngine(receiver, config.Sender, config.Processor, coordinator)
 	if err != nil {
 		inputQueue.Close()
 		config.Sender.Close()

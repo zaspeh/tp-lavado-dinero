@@ -8,10 +8,15 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/conversionamountfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/formatfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
+	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
+	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
+	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
 
 func buildCurrencyFilterWorker() (workers.Worker, error) {
@@ -178,51 +183,6 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 	return periodfilter.NewPeriodFilterWorker(config)
 }
 
-func buildAmountFilterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
-	if err != nil {
-		return nil, err
-	}
-
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	config := filters.AmountFilterConfig{
-		InputQueueName:     inputQueueName,
-		OutputQueueName:    outputQueueName,
-		MomHost:            host,
-		MomPort:            port,
-		AmountToFilter:     amountToFilter,
-		WorkerID:           id,
-		WorkerCount:        workerCount,
-		WorkerExchangeName: workerExchangeName,
-	}
-
-	return filters.NewAmountFilter(config)
-}
-
 func buildFormatFilterWorker() (workers.Worker, error) {
 	host, err := getEnvStrict("MOM_HOST")
 	if err != nil {
@@ -351,4 +311,57 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 		OutputSizer:          protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
 		SerializeOutputBatch: protoinserter.InsertConvertedAmountBatch,
 	})
+}
+
+func buildAmountFilterWorker() (workers.Worker, error) {
+	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueue, outputQueue, err := createInputOutputQueues()
+	if err != nil {
+		return nil, err
+	}
+
+	coordinator, err := getCoordinator()
+	if err != nil {
+		inputQueue.Close()
+		outputQueue.Close()
+		return nil, err
+	}
+
+	singleSender := s.NewSingleSender(
+		outputQueue,
+		protowrappers.WrapToMicrotrasactionBatch,
+		protowrappers.ProtoSizer[*protobuf.Microtransaction](),
+		0,
+		protoinserter.InsertMicrotransactionBatch,
+	)
+
+	singleReceiver := r.NewSingleReceiver(
+		inputQueue,
+		protobuf.MessageType_MICROTRANSACTION_BATCH,
+		protoextractors.GetMicrotransactionBatchItems,
+	)
+
+	processor := filterprocessor.NewAmountFilterProcessor[*protobuf.Microtransaction](amountToFilter)
+
+	engine, err := engine.NewStatelessEngine(
+		singleReceiver,
+		singleSender,
+		processor,
+		coordinator,
+	)
+	if err != nil {
+		singleSender.Close()
+		singleReceiver.Close()
+		coordinator.Close()
+		return nil, err
+	}
+
+	worker := worker.NewWorker()
+	worker.AddEngine(engine)
+
+	return worker, nil
 }
