@@ -154,6 +154,43 @@ func createInputOutputQueues() (m.Middleware, m.Middleware, error) {
 	return inputQueue, outputQueue, nil
 }
 
+func createInputExchangeOutputQueue() (m.Middleware, m.Middleware, error) {
+	momConfig, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	inputKeys := []string{inputExchangeName + "." + id}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(inputExchangeName, inputKeys, momConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outputQueue, err := middleware.CreateQueueMiddleware(outputQueueName, momConfig)
+	if err != nil {
+		inputExchange.Close()
+		return nil, nil, err
+	}
+
+	return inputExchange, outputQueue, nil
+}
+
 func getCoordinator() (*c.EOFCoordinator, error) {
 	workerID, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {

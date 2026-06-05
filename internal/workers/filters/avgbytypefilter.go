@@ -28,37 +28,15 @@ type AvgByTypeFilter struct {
 }
 
 type AvgByTypeFilterConfig struct {
-	ID string
-
-	InputExchangeName string
-	OutputQueueName   string
-
-	MomHost string
-	MomPort int
+	InputExchange middleware.Middleware
+	OutputQueue   middleware.Middleware
 }
 
 func NewAvgByTypeFilter(config AvgByTypeFilterConfig) (*AvgByTypeFilter, error) {
-	connSettings := middleware.ConnSettings{
-		Hostname: config.MomHost,
-		Port:     config.MomPort,
-	}
-
-	inputKeys := []string{config.InputExchangeName + "." + config.ID}
-
-	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputKeys, connSettings)
-	if err != nil {
-		return nil, err
-	}
-
-	outputQueue, err := middleware.CreateQueueMiddleware(config.OutputQueueName, connSettings)
-	if err != nil {
-		inputExchange.Close()
-		return nil, err
-	}
 
 	return &AvgByTypeFilter{
-		inputExchange: inputExchange,
-		outputQueue:   outputQueue,
+		inputExchange: config.InputExchange,
+		outputQueue:   config.OutputQueue,
 
 		period1Stats:        make(map[string]map[string]*AvgByTypeStats),
 		period2Transactions: make(map[string]map[string][]*protobuf.AvgByTypeTransaction),

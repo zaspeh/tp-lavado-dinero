@@ -10,7 +10,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/conversionamountfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/formatfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
@@ -77,12 +76,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 }
 
 func buildPeriodFilterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
+	connSettings, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -164,8 +158,8 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		PaymentTypePeriod:          paymentTypePeriod,
 		PaymentTypeFilterQueueName: paymentTypeQ,
 
-		MomHost: host,
-		MomPort: port,
+		MomHost: connSettings.Hostname,
+		MomPort: connSettings.Port,
 
 		RawWorkerID:           id,
 		RawWorkerCount:        workerCount,
@@ -184,12 +178,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 }
 
 func buildFormatFilterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
+	connSettings, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +206,8 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 	config := formatfilter.FormatFilterConfig{
 		InputQueueName:  inputQueueName,
 		OutputQueueName: outputQueueName,
-		MomHost:         host,
-		MomPort:         port,
+		MomHost:         connSettings.Hostname,
+		MomPort:         connSettings.Port,
 		AllowedFormats:  allowedFormats,
 		WorkerID:        workerID,
 		WorkerCount:     workerCount,
@@ -229,88 +218,69 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 }
 
 func buildAvgByTypeWorker() (workers.Worker, error) {
-	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
+	inputExchangeName, outputQueueName, err := createInputExchangeOutputQueue()
 	if err != nil {
 		return nil, err
 	}
-
-	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	host, err := getEnvStrict("MOM_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := getEnvStrict("ID")
-	if err != nil {
-		return nil, err
-	}
-
 	config := filters.AvgByTypeFilterConfig{
-		ID: id,
-
-		InputExchangeName: inputExchangeName,
-		OutputQueueName:   outputQueueName,
-
-		MomHost: host,
-		MomPort: port,
+		InputExchange: inputExchangeName,
+		OutputQueue:   outputQueueName,
 	}
 
 	return filters.NewAvgByTypeFilter(config)
 }
 
 func buildAmountConvertedFilterWorker() (workers.Worker, error) {
-	mom, err := getMomConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
 	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
 	if err != nil {
 		return nil, err
 	}
 
-	return buildStatelessWorker(statelessWorkerConfig[
-		*protobuf.ConvertedAmount,
-		*protobuf.ConvertedAmount,
-		*protobuf.ConvertedAmountBatch,
-	]{
-		Mom:                  mom,
-		id:                   id,
-		workerCount:          workerCount,
-		workerExchangeName:   workerExchangeName,
-		InputQueueName:       inputQueueName,
-		OutputQueueName:      outputQueueName,
-		InputMessageType:     protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
-		ExtractInputItems:    protoextractors.GetConvertedAmountBatchItems,
-		Processor:            conversionamountfilter.New(amountToFilter),
-		OutputWrapper:        protowrappers.WrapConvertedAmounts,
-		OutputSizer:          protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
-		SerializeOutputBatch: protoinserter.InsertConvertedAmountBatch,
-	})
+	inputQueue, outputQueue, err := createInputOutputQueues()
+	if err != nil {
+		return nil, err
+	}
+
+	coordinator, err := getCoordinator()
+	if err != nil {
+		inputQueue.Close()
+		outputQueue.Close()
+		return nil, err
+	}
+
+	singleSender := s.NewSingleSender(
+		outputQueue,
+		protowrappers.WrapConvertedAmounts,
+		protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+		0,
+		protoinserter.InsertConvertedAmountBatch,
+	)
+
+	singleReceiver := r.NewSingleReceiver(
+		inputQueue,
+		protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
+		protoextractors.GetConvertedAmountBatchItems,
+	)
+
+	processor := filterprocessor.NewAmountFilterProcessor[*protobuf.ConvertedAmount](amountToFilter)
+
+	engine, err := engine.NewStatelessEngine(
+		singleReceiver,
+		singleSender,
+		processor,
+		coordinator,
+	)
+	if err != nil {
+		singleSender.Close()
+		singleReceiver.Close()
+		coordinator.Close()
+		return nil, err
+	}
+
+	worker := worker.NewWorker()
+	worker.AddEngine(engine)
+
+	return worker, nil
 }
 
 func buildAmountFilterWorker() (workers.Worker, error) {
