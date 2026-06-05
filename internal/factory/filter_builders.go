@@ -8,14 +8,9 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/formatfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
-	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
-	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
-	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
 
 func buildCurrencyFilterWorker() (workers.Worker, error) {
@@ -231,107 +226,33 @@ func buildAvgByTypeWorker() (workers.Worker, error) {
 }
 
 func buildAmountConvertedFilterWorker() (workers.Worker, error) {
-	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
-	if err != nil {
-		return nil, err
-	}
+	return buildAmountFilterWorkerGeneric(
+		AmountFilterPipelineConfig[*protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]{
+			MessageType: protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
 
-	inputQueue, outputQueue, err := createInputOutputQueues()
-	if err != nil {
-		return nil, err
-	}
+			Wrapper: protowrappers.WrapConvertedAmounts,
 
-	coordinator, err := getCoordinator()
-	if err != nil {
-		inputQueue.Close()
-		outputQueue.Close()
-		return nil, err
-	}
+			Extractor: protoextractors.GetConvertedAmountBatchItems,
 
-	singleSender := s.NewSingleSender(
-		outputQueue,
-		protowrappers.WrapConvertedAmounts,
-		protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
-		0,
-		protoinserter.InsertConvertedAmountBatch,
+			Serializer: protoinserter.InsertConvertedAmountBatch,
+
+			Sizer: protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+		},
 	)
-
-	singleReceiver := r.NewSingleReceiver(
-		inputQueue,
-		protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
-		protoextractors.GetConvertedAmountBatchItems,
-	)
-
-	processor := filterprocessor.NewAmountFilterProcessor[*protobuf.ConvertedAmount](amountToFilter)
-
-	engine, err := engine.NewStatelessEngine(
-		singleReceiver,
-		singleSender,
-		processor,
-		coordinator,
-	)
-	if err != nil {
-		singleSender.Close()
-		singleReceiver.Close()
-		coordinator.Close()
-		return nil, err
-	}
-
-	worker := worker.NewWorker()
-	worker.AddEngine(engine)
-
-	return worker, nil
 }
 
 func buildAmountFilterWorker() (workers.Worker, error) {
-	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
-	if err != nil {
-		return nil, err
-	}
+	return buildAmountFilterWorkerGeneric(
+		AmountFilterPipelineConfig[*protobuf.Microtransaction, *protobuf.MicrotransactionBatch]{
+			MessageType: protobuf.MessageType_MICROTRANSACTION_BATCH,
 
-	inputQueue, outputQueue, err := createInputOutputQueues()
-	if err != nil {
-		return nil, err
-	}
+			Wrapper: protowrappers.WrapToMicrotrasactionBatch,
 
-	coordinator, err := getCoordinator()
-	if err != nil {
-		inputQueue.Close()
-		outputQueue.Close()
-		return nil, err
-	}
+			Extractor: protoextractors.GetMicrotransactionBatchItems,
 
-	singleSender := s.NewSingleSender(
-		outputQueue,
-		protowrappers.WrapToMicrotrasactionBatch,
-		protowrappers.ProtoSizer[*protobuf.Microtransaction](),
-		0,
-		protoinserter.InsertMicrotransactionBatch,
+			Serializer: protoinserter.InsertMicrotransactionBatch,
+
+			Sizer: protowrappers.ProtoSizer[*protobuf.Microtransaction](),
+		},
 	)
-
-	singleReceiver := r.NewSingleReceiver(
-		inputQueue,
-		protobuf.MessageType_MICROTRANSACTION_BATCH,
-		protoextractors.GetMicrotransactionBatchItems,
-	)
-
-	processor := filterprocessor.NewAmountFilterProcessor[*protobuf.Microtransaction](amountToFilter)
-
-	engine, err := engine.NewStatelessEngine(
-		singleReceiver,
-		singleSender,
-		processor,
-		coordinator,
-	)
-	if err != nil {
-		singleSender.Close()
-		singleReceiver.Close()
-		coordinator.Close()
-		return nil, err
-	}
-
-	worker := worker.NewWorker()
-	worker.AddEngine(engine)
-
-	return worker, nil
 }

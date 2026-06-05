@@ -2,11 +2,15 @@ package factory
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	e "github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
 	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
+	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
@@ -107,4 +111,71 @@ func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderCo
 	worker := worker.NewWorker()
 	worker.AddEngine(engine)
 	return worker, nil
+}
+
+type AmountFilterPipelineConfig[T filterprocessor.Amountable, B any] struct {
+	MessageType protobuf.MessageType
+
+	Wrapper   batch.Wrapper[T, B]
+	Extractor func(*protobuf.MoneyLaundry) []T
+
+	Serializer func(clientID string, batch B) (middleware.Message, error)
+
+	Sizer batch.Sizer[T]
+}
+
+func buildAmountFilterWorkerGeneric[T filterprocessor.Amountable, B any](cfg AmountFilterPipelineConfig[T, B]) (workers.Worker, error) {
+
+	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueue, outputQueue, err := createInputOutputQueues()
+	if err != nil {
+		return nil, err
+	}
+
+	coordinator, err := getCoordinator()
+	if err != nil {
+		inputQueue.Close()
+		outputQueue.Close()
+		return nil, err
+	}
+
+	singleSender := s.NewSingleSender(
+		outputQueue,
+		cfg.Wrapper,
+		cfg.Sizer,
+		0,
+		cfg.Serializer,
+	)
+
+	singleReceiver := r.NewSingleReceiver(
+		inputQueue,
+		cfg.MessageType,
+		cfg.Extractor,
+	)
+
+	processor := filterprocessor.NewAmountFilterProcessor[T](
+		amountToFilter,
+	)
+
+	engineInstance, err := engine.NewStatelessEngine(
+		singleReceiver,
+		singleSender,
+		processor,
+		coordinator,
+	)
+	if err != nil {
+		singleSender.Close()
+		singleReceiver.Close()
+		coordinator.Close()
+		return nil, err
+	}
+
+	workerInstance := worker.NewWorker()
+	workerInstance.AddEngine(engineInstance)
+
+	return workerInstance, nil
 }
