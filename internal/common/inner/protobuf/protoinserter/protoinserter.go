@@ -37,3 +37,14 @@ func InsertMaxBankBatch(clientID string, batch *protobuf.MaxBankBatch) (middlewa
 		innerMessage,
 	)
 }
+
+func InsertAvgByTypeTransactionBatch(clientID string, batch *protobuf.AvgByTypeTransactionBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_AvgbytypeTransactionBatch{
+		AvgbytypeTransactionBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH,
+		innerMessage,
+	)
+}

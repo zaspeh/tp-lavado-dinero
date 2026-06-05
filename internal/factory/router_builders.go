@@ -9,9 +9,12 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	processorrouters "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/routers"
+	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/routers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
 
 func buildBankRouterWorker() (workers.Worker, error) {
@@ -133,48 +136,59 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 }
 
 func buildPaymentTypeRouterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
+	momConfig, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	inputQueue, err := createInputQueue(momConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	port, err := getEnvIntStrict("MOM_PORT")
+	paymentTypeExchange, paymentTypeKeys, err := createExchangeOutput(momConfig, "PAYMENT_TYPE_EXCHANGE_NAME", "AVG_BY_TYPE_WORKER_AMOUNT")
 	if err != nil {
+		inputQueue.Close()
 		return nil, err
 	}
 
-	inputQueue, err := getEnvStrict("INPUT_QUEUE_NAME")
+	coordinator, err := getCoordinator()
 	if err != nil {
+		inputQueue.Close()
+		paymentTypeExchange.Close()
 		return nil, err
 	}
 
-	exchangeName, err := getEnvStrict("PAYMENT_TYPE_EXCHANGE_NAME")
+	routedSender := sender.NewRoutedSender(
+		paymentTypeExchange,
+		protowrappers.WrapAvgByTypeTransactions,
+		protowrappers.ProtoSizer[*protobuf.AvgByTypeTransaction](),
+		0,
+		protoinserter.InsertAvgByTypeTransactionBatch,
+	)
+
+	receiver := r.NewSingleReceiver(
+		inputQueue,
+		protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH,
+		protoextractors.GetAvgByTypeTransactionBatchItems,
+	)
+
+	processor := processorrouters.NewRouterProcessor(
+		paymentTypeKeys,
+		func(item *protobuf.AvgByTypeTransaction) string {
+			return item.GetPaymentFormat()
+		},
+	)
+
+	engine, err := engine.NewStatelessEngine(receiver, routedSender, processor, coordinator)
 	if err != nil {
+		inputQueue.Close()
+		paymentTypeExchange.Close()
 		return nil, err
 	}
 
-	avgByTypeWorkerAmount, err := getEnvIntStrict("AVG_BY_TYPE_WORKER_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	config := routers.PaymentTypeRouterConfig{
-		InputQueueName:          inputQueue,
-		PaymentTypeExchangeName: exchangeName,
-		AvgByTypeWorkerAmount:   avgByTypeWorkerAmount,
-		MomHost:                 host,
-		MomPort:                 port,
-		WorkerID:                id,
-		WorkerCount:             workerCount,
-		WorkerExchangeName:      workerExchangeName,
-	}
-
-	return routers.NewPaymentTypeRouter(config)
+	worker := worker.NewWorker()
+	worker.AddEngine(engine)
+	return worker, nil
 }
 
 func buildIntermediaryRouterWorker() (workers.Worker, error) {

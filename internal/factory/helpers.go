@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -130,17 +131,12 @@ func createInputOutputQueues() (m.Middleware, m.Middleware, error) {
 		return nil, nil, err
 	}
 
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inputQueue, err := createInputQueue(momConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	inputQueue, err := middleware.CreateQueueMiddleware(inputQueueName, momConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -215,4 +211,43 @@ func getCoordinator() (*c.EOFCoordinator, error) {
 	}
 
 	return coordinator, nil
+}
+
+func createInputQueue(momConfig m.ConnSettings) (m.Middleware, error) {
+	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	inputQueue, err := middleware.CreateQueueMiddleware(inputQueueName, momConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return inputQueue, nil
+}
+
+func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, workerAmountName string) (*middleware.ExchangeMiddleware, []string, error) {
+	exchangeName, err := getEnvStrict(exchangeNameKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	workerAmount, err := getEnvIntStrict(workerAmountName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	exchangeKeys := make([]string, workerAmount)
+
+	for i := range exchangeKeys {
+		exchangeKeys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
+	}
+
+	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(exchangeName, exchangeKeys, momConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return paymentTypeExchange, exchangeKeys, nil
 }

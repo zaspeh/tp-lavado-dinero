@@ -13,3 +13,7 @@ func GetMaxBankBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.MaxBank {
 func GetMicrotransactionBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.Microtransaction {
 	return batch.GetMicrotransactionsBatch().GetItems()
 }
+
+func GetAvgByTypeTransactionBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.AvgByTypeTransaction {
+	return batch.GetAvgbytypeTransactionBatch().GetItems()
+}
