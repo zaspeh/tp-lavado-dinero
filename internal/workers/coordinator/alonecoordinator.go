@@ -33,5 +33,9 @@ func (c *AloneCoordinator) IsLeader() bool {
 }
 
 // No hay coordinación de red, así que no hay nada que hacer en Run o Close
-func (c *AloneCoordinator) Run()   {}
-func (c *AloneCoordinator) Close() {} // No-op
+func (c *AloneCoordinator) Run() error {
+	return nil
+}
+func (c *AloneCoordinator) Close() error {
+	return nil
+}

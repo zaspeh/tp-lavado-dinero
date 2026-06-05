@@ -72,7 +72,7 @@ func (j *MaxBankJoin) handleMessage(msg middleware.Message, ack, nack func()) {
 	}
 
 	switch moneyLaundry.GetType() {
-	case protobuf.MessageType_MAXBANK_RESULT:
+	case protobuf.MessageType_MAX_BANK_RESULT_BATCH:
 		j.sendMessage(moneyLaundry, msg, ack, nack)
 	case protobuf.MessageType_EOF_:
 		j.handleEOFMessage(moneyLaundry, ack, nack)

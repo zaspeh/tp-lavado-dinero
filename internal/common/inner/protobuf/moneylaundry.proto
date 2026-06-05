@@ -52,6 +52,7 @@ enum MessageType {
     AVGBYTYPE_TRANSACTION_BATCH = 30;
     SCATTERGATHER_BATCH = 31;
     INTERMEDIARYPAIR_BATCH = 32;
+    MAX_BANK_RESULT_BATCH = 33;
 }
 
 message MoneyLaundry {
@@ -73,5 +74,6 @@ message MoneyLaundry {
         AvgByTypeTransactionBatch avgbytype_transaction_batch = 13;
         ScatterGatherBatch scattergather_batch = 14;
         IntermediaryPairBatch intermediarypair_batch = 15;
+        MaxBankResultBatch max_bank_result_batch = 16;
     }
 }

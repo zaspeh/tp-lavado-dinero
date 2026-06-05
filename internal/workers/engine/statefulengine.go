@@ -17,7 +17,7 @@ type StatefulEngine[T any, V any] struct {
 	wasStopped  atomic.Bool
 }
 
-func NewStatefulEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.StatefulProcessor[T, V], coordinator c.Coordinator) (*StatefulEngine[T, V], error) {
+func NewStatefulEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.StatefulProcessor[T, V], coordinator c.Coordinator) *StatefulEngine[T, V] {
 	engine := &StatefulEngine[T, V]{
 		receiver:    receiver,
 		sender:      sender,
@@ -26,7 +26,7 @@ func NewStatefulEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V],
 	}
 
 	engine.coordinator.SetFlushHandler(engine.handleTrueEOF)
-	return engine, nil
+	return engine
 }
 
 func (e *StatefulEngine[T, V]) Run() error {

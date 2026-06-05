@@ -6,17 +6,17 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 )
 
-type MaxBankWorker struct {
+type MaxBankProcessor struct {
 	maxBankStores map[string]*MaxBankStore
 }
 
-func NewMaxBankWorker() *MaxBankWorker {
-	return &MaxBankWorker{
+func NewMaxBankProcessor() *MaxBankProcessor {
+	return &MaxBankProcessor{
 		maxBankStores: make(map[string]*MaxBankStore),
 	}
 }
 
-func (w *MaxBankWorker) Process(clientID string, maxBankMsg *protobuf.MaxBank) error {
+func (w *MaxBankProcessor) Process(clientID string, maxBankMsg *protobuf.MaxBank) error {
 	store := w.getStore(clientID)
 	bankID := maxBankMsg.GetFromBank()
 
@@ -38,7 +38,7 @@ func (w *MaxBankWorker) Process(clientID string, maxBankMsg *protobuf.MaxBank) e
 	return nil
 }
 
-func (w *MaxBankWorker) Finalize(clientID string, yield func(result *protobuf.MaxBankResult) error) error {
+func (w *MaxBankProcessor) Finalize(clientID string, yield func(result *protobuf.MaxBankResult) error) error {
 	store := w.getStore(clientID)
 	reader := store.Reader()
 
@@ -61,14 +61,14 @@ func (w *MaxBankWorker) Finalize(clientID string, yield func(result *protobuf.Ma
 	return nil
 }
 
-func (w *MaxBankWorker) Cleanup(clientID string) error {
+func (w *MaxBankProcessor) Cleanup(clientID string) error {
 	store := w.getStore(clientID)
 	store.Clear()
 	delete(w.maxBankStores, clientID)
 	return nil
 }
 
-func (w *MaxBankWorker) getStore(clientID string) *MaxBankStore {
+func (w *MaxBankProcessor) getStore(clientID string) *MaxBankStore {
 	if store, ok := w.maxBankStores[clientID]; ok {
 		return store
 	}

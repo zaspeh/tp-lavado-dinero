@@ -293,7 +293,7 @@ func (cc *ClientConnection) HandleEOF(msg request.EOF) error {
 }
 
 func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
@@ -304,7 +304,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 		cc.handleEOFFromWorker(ack, nack)
 	case protobuf.MessageType_MICROTRANSACTION_RESULT:
 		cc.handleMicrotransactionResult(moneyLaundry, ack, nack)
-	case protobuf.MessageType_MAXBANK_RESULT:
+	case protobuf.MessageType_MAX_BANK_RESULT_BATCH:
 		cc.handleMaxBankResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT:
 		cc.handleConvertedMicroPaymentResult(moneyLaundry, ack, nack)

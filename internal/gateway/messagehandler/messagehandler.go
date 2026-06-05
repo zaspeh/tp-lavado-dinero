@@ -77,11 +77,7 @@ func ProtoTransactionToProtoConvTransaction(msg *pb.Transaction) *pb.ToConvertTr
 }
 
 func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxBankResult, error) {
-	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.MaxBankResultBatch{})
-	if err != nil {
-		return nil, err
-	}
-
+	batch := moneyLaundering.GetMaxBankResultBatch()
 	results := batch.GetResults()
 	externalMessage := make([]result.MaxBankResult, 0, len(results))
 	for _, r := range batch.GetResults() {
