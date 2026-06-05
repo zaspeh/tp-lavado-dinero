@@ -1,4 +1,4 @@
-package eofcoordinator
+package coordinator
 
 import (
 	"fmt"
@@ -13,11 +13,6 @@ import (
 const (
 	defaultExpectedEOFs = 1
 )
-
-// Funcion del estilo callback usada para que una vez que los
-// nodos hermanos hayan recibido la totalidad de los mensajes
-// se haga flush correspondiente
-type FlushHandler func(clientID string, survivorCount uint64) error
 
 type EOFCoordinatorConfig struct {
 	PeersExchangeName string

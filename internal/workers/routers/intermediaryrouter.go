@@ -11,7 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
-	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 )
 
 type IntermediaryRouter struct {

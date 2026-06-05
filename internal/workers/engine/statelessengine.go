@@ -3,7 +3,7 @@ package engine
 import (
 	"sync/atomic"
 
-	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
@@ -12,12 +12,12 @@ import (
 type StatelessEngine[T any, V any] struct {
 	receiver    r.Receiver[T]
 	sender      s.Sender[V]
-	coordinator *c.EOFCoordinator
+	coordinator c.Coordinator
 	processor   p.Processor[T, V]
 	wasStopped  atomic.Bool
 }
 
-func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.Processor[T, V], coordinator *c.EOFCoordinator) (*StatelessEngine[T, V], error) {
+func NewStatelessEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.Processor[T, V], coordinator c.Coordinator) (*StatelessEngine[T, V], error) {
 	engine := &StatelessEngine[T, V]{
 		receiver:  receiver,
 		sender:    sender,

@@ -9,7 +9,7 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
-	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 )
 

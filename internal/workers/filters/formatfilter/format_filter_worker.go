@@ -11,7 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
-	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/eofcoordinator"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 )
 
 type FormatFilterConfig struct {
@@ -29,7 +29,7 @@ type FormatFilterWorker struct {
 	inputQueue     middleware.Middleware
 	outputQueue    middleware.Middleware
 	allowedFormats []string
-	coordinator    *c.EOFCoordinator
+	coordinator    c.Coordinator
 	batchers       map[string]*batch.Batcher[*protobuf.ToConvertTypeFilteredPayment, *protobuf.ToConvertTypeFilteredPaymentBatch]
 }
 
