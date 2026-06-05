@@ -5,7 +5,7 @@ type Processor[T, V any] interface {
 }
 
 type StatefulProcessor[T, V any] interface {
-	Processor[T, V]
+	Process(clientID string, item T) error
 	Finalize(clientID string, yield func(result V) error) error
 	Cleanup(clientID string) error
 }

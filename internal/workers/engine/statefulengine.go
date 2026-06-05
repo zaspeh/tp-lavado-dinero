@@ -61,8 +61,7 @@ func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
 
 func (e *StatefulEngine[T, V]) handleDataMessage(clientID string, data []T) error {
 	for _, item := range data {
-		_, err := e.processor.Process(clientID, item)
-		if err != nil {
+		if err := e.processor.Process(clientID, item); err != nil {
 			return err
 		}
 	}
