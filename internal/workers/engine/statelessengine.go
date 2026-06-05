@@ -41,6 +41,10 @@ func (e *StatelessEngine[T, V]) Run() error {
 }
 
 func (e *StatelessEngine[T, V]) Shutdown() {
+	if e.wasStopped.Load() {
+		return
+	}
+
 	e.wasStopped.Store(true)
 	e.receiver.Close()
 	e.sender.Close()
