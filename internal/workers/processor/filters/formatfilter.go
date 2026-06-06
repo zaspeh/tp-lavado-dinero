@@ -16,7 +16,7 @@ func NewFormatFilterProcessor(allowedFormats []string) *FormatFilterProcessor {
 	}
 }
 
-func (f *FormatFilterProcessor) Process(msg *protobuf.ToConvertPeriodFiltered) ([]*protobuf.ToConvertTypeFilteredPayment, error) {
+func (f *FormatFilterProcessor) Process(clientID string, msg *protobuf.ToConvertPeriodFiltered) ([]*protobuf.ToConvertTypeFilteredPayment, error) {
 	paymentFormat := msg.GetPaymentFormat()
 
 	if !f.isAllowedFormat(paymentFormat) {

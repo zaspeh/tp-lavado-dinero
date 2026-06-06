@@ -9,7 +9,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/formatfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
 )
@@ -174,43 +173,20 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 }
 
 func buildFormatFilterWorker() (workers.Worker, error) {
-	connSettings, err := getMomConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
 	allowedFormats, err := getEnvStringSliceStrict("VALID_PAYMENT_FORMATS")
 	if err != nil {
 		return nil, err
 	}
-
-	workerID, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	config := formatfilter.FormatFilterConfig{
-		InputQueueName:  inputQueueName,
-		OutputQueueName: outputQueueName,
-		MomHost:         connSettings.Hostname,
-		MomPort:         connSettings.Port,
-		AllowedFormats:  allowedFormats,
-		WorkerID:        workerID,
-		WorkerCount:     workerCount,
-		WorkerExchange:  workerExchangeName,
-	}
-
-	return formatfilter.NewFormatFilterWorker(config)
+	return buildStatefulWorkerInputQueueOutputQueue(
+		InputQueueOutputQueueStatelessConfig[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertTypeFilteredPayment, *protobuf.ToConvertTypeFilteredPaymentBatch]{
+			ReceivedMessageType: protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED,
+			Wrapper:             protowrappers.WrapToConvertTypeFilteredPayment,
+			Extractor:           protoextractors.GetToConvertPeriodFilteredItems,
+			Inserter:            protoinserters.InsertToConvertTypeFilteredPaymentBatch,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.ToConvertTypeFilteredPayment](),
+			processor:           filterprocessor.NewFormatFilterProcessor(allowedFormats),
+		},
+	)
 }
 
 func buildAvgByTypeWorker() (workers.Worker, error) {
@@ -232,7 +208,7 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	return buildAmountFilterWorkerGeneric(
+	return buildStatefulWorkerInputQueueOutputQueue(
 		InputQueueOutputQueueStatelessConfig[*protobuf.ConvertedAmount, *protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]{
 			ReceivedMessageType: protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
 			Wrapper:             protowrappers.WrapConvertedAmounts,
@@ -250,7 +226,7 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	return buildAmountFilterWorkerGeneric(
+	return buildStatefulWorkerInputQueueOutputQueue(
 		InputQueueOutputQueueStatelessConfig[*protobuf.Microtransaction, *protobuf.Microtransaction, *protobuf.MicrotransactionBatch]{
 			ReceivedMessageType: protobuf.MessageType_MICROTRANSACTION_BATCH,
 			Wrapper:             protowrappers.WrapToMicrotrasactionBatch,

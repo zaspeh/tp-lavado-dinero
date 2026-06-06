@@ -78,7 +78,7 @@ type InputQueueOutputQueueStatelessConfig[T, V, R any] struct {
 	processor           processor.Processor[T, V]
 }
 
-func buildAmountFilterWorkerGeneric[T, V, R any](cfg InputQueueOutputQueueStatelessConfig[T, V, R]) (workers.Worker, error) {
+func buildStatefulWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutputQueueStatelessConfig[T, V, R]) (workers.Worker, error) {
 	inputQueue, outputQueue, err := createInputOutputQueues()
 	if err != nil {
 		return nil, err
