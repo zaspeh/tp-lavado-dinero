@@ -135,7 +135,7 @@ func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *prot
 	slog.Debug("Handling SuspiciousPathBatch")
 
 	for _, path := range batchMsg.GetPaths() {
-		slog.Debug("Handling SuspiciousPathBatch Origin", path.GetOrigin().GetBank(), path.GetOrigin().GetAccount(), "Destination", path.GetDestination().GetBank(), path.GetDestination().GetAccount())
+		slog.Debug("Handling SuspiciousPathBatch Origin", "origin bank", path.GetOrigin().GetBank(), "origin account", path.GetOrigin().GetAccount(), "Destination", path.GetDestination().GetBank(), "destination account", path.GetDestination().GetAccount())
 		pair := model.OriginDestinationPair{
 			Origin: model.Account{
 				Bank:    path.GetOrigin().GetBank(),
@@ -159,13 +159,13 @@ func (sgj *ScatterGatherJoinWorker) handleEOF(msg *protobuf.MoneyLaundry, rawMsg
 	// ----------------------
 	slog.Debug("Handling EOF")
 	clientID := msg.GetClientID()
-	slog.Debug("Handling EOF for client", clientID)
+	slog.Debug("Handling EOF for client", "clientID", clientID)
 	clientEOFCount, ok := sgj.clientEOFs[clientID]
 	if !ok {
 		clientEOFCount = 0
 	}
 	clientEOFCount++
-	slog.Debug("client EOF count", clientID)
+	slog.Debug("client EOF count", "clientID", clientID)
 	sgj.clientEOFs[clientID] = clientEOFCount
 	if !(clientEOFCount >= sgj.targetEofCount) {
 		ack()
