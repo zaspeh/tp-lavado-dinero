@@ -10,7 +10,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/messagehandler"

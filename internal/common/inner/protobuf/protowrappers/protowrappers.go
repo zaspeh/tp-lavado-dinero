@@ -2,7 +2,7 @@ package protowrappers
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"google.golang.org/protobuf/proto"
 )
 

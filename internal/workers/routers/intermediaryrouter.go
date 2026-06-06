@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 )

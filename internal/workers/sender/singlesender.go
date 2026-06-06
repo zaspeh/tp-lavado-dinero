@@ -3,7 +3,7 @@ package sender
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 )
 
 type SingleSender[T any, V any] struct {

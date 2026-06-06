@@ -11,7 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"google.golang.org/protobuf/proto"
 )
 

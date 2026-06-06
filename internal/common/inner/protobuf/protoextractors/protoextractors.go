@@ -1,6 +1,6 @@
 package protoextractors
 
-import "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+import protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 
 func GetConvertedAmountBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.ConvertedAmount {
 	return batch.GetConvertedAmountBatch().GetItems()

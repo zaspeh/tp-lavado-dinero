@@ -12,8 +12,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/request"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
-	pb "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
@@ -44,7 +43,7 @@ func RawTransactionToProtoTransaction(msg request.Transaction) (*protobuf.Transa
 		return nil, fmt.Errorf("invalid timestamp: %w", err)
 	}
 
-	transaction := &pb.Transaction{
+	transaction := &protobuf.Transaction{
 		Timestamp:       timestamppb.New(timestamp),
 		FromBank:        int32(fromBank),
 		ToBank:          int32(toBank),
@@ -58,16 +57,16 @@ func RawTransactionToProtoTransaction(msg request.Transaction) (*protobuf.Transa
 }
 
 func EOFToProto(clientID string, transactionCounter int) (m.Message, error) {
-	eofMessage := &pb.MoneyLaundry_EofMessage{
-		EofMessage: &pb.EOF{
+	eofMessage := &protobuf.MoneyLaundry_EofMessage{
+		EofMessage: &protobuf.EOF{
 			TotalTransactions: uint64(transactionCounter),
 		},
 	}
-	return protobuf.SerializeProtoMessageONTRIAL(clientID, pb.MessageType_EOF_, eofMessage)
+	return protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMessage)
 }
 
-func ProtoTransactionToProtoConvTransaction(msg *pb.Transaction) *pb.ToConvertTransaction {
-	convertionTransaction := &pb.ToConvertTransaction{
+func ProtoTransactionToProtoConvTransaction(msg *protobuf.Transaction) *protobuf.ToConvertTransaction {
+	convertionTransaction := &protobuf.ToConvertTransaction{
 		Timestamp:       msg.GetTimestamp(),
 		AmountPaid:      msg.GetAmountPaid(),
 		PaymentCurrency: msg.GetPaymentCurrency(),

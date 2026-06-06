@@ -4,15 +4,15 @@ package protobuf;
 
 option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 
-import "internal/common/inner/protobuf/transaction.proto";
-import "internal/common/inner/protobuf/conversion.proto";
-import "internal/common/inner/protobuf/eof.proto";
-import "internal/common/inner/protobuf/maxbank.proto";
-import "internal/common/inner/protobuf/microtransaction.proto";
-import "internal/common/inner/protobuf/periodfilter.proto";
-import "internal/common/inner/protobuf/avgbytypetransaction.proto";
-import "internal/common/inner/protobuf/scattergather.proto";
-import "internal/common/inner/protobuf/intermediarypair.proto";
+import "internal/common/inner/protobuf/protomessages/transaction.proto";
+import "internal/common/inner/protobuf/protomessages/conversion.proto";
+import "internal/common/inner/protobuf/protomessages/eof.proto";
+import "internal/common/inner/protobuf/protomessages/maxbank.proto";
+import "internal/common/inner/protobuf/protomessages/microtransaction.proto";
+import "internal/common/inner/protobuf/protomessages/periodfilter.proto";
+import "internal/common/inner/protobuf/protomessages/avgbytypetransaction.proto";
+import "internal/common/inner/protobuf/protomessages/scattergather.proto";
+import "internal/common/inner/protobuf/protomessages/intermediarypair.proto";
 
 enum MessageType {
     EOF_ = 0;

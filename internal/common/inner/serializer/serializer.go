@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"google.golang.org/protobuf/proto"
 )
 

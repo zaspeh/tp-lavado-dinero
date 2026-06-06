@@ -3,7 +3,7 @@ package procesorrouters
 import (
 	"hash/fnv"
 
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 )
 

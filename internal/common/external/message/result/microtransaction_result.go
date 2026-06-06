@@ -1,6 +1,6 @@
 package result
 
-import "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf"
+import protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 
 type MicrotransactionResult struct {
 	Transactions []*protobuf.Microtransaction
