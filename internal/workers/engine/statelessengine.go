@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"log/slog"
 	"sync/atomic"
 
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
@@ -84,8 +85,10 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) err
 }
 
 func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64) error {
+	slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivorCount)
 	if !e.coordinator.IsLeader() {
 		return nil
 	}
+	slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivorCount)
 	return e.sender.SendEOF(clientID, survivorCount)
 }

@@ -22,6 +22,7 @@ func (f *FormatFilterProcessor) Process(clientID string, msg *protobuf.ToConvert
 	if !f.isAllowedFormat(paymentFormat) {
 		return nil, nil
 	}
+
 	filteredMsg := &protobuf.ToConvertTypeFilteredPayment{
 		AmountPaid:      msg.GetAmountPaid(),
 		PaymentCurrency: msg.GetPaymentCurrency(),

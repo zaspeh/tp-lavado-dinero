@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"log/slog"
 	"sync/atomic"
 
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
@@ -82,6 +83,7 @@ func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64) e
 	}
 
 	if e.coordinator.IsLeader() {
+		slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", eofCount)
 		return e.sender.SendEOF(clientID, eofCount)
 	}
 

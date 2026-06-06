@@ -177,9 +177,9 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
-	return buildStatefulWorkerInputQueueOutputQueue(
+	return buildStatelessWorkerInputQueueOutputQueue(
 		InputQueueOutputQueueStatelessConfig[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertTypeFilteredPayment, *protobuf.ToConvertTypeFilteredPaymentBatch]{
-			ReceivedMessageType: protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED,
+			ReceivedMessageType: protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH,
 			Wrapper:             protowrappers.WrapToConvertTypeFilteredPayment,
 			Extractor:           protoextractors.GetToConvertPeriodFilteredItems,
 			Inserter:            protoinserters.InsertToConvertTypeFilteredPaymentBatch,
@@ -208,7 +208,7 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	return buildStatefulWorkerInputQueueOutputQueue(
+	return buildStatelessWorkerInputQueueOutputQueue(
 		InputQueueOutputQueueStatelessConfig[*protobuf.ConvertedAmount, *protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]{
 			ReceivedMessageType: protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
 			Wrapper:             protowrappers.WrapConvertedAmounts,
@@ -226,7 +226,7 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	return buildStatefulWorkerInputQueueOutputQueue(
+	return buildStatelessWorkerInputQueueOutputQueue(
 		InputQueueOutputQueueStatelessConfig[*protobuf.Microtransaction, *protobuf.Microtransaction, *protobuf.MicrotransactionBatch]{
 			ReceivedMessageType: protobuf.MessageType_MICROTRANSACTION_BATCH,
 			Wrapper:             protowrappers.WrapToMicrotrasactionBatch,
