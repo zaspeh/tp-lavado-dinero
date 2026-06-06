@@ -11,6 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/formatfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
+	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
 )
 
 func buildCurrencyFilterWorker() (workers.Worker, error) {
@@ -226,33 +227,37 @@ func buildAvgByTypeWorker() (workers.Worker, error) {
 }
 
 func buildAmountConvertedFilterWorker() (workers.Worker, error) {
+	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
+	if err != nil {
+		return nil, err
+	}
+
 	return buildAmountFilterWorkerGeneric(
-		AmountFilterPipelineConfig[*protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]{
-			MessageType: protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
-
-			Wrapper: protowrappers.WrapConvertedAmounts,
-
-			Extractor: protoextractors.GetConvertedAmountBatchItems,
-
-			Serializer: protoinserters.InsertConvertedAmountBatch,
-
-			Sizer: protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+		InputQueueOutputQueueStatelessConfig[*protobuf.ConvertedAmount, *protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]{
+			ReceivedMessageType: protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
+			Wrapper:             protowrappers.WrapConvertedAmounts,
+			Extractor:           protoextractors.GetConvertedAmountBatchItems,
+			Inserter:            protoinserters.InsertConvertedAmountBatch,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+			processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.ConvertedAmount](amountToFilter),
 		},
 	)
 }
 
 func buildAmountFilterWorker() (workers.Worker, error) {
+	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
+	if err != nil {
+		return nil, err
+	}
+
 	return buildAmountFilterWorkerGeneric(
-		AmountFilterPipelineConfig[*protobuf.Microtransaction, *protobuf.MicrotransactionBatch]{
-			MessageType: protobuf.MessageType_MICROTRANSACTION_BATCH,
-
-			Wrapper: protowrappers.WrapToMicrotrasactionBatch,
-
-			Extractor: protoextractors.GetMicrotransactionBatchItems,
-
-			Serializer: protoinserters.InsertMicrotransactionBatch,
-
-			Sizer: protowrappers.ProtoSizer[*protobuf.Microtransaction](),
+		InputQueueOutputQueueStatelessConfig[*protobuf.Microtransaction, *protobuf.Microtransaction, *protobuf.MicrotransactionBatch]{
+			ReceivedMessageType: protobuf.MessageType_MICROTRANSACTION_BATCH,
+			Wrapper:             protowrappers.WrapToMicrotrasactionBatch,
+			Extractor:           protoextractors.GetMicrotransactionBatchItems,
+			Inserter:            protoinserters.InsertMicrotransactionBatch,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.Microtransaction](),
+			processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.Microtransaction](amountToFilter),
 		},
 	)
 }

@@ -9,28 +9,12 @@ import (
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	e "github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
 	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
-	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
-
-type statelessWorkerConfig[T, V, B any] struct {
-	Mom                  m.ConnSettings
-	id                   int
-	workerCount          int
-	workerExchangeName   string
-	expectedEOFs         int
-	InputQueueName       string
-	OutputQueueName      string
-	InputMessageType     protobuf.MessageType
-	ExtractInputItems    func(*protobuf.MoneyLaundry) []T
-	Processor            p.Processor[T, V]
-	OutputWrapper        batch.Wrapper[V, B]
-	OutputSizer          batch.Sizer[V]
-	SerializeOutputBatch func(clientID string, batch B) (m.Message, error)
-}
 
 type statelessWorkerWithSenderConfig[T, V any] struct {
 	Mom                m.ConnSettings
@@ -43,34 +27,6 @@ type statelessWorkerWithSenderConfig[T, V any] struct {
 	ExtractInputItems  func(*protobuf.MoneyLaundry) []T
 	Processor          p.Processor[T, V]
 	Sender             s.Sender[V]
-}
-
-func buildStatelessWorker[T, V, B any](config statelessWorkerConfig[T, V, B]) (*worker.Worker, error) {
-	outputQueue, err := m.CreateQueueMiddleware(config.OutputQueueName, config.Mom)
-	if err != nil {
-		return nil, err
-	}
-
-	sender := s.NewSingleSender(
-		outputQueue,
-		config.OutputWrapper,
-		config.OutputSizer,
-		0,
-		config.SerializeOutputBatch,
-	)
-
-	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[T, V]{
-		Mom:                config.Mom,
-		id:                 config.id,
-		workerCount:        config.workerCount,
-		workerExchangeName: config.workerExchangeName,
-		expectedEOFs:       config.expectedEOFs,
-		InputQueueName:     config.InputQueueName,
-		InputMessageType:   config.InputMessageType,
-		ExtractInputItems:  config.ExtractInputItems,
-		Processor:          config.Processor,
-		Sender:             sender,
-	})
 }
 
 func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderConfig[T, V]) (*worker.Worker, error) {
@@ -113,21 +69,16 @@ func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderCo
 	return worker, nil
 }
 
-type AmountFilterPipelineConfig[T filterprocessor.Amountable, B any] struct {
-	MessageType protobuf.MessageType
-	Wrapper     batch.Wrapper[T, B]
-	Extractor   func(*protobuf.MoneyLaundry) []T
-	Serializer  func(clientID string, batch B) (middleware.Message, error)
-	Sizer       batch.Sizer[T]
+type InputQueueOutputQueueStatelessConfig[T, V, R any] struct {
+	ReceivedMessageType protobuf.MessageType
+	Extractor           func(*protobuf.MoneyLaundry) []T
+	Wrapper             batch.Wrapper[V, R]
+	Sizer               batch.Sizer[V]
+	Inserter            func(clientID string, batch R) (middleware.Message, error)
+	processor           processor.Processor[T, V]
 }
 
-func buildAmountFilterWorkerGeneric[T filterprocessor.Amountable, B any](cfg AmountFilterPipelineConfig[T, B]) (workers.Worker, error) {
-
-	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
-	if err != nil {
-		return nil, err
-	}
-
+func buildAmountFilterWorkerGeneric[T, V, R any](cfg InputQueueOutputQueueStatelessConfig[T, V, R]) (workers.Worker, error) {
 	inputQueue, outputQueue, err := createInputOutputQueues()
 	if err != nil {
 		return nil, err
@@ -145,23 +96,19 @@ func buildAmountFilterWorkerGeneric[T filterprocessor.Amountable, B any](cfg Amo
 		cfg.Wrapper,
 		cfg.Sizer,
 		0,
-		cfg.Serializer,
+		cfg.Inserter,
 	)
 
 	singleReceiver := r.NewSingleReceiver(
 		inputQueue,
-		cfg.MessageType,
+		cfg.ReceivedMessageType,
 		cfg.Extractor,
-	)
-
-	processor := filterprocessor.NewAmountFilterProcessor[T](
-		amountToFilter,
 	)
 
 	engineInstance, err := engine.NewStatelessEngine(
 		singleReceiver,
 		singleSender,
-		processor,
+		cfg.processor,
 		coordinator,
 	)
 	if err != nil {

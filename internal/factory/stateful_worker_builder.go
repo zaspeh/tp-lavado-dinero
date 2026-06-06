@@ -17,7 +17,7 @@ import (
 // T es el mensaje individual, por ejemplo, *proto.MaxBank
 // V es el resultado individual del procesamiento, por ejemplo, *proto.MaxBankResult
 // R es el batch resultante del procesamiento, por ejemplo, *proto.MaxBankResultBatch
-type InputExchangeOutputQueueConfig[T, V, R any] struct {
+type InputExchangeOutputQueueStatefulConfig[T, V, R any] struct {
 	ReceivedMessageType protobuf.MessageType
 	Extractor           func(*protobuf.MoneyLaundry) []T
 	Wrapper             batch.Wrapper[V, R]
@@ -26,7 +26,7 @@ type InputExchangeOutputQueueConfig[T, V, R any] struct {
 	processor           processor.StatefulProcessor[T, V]
 }
 
-func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeOutputQueueConfig[T, V, R]) (workers.Worker, error) {
+func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeOutputQueueStatefulConfig[T, V, R]) (workers.Worker, error) {
 	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
 	if err != nil {
 		return nil, err

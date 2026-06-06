@@ -12,7 +12,7 @@ import (
 
 func buildMaxBankWorker() (workers.Worker, error) {
 	return buildStatefulWorkerInputExchangeOutputQueue(
-		InputExchangeOutputQueueConfig[*protobuf.MaxBank, *protobuf.MaxBankResult, *protobuf.MaxBankResultBatch]{
+		InputExchangeOutputQueueStatefulConfig[*protobuf.MaxBank, *protobuf.MaxBankResult, *protobuf.MaxBankResultBatch]{
 			ReceivedMessageType: protobuf.MessageType_MAXBANK_BATCH,
 			Extractor:           protoextractors.GetMaxBankBatchItems,
 			Wrapper:             protowrappers.WrapMaxBankResults,
