@@ -21,3 +21,7 @@ func GetAvgByTypeTransactionBatchItems(batch *protobuf.MoneyLaundry) []*protobuf
 func GetToConvertPeriodFilteredItems(batch *protobuf.MoneyLaundry) []*protobuf.ToConvertPeriodFiltered {
 	return batch.GetToConvertPeriodFilteredBatch().GetItems()
 }
+
+func GetToConvertTypeFilteredPaymentItems(batch *protobuf.MoneyLaundry) []*protobuf.ToConvertTypeFilteredPayment {
+	return batch.GetToConvertTypeFilteredPaymentBatch().GetItems()
+}

@@ -1,31 +1,15 @@
 package factory
 
 import (
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserters"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/mappers/currencyconverter"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/mappers/currencyconverter"
 )
 
 func buildCurrencyConverterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
-	if err != nil {
-		return nil, err
-	}
-
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
 	apiURL, err := getEnvStrict("EXCHANGE_RATE_API_URL")
 	if err != nil {
 		return nil, err
@@ -36,21 +20,14 @@ func buildCurrencyConverterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	config := currencyconverter.CurrencyConverterConfig{
-		InputQueueName:  inputQueueName,
-		OutputQueueName: outputQueueName,
-		MomHost:         host,
-		MomPort:         port,
-		Converter:       converter,
-		WorkerID:        id,
-		WorkerCount:     workerCount,
-		WorkerExchange:  workerExchangeName,
-	}
-
-	return currencyconverter.NewCurrencyConverterWorker(config)
+	return buildStatelessWorkerInputQueueOutputQueue(
+		InputQueueOutputQueueStatelessConfig[*protobuf.ToConvertTypeFilteredPayment, *protobuf.ConvertedAmount, *protobuf.ConvertedAmountBatch]{
+			ReceivedMessageType: protobuf.MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH,
+			Wrapper:             protowrappers.WrapConvertedAmounts,
+			Extractor:           protoextractors.GetToConvertTypeFilteredPaymentItems,
+			Inserter:            protoinserters.InsertConvertedAmountBatch,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+			Processor:           currencyconverter.NewCurrencyConverterProcessor(converter),
+		},
+	)
 }

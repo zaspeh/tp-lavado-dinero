@@ -184,7 +184,7 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 			Extractor:           protoextractors.GetToConvertPeriodFilteredItems,
 			Inserter:            protoinserters.InsertToConvertTypeFilteredPaymentBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.ToConvertTypeFilteredPayment](),
-			processor:           filterprocessor.NewFormatFilterProcessor(allowedFormats),
+			Processor:           filterprocessor.NewFormatFilterProcessor(allowedFormats),
 		},
 	)
 }
@@ -215,7 +215,7 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 			Extractor:           protoextractors.GetConvertedAmountBatchItems,
 			Inserter:            protoinserters.InsertConvertedAmountBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
-			processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.ConvertedAmount](amountToFilter),
+			Processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.ConvertedAmount](amountToFilter),
 		},
 	)
 }
@@ -233,7 +233,7 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 			Extractor:           protoextractors.GetMicrotransactionBatchItems,
 			Inserter:            protoinserters.InsertMicrotransactionBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.Microtransaction](),
-			processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.Microtransaction](amountToFilter),
+			Processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.Microtransaction](amountToFilter),
 		},
 	)
 }

@@ -75,7 +75,7 @@ type InputQueueOutputQueueStatelessConfig[T, V, R any] struct {
 	Wrapper             batch.Wrapper[V, R]
 	Sizer               batch.Sizer[V]
 	Inserter            func(clientID string, batch R) (middleware.Message, error)
-	processor           processor.Processor[T, V]
+	Processor           processor.Processor[T, V]
 }
 
 func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutputQueueStatelessConfig[T, V, R]) (workers.Worker, error) {
@@ -108,7 +108,7 @@ func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutput
 	engineInstance, err := engine.NewStatelessEngine(
 		singleReceiver,
 		singleSender,
-		cfg.processor,
+		cfg.Processor,
 		coordinator,
 	)
 	if err != nil {
