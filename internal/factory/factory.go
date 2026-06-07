@@ -60,3 +60,7 @@ func CreateClient() (*client.Client, error) {
 func CreateGateway() (*gateway.Gateway, error) {
 	return buildGateway()
 }
+
+func CreateFaultHypervisor() (workers.Worker, error) {
+	return BuildFaultHypervisor()
+}

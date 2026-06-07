@@ -127,6 +127,23 @@ def build_worker(svc_name, cfg, i, log_level):
         'networks': ['money_laundering_network']
     }
 
+
+def build_fault_hypervisor(cfg):
+    return {
+        'build': {
+            'context': '.',
+            'dockerfile': 'internal/fault_hypervisor/Dockerfile'
+        },
+        'container_name': 'fault_hypervisor',
+        'volumes': [
+            '/var/run/docker.sock:/var/run/docker.sock'
+        ],
+        'depends_on': {
+            'rabbitmq': {'condition': 'service_healthy'}
+        },
+        'networks': ['money_laundering_network']
+    }
+
 def generate_compose(cfg):
     global_log_level = cfg.get('global_log_level', 'info')
 
@@ -151,6 +168,9 @@ def generate_compose(cfg):
         else:
             for i in range(count):
                 compose['services'][f"{svc_name}_{i}"] = build_worker(svc_name, cfg, i, svc_log_level)
+
+    if cfg.get('fault_hypervisor', {}).get('enabled', False):
+        compose['services']['fault_hypervisor'] = build_fault_hypervisor(cfg)
             
     return compose
 
