@@ -11,6 +11,7 @@ import (
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/heartbeat"
 )
 
 const (
@@ -250,4 +251,27 @@ func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, work
 	}
 
 	return paymentTypeExchange, exchangeKeys, nil
+}
+
+func buildHeartbeatPublisher(id int, workerType string) (*heartbeat.HeartbeatPublisher, error) {
+	momConfig, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	heartbeatQueueName, err := getEnvStrict("HEARTBEAT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	intervalSeconds, err := getEnvIntStrict("HEARTBEAT_INTERVAL_SECONDS")
+	if err != nil {
+		return nil, err
+	}
+
+	heartbeatQueue, err := middleware.CreateQueueMiddleware(heartbeatQueueName, momConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return heartbeat.NewHeartbeatPublisher(heartbeatQueue, id, workerType, intervalSeconds), nil
 }

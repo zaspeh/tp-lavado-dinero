@@ -4,11 +4,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type FaultHypervisorConfig struct {
@@ -51,8 +53,11 @@ func (fh *FaultHypervisor) Run() error {
 	go fh.handleSignals()
 	go fh.monitorWorkers()
 
+	slog.Info("starting consuming heartbeats")
+
 	return fh.HeartbeatQueue.StartConsuming(
 		func(msg middleware.Message, ack, nack func()) {
+			slog.Info("message received")
 			fh.handleHeartbeat(msg, ack, nack)
 		},
 	)
@@ -75,15 +80,30 @@ func (fh *FaultHypervisor) handleSignals() {
 }
 
 func (fh *FaultHypervisor) handleHeartbeat(msg middleware.Message, ack, nack func()) {
-	workerID := string(msg.Body)
+	slog.Debug("entered handleHeartbeat")
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		nack()
+		return
+	}
+
+	heartbeat := moneyLaundry.GetHeartbeat()
+	if heartbeat == nil {
+		nack()
+		return
+	}
+
+	workerID := heartbeat.GetWorkerId()
+	parsedWorkerID := strconv.FormatInt(workerID, 10)
 
 	fh.mu.Lock()
-	fh.lastSeen[workerID] = time.Now()
+	fh.lastSeen[parsedWorkerID] = time.Now()
 	fh.mu.Unlock()
 
 	slog.Debug(
 		"heartbeat received",
-		"worker", workerID,
+		"worker_id", parsedWorkerID,
+		"worker_type", heartbeat.GetWorkerType(),
 	)
 
 	ack()

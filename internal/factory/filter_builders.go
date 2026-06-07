@@ -54,6 +54,13 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	workerType := "CURRENCY_FILTER"
+
+	heartbeat, err := buildHeartbeatPublisher(id, workerType)
+	if err != nil {
+		return nil, err
+	}
+
 	config := filters.CurrencyFilterConfig{
 		InputQueueName:                  inQ,
 		MicrotransactionFilterQueueName: microQ,
@@ -65,6 +72,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		WorkerCount:                     workerCount,
 		WorkerExchangeName:              workerExchangeName,
 		ID:                              id,
+		Heartbeat:                       heartbeat,
 	}
 
 	return filters.NewCurrencyFilter(config)

@@ -2,17 +2,16 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: internal/common/inner/protobuf/scattergather.proto
+// source: internal/common/inner/protobuf/protomessages/scattergather.proto
 
 package protobuf
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -34,7 +33,7 @@ type ScatterGather struct {
 
 func (x *ScatterGather) Reset() {
 	*x = ScatterGather{}
-	mi := &file_internal_common_inner_protobuf_scattergather_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_protomessages_scattergather_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +45,7 @@ func (x *ScatterGather) String() string {
 func (*ScatterGather) ProtoMessage() {}
 
 func (x *ScatterGather) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_scattergather_proto_msgTypes[0]
+	mi := &file_internal_common_inner_protobuf_protomessages_scattergather_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +58,7 @@ func (x *ScatterGather) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScatterGather.ProtoReflect.Descriptor instead.
 func (*ScatterGather) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_scattergather_proto_rawDescGZIP(), []int{0}
+	return file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ScatterGather) GetFromBank() int32 {
@@ -99,7 +98,7 @@ type ScatterGatherBatch struct {
 
 func (x *ScatterGatherBatch) Reset() {
 	*x = ScatterGatherBatch{}
-	mi := &file_internal_common_inner_protobuf_scattergather_proto_msgTypes[1]
+	mi := &file_internal_common_inner_protobuf_protomessages_scattergather_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -111,7 +110,7 @@ func (x *ScatterGatherBatch) String() string {
 func (*ScatterGatherBatch) ProtoMessage() {}
 
 func (x *ScatterGatherBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_common_inner_protobuf_scattergather_proto_msgTypes[1]
+	mi := &file_internal_common_inner_protobuf_protomessages_scattergather_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -124,7 +123,7 @@ func (x *ScatterGatherBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScatterGatherBatch.ProtoReflect.Descriptor instead.
 func (*ScatterGatherBatch) Descriptor() ([]byte, []int) {
-	return file_internal_common_inner_protobuf_scattergather_proto_rawDescGZIP(), []int{1}
+	return file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ScatterGatherBatch) GetItems() []*ScatterGather {
@@ -134,11 +133,11 @@ func (x *ScatterGatherBatch) GetItems() []*ScatterGather {
 	return nil
 }
 
-var File_internal_common_inner_protobuf_scattergather_proto protoreflect.FileDescriptor
+var File_internal_common_inner_protobuf_protomessages_scattergather_proto protoreflect.FileDescriptor
 
-const file_internal_common_inner_protobuf_scattergather_proto_rawDesc = "" +
+const file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDesc = "" +
 	"\n" +
-	"2internal/common/inner/protobuf/scattergather.proto\x12\bprotobuf\"~\n" +
+	"@internal/common/inner/protobuf/protomessages/scattergather.proto\x12\bprotobuf\"~\n" +
 	"\rScatterGather\x12\x1b\n" +
 	"\tfrom_bank\x18\x01 \x01(\x05R\bfromBank\x12\x17\n" +
 	"\ato_bank\x18\x02 \x01(\x05R\x06toBank\x12\x18\n" +
@@ -149,23 +148,23 @@ const file_internal_common_inner_protobuf_scattergather_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2\x17.protobuf.ScatterGatherR\x05itemsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
-	file_internal_common_inner_protobuf_scattergather_proto_rawDescOnce sync.Once
-	file_internal_common_inner_protobuf_scattergather_proto_rawDescData []byte
+	file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescOnce sync.Once
+	file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescData []byte
 )
 
-func file_internal_common_inner_protobuf_scattergather_proto_rawDescGZIP() []byte {
-	file_internal_common_inner_protobuf_scattergather_proto_rawDescOnce.Do(func() {
-		file_internal_common_inner_protobuf_scattergather_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_scattergather_proto_rawDesc), len(file_internal_common_inner_protobuf_scattergather_proto_rawDesc)))
+func file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescGZIP() []byte {
+	file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescOnce.Do(func() {
+		file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDesc), len(file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDesc)))
 	})
-	return file_internal_common_inner_protobuf_scattergather_proto_rawDescData
+	return file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_scattergather_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_internal_common_inner_protobuf_scattergather_proto_goTypes = []any{
+var file_internal_common_inner_protobuf_protomessages_scattergather_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_internal_common_inner_protobuf_protomessages_scattergather_proto_goTypes = []any{
 	(*ScatterGather)(nil),      // 0: protobuf.ScatterGather
 	(*ScatterGatherBatch)(nil), // 1: protobuf.ScatterGatherBatch
 }
-var file_internal_common_inner_protobuf_scattergather_proto_depIdxs = []int32{
+var file_internal_common_inner_protobuf_protomessages_scattergather_proto_depIdxs = []int32{
 	0, // 0: protobuf.ScatterGatherBatch.items:type_name -> protobuf.ScatterGather
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
@@ -174,26 +173,26 @@ var file_internal_common_inner_protobuf_scattergather_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_internal_common_inner_protobuf_scattergather_proto_init() }
-func file_internal_common_inner_protobuf_scattergather_proto_init() {
-	if File_internal_common_inner_protobuf_scattergather_proto != nil {
+func init() { file_internal_common_inner_protobuf_protomessages_scattergather_proto_init() }
+func file_internal_common_inner_protobuf_protomessages_scattergather_proto_init() {
+	if File_internal_common_inner_protobuf_protomessages_scattergather_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_scattergather_proto_rawDesc), len(file_internal_common_inner_protobuf_scattergather_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDesc), len(file_internal_common_inner_protobuf_protomessages_scattergather_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_internal_common_inner_protobuf_scattergather_proto_goTypes,
-		DependencyIndexes: file_internal_common_inner_protobuf_scattergather_proto_depIdxs,
-		MessageInfos:      file_internal_common_inner_protobuf_scattergather_proto_msgTypes,
+		GoTypes:           file_internal_common_inner_protobuf_protomessages_scattergather_proto_goTypes,
+		DependencyIndexes: file_internal_common_inner_protobuf_protomessages_scattergather_proto_depIdxs,
+		MessageInfos:      file_internal_common_inner_protobuf_protomessages_scattergather_proto_msgTypes,
 	}.Build()
-	File_internal_common_inner_protobuf_scattergather_proto = out.File
-	file_internal_common_inner_protobuf_scattergather_proto_goTypes = nil
-	file_internal_common_inner_protobuf_scattergather_proto_depIdxs = nil
+	File_internal_common_inner_protobuf_protomessages_scattergather_proto = out.File
+	file_internal_common_inner_protobuf_protomessages_scattergather_proto_goTypes = nil
+	file_internal_common_inner_protobuf_protomessages_scattergather_proto_depIdxs = nil
 }

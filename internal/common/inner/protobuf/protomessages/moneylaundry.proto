@@ -13,6 +13,7 @@ import "internal/common/inner/protobuf/protomessages/periodfilter.proto";
 import "internal/common/inner/protobuf/protomessages/avgbytypetransaction.proto";
 import "internal/common/inner/protobuf/protomessages/scattergather.proto";
 import "internal/common/inner/protobuf/protomessages/intermediarypair.proto";
+import "internal/common/inner/protobuf/protomessages/heartbeat.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -53,6 +54,8 @@ enum MessageType {
     SCATTERGATHER_BATCH = 31;
     INTERMEDIARYPAIR_BATCH = 32;
     MAX_BANK_RESULT_BATCH = 33;
+
+    HEARTBEAT = 34;
 }
 
 message MoneyLaundry {
@@ -75,5 +78,6 @@ message MoneyLaundry {
         ScatterGatherBatch scattergather_batch = 14;
         IntermediaryPairBatch intermediarypair_batch = 15;
         MaxBankResultBatch max_bank_result_batch = 16;
+        Heartbeat heartbeat = 17;
     }
 }

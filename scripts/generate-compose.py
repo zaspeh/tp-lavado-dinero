@@ -129,12 +129,23 @@ def build_worker(svc_name, cfg, i, log_level):
 
 
 def build_fault_hypervisor(cfg):
+    amqp_port = cfg['rabbitmq']['amqp_port']
+
+    env_list = [
+        "MOM_HOST=rabbitmq",
+        f"MOM_PORT={amqp_port}",
+    ]
+
+    for key, value in cfg['fault_hypervisor']['env'].items():
+        env_list.append(f"{key}={value}")
+
     return {
         'build': {
             'context': '.',
             'dockerfile': 'internal/fault_hypervisor/Dockerfile'
         },
         'container_name': 'fault_hypervisor',
+        'environment': env_list,
         'volumes': [
             '/var/run/docker.sock:/var/run/docker.sock'
         ],

@@ -31,7 +31,7 @@ services:
     - CLIENT_EXCHANGE_NAME=client_results_exchange
     - RAW_DATA_QUEUE_NAME=raw_transactions
     - MAX_BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     ports:
     - 8080:8080
     depends_on:
@@ -52,7 +52,7 @@ services:
     - INPUT_FILE_ACCOUNTS=/datasets/client_0_accounts.csv
     - OUTPUT_DIR=/outputs
     - MAX_BATCH_WEIGHT=1000000
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     volumes:
     - ./datasets:/datasets
     - ./outputs/client_0:/outputs
@@ -67,7 +67,7 @@ services:
     container_name: currency_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -78,6 +78,8 @@ services:
     - BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
     - PERIOD_FILTER_QUEUE_NAME=period_filter_input_queue
     - CURRENCY_TO_FILTER=US Dollar
+    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
+    - HEARTBEAT_INTERVAL_SECONDS=5
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -90,7 +92,7 @@ services:
     container_name: microtransaction_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AMOUNT_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -111,7 +113,7 @@ services:
     container_name: microtransaction_join_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=MICROTRANSACTION_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -131,6 +133,12 @@ services:
       context: .
       dockerfile: internal/fault_hypervisor/Dockerfile
     container_name: fault_hypervisor
+    environment:
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
+    - CHECK_INTERVAL_SECONDS=5
+    - HEARTBEAT_TIMEOUT_SECONDS=15
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     depends_on:

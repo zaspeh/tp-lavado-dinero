@@ -1,6 +1,6 @@
 # Infraestructura Core
 
-global_log_level: info
+global_log_level: debug
 gateway:
   env:
     OUTPUT_QUEUE_NAME: currency_filter_input_queue
@@ -39,6 +39,8 @@ services:
       BANK_ROUTER_QUEUE_NAME: bank_router_input_queue
       PERIOD_FILTER_QUEUE_NAME: period_filter_input_queue
       CURRENCY_TO_FILTER: "US Dollar"
+      HEARTBEAT_QUEUE_NAME: heartbeat_queue
+      HEARTBEAT_INTERVAL_SECONDS: 5
 
   microtransaction_filter:
     count: 1

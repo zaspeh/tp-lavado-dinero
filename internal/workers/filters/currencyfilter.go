@@ -9,6 +9,7 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/heartbeat"
 )
 
 type CurrencyFilter struct {
@@ -19,6 +20,8 @@ type CurrencyFilter struct {
 	currencyToFilter            string
 	coordinator                 *c.EOFCoordinator
 	transactionBatchers         map[string]*batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
+
+	Heartbeat *heartbeat.HeartbeatPublisher
 }
 
 type CurrencyFilterConfig struct {
@@ -32,6 +35,8 @@ type CurrencyFilterConfig struct {
 	MomHost                         string
 	MomPort                         int
 	CurrencyToFilter                string
+
+	Heartbeat *heartbeat.HeartbeatPublisher
 }
 
 func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
@@ -72,6 +77,7 @@ func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 		bankRouterQueue:             bankRouterQueue,
 		periodFilterQueue:           periodFilterQueue,
 		currencyToFilter:            config.CurrencyToFilter,
+		Heartbeat:                   config.Heartbeat,
 		transactionBatchers:         make(map[string]*batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]),
 	}
 
@@ -98,6 +104,8 @@ func NewCurrencyFilter(config CurrencyFilterConfig) (*CurrencyFilter, error) {
 
 func (f *CurrencyFilter) Run() error {
 	go f.coordinator.Run()
+	go f.Heartbeat.Run()
+
 	f.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 		if err != nil {

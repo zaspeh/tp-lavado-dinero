@@ -2,6 +2,7 @@ package factory
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/client"
+	hypervisor "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/fault_hypervisor"
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 )
@@ -61,6 +62,6 @@ func CreateGateway() (*gateway.Gateway, error) {
 	return buildGateway()
 }
 
-func CreateFaultHypervisor() (workers.Worker, error) {
+func CreateFaultHypervisor() (*hypervisor.FaultHypervisor, error) {
 	return BuildFaultHypervisor()
 }

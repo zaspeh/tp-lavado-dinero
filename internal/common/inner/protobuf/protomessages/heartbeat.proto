@@ -1,0 +1,13 @@
+// heartbeat.proto
+
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+message Heartbeat {
+    int64 worker_id = 1;
+    string worker_type = 2;
+    int64 timestamp = 3;
+}
