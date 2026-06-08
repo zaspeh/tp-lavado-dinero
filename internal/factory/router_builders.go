@@ -94,17 +94,12 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	groupByOriginExchangeName, err := getEnvStrict("GROUP_BY_ORIGIN_EXCHANGE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
 	groupByOriginWorkerAmount, err := getEnvIntStrict("GROUP_BY_ORIGIN_WORKER_AMOUNT")
 	if err != nil {
 		return nil, err
 	}
 
-	groupByDestinationExchangeName, err := getEnvStrict("GROUP_BY_DESTINATION_EXCHANGE_NAME")
+	groupByExchangeName, err := getEnvStrict("GROUP_BY_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +117,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 	config := routers.OriginDestinationRouterConfig{
 		ID:                              id,
 		InputQueueName:                  inQ,
-		GroupByOriginExchangeName:       groupByOriginExchangeName,
-		GroupByDestinationExchangeName:  groupByDestinationExchangeName,
+		GroupByExchangeName:             groupByExchangeName,
 		GroupByOriginWorkersAmount:      groupByOriginWorkerAmount,
 		GroupByDestinationWorkersAmount: groupByDestinationWorkerAmount,
 		MomHost:                         host,

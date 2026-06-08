@@ -1,6 +1,7 @@
 package origindestination
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -35,7 +36,9 @@ func NewGroupByDestinationWorker(config GroupByDestinationWorkerConfig) (*GroupB
 		Port:     config.MomPort,
 	}
 
-	inputExchangeKeys := []string{config.InputExchangeName + "." + config.ID}
+	inputExchangeKeys := []string{
+		fmt.Sprintf("destination.%s", config.ID),
+	}
 	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputExchangeKeys, connSettings)
 	if err != nil {
 		return nil, err

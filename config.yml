@@ -31,7 +31,7 @@ services:
     max_batch_weight: 1000000   
     
   currency_filter:
-    count: 1
+    count: 2
     worker_type: CURRENCY_FILTER
     env:
       INPUT_QUEUE_NAME: currency_filter_input_queue
@@ -43,7 +43,7 @@ services:
       HEARTBEAT_INTERVAL_SECONDS: 5
 
   microtransaction_filter:
-    count: 1
+    count: 0
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
@@ -51,7 +51,7 @@ services:
       AMOUNT_TO_FILTER: 50
 
   microtransaction_join:
-    count: 1
+    count: 0
     worker_type: MICROTRANSACTION_JOIN
     env:
       INPUT_QUEUE_NAME: microtransaction_join_input_queue
@@ -85,7 +85,7 @@ services:
     
 
   period_filter:
-    count: 0
+    count: 2
     worker_type: PERIOD_FILTER
     env:
       USD_INPUT_QUEUE_NAME: period_filter_input_queue
@@ -111,61 +111,60 @@ services:
       AVG_BY_TYPE_WORKER_AMOUNT: 1
 
   origin_destination_router:
-    count: 0
+    count: 2
     worker_type: ORIGIN_DESTINATION_ROUTER
     env:
       INPUT_QUEUE_NAME: origin_destination_router
 
-      GROUP_BY_ORIGIN_EXCHANGE_NAME: group_by_origin
-      GROUP_BY_DESTINATION_EXCHANGE_NAME: group_by_destination
+      GROUP_BY_EXCHANGE_NAME: group_by_origin_destination
 
-      GROUP_BY_ORIGIN_WORKER_AMOUNT: 1
-      GROUP_BY_DESTINATION_WORKER_AMOUNT: 1
+      GROUP_BY_ORIGIN_WORKER_AMOUNT: 2
+      GROUP_BY_DESTINATION_WORKER_AMOUNT: 2
   
   group_by_origin:
-    count: 0
+    count: 2
     worker_type: GROUP_BY_ORIGIN
 
     env:
-      INPUT_EXCHANGE_NAME: group_by_origin
+      INPUT_EXCHANGE_NAME: group_by_origin_destination
       OUTPUT_QUEUE_NAME: grouped_origin_accounts
 
       MAX_BATCH_WEIGHT: 40000
 
   group_by_destination:
-    count: 0
+    count: 2
     worker_type: GROUP_BY_DESTINATION
 
     env:
-      INPUT_EXCHANGE_NAME: group_by_destination
+      INPUT_EXCHANGE_NAME: group_by_origin_destination
       OUTPUT_QUEUE_NAME: grouped_destination_accounts
 
       MAX_BATCH_WEIGHT: 40000
   
   origin_intermediary_router:
-    count: 0
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: ORIGIN_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_origin_accounts
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: origin_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
-      INPUT_WORKERS_AMOUNT: 1 # Cantidad de workers group_by_origin
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
+      INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_origin
 
   destination_intermediary_router:
-    count: 0
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: DESTINATION_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_destination_accounts
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: destination_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
-      INPUT_WORKERS_AMOUNT: 1 # Cantidad de workers group_by_destination
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
+      INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_destination
 
   aggregate_by_intermediary:
-    count: 0
+    count: 2
     worker_type: AGGREGATE_BY_INTERMEDIARY
 
     env:
@@ -225,11 +224,11 @@ services:
       CLIENT_EXCHANGE_NAME: client_results_exchange
   
   scatter_gather_join:
-    count: 0
+    count: 1
     worker_type: SCATTER_GATHER_JOIN
 
     env:
       INPUT_QUEUE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
       MAX_BATCH_WEIGHT: 40000

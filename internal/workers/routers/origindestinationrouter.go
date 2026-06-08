@@ -15,11 +15,12 @@ import (
 
 type OriginDestinationRouter struct {
 	inputQueue                middleware.Middleware
-	groupByOriginExchange     *middleware.ExchangeMiddleware
 	groupByOriginWorkers      int
 	groupByOriginExchangeKeys []string
 
-	groupByDestinationExchange     *middleware.ExchangeMiddleware
+	groupByExchange     *middleware.ExchangeMiddleware
+	groupByExchangeKeys []string
+
 	groupByDestinationWorkers      int
 	groupByDestinationExchangeKeys []string
 	coordinator                    *c.EOFCoordinator
@@ -28,10 +29,9 @@ type OriginDestinationRouter struct {
 type OriginDestinationRouterConfig struct {
 	ID                              int
 	InputQueueName                  string
-	GroupByOriginExchangeName       string
-	GroupByDestinationExchangeName  string
 	GroupByOriginWorkersAmount      int
 	GroupByDestinationWorkersAmount int
+	GroupByExchangeName             string
 	MomHost                         string
 	MomPort                         int
 	WorkerCount                     int
@@ -49,37 +49,29 @@ func NewOriginDestinationRouter(config OriginDestinationRouterConfig) (*OriginDe
 		return nil, err
 	}
 
-	groupByOriginKeys := make([]string, config.GroupByOriginWorkersAmount)
-	for i := range groupByOriginKeys {
-		groupByOriginKeys[i] = fmt.Sprintf("%s.%d", config.GroupByOriginExchangeName, i)
+	keys := []string{}
+
+	for i := 0; i < config.GroupByOriginWorkersAmount; i++ {
+		keys = append(keys, fmt.Sprintf("origin.%d", i))
 	}
 
-	groupByDestinationKeys := make([]string, config.GroupByDestinationWorkersAmount)
-	for i := range groupByDestinationKeys {
-		groupByDestinationKeys[i] = fmt.Sprintf("%s.%d", config.GroupByDestinationExchangeName, i)
+	for i := 0; i < config.GroupByDestinationWorkersAmount; i++ {
+		keys = append(keys, fmt.Sprintf("destination.%d", i))
 	}
 
-	groupByOriginExchange, err := middleware.CreateExchangeMiddleware(config.GroupByOriginExchangeName, groupByOriginKeys, connSettings)
+	groupByExchange, err := middleware.CreateExchangeMiddleware(config.GroupByExchangeName, keys, connSettings)
 	if err != nil {
 		inputQueue.Close()
-		return nil, err
-	}
-
-	groupByDestinationExchange, err := middleware.CreateExchangeMiddleware(config.GroupByDestinationExchangeName, groupByDestinationKeys, connSettings)
-	if err != nil {
-		inputQueue.Close()
-		groupByOriginExchange.Close()
 		return nil, err
 	}
 
 	originDestinationRouter := &OriginDestinationRouter{
 		inputQueue:                     inputQueue,
-		groupByOriginExchange:          groupByOriginExchange,
-		groupByDestinationExchange:     groupByDestinationExchange,
 		groupByOriginWorkers:           config.GroupByOriginWorkersAmount,
 		groupByDestinationWorkers:      config.GroupByDestinationWorkersAmount,
-		groupByOriginExchangeKeys:      groupByOriginKeys,
-		groupByDestinationExchangeKeys: groupByDestinationKeys,
+		groupByOriginExchangeKeys:      keys[:config.GroupByOriginWorkersAmount],
+		groupByDestinationExchangeKeys: keys[config.GroupByOriginWorkersAmount:],
+		groupByExchange:                groupByExchange,
 	}
 
 	coordinatorConfig := c.EOFCoordinatorConfig{
@@ -94,8 +86,7 @@ func NewOriginDestinationRouter(config OriginDestinationRouterConfig) (*OriginDe
 	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
 	if err != nil {
 		inputQueue.Close()
-		groupByOriginExchange.Close()
-		groupByDestinationExchange.Close()
+		groupByExchange.Close()
 		return nil, err
 	}
 
@@ -124,8 +115,7 @@ func (odr *OriginDestinationRouter) handleSignals() {
 	slog.Info("shutdown signal received")
 	odr.inputQueue.Close()
 
-	odr.groupByOriginExchange.Close()
-	odr.groupByDestinationExchange.Close()
+	odr.groupByExchange.Close()
 
 	odr.coordinator.Close()
 }
@@ -214,7 +204,7 @@ func (odr *OriginDestinationRouter) publishToGroupByOrigin(originBatchesByKey ma
 			return err
 		}
 
-		if err := odr.groupByOriginExchange.SendWithKey(workerKey, msg); err != nil {
+		if err := odr.groupByExchange.SendWithKey(workerKey, msg); err != nil {
 			return err
 		}
 	}
@@ -234,7 +224,7 @@ func (odr *OriginDestinationRouter) publishToGroupByDestination(destinationBatch
 			return err
 		}
 
-		if err := odr.groupByDestinationExchange.SendWithKey(workerKey, msg); err != nil {
+		if err := odr.groupByExchange.SendWithKey(workerKey, msg); err != nil {
 			return err
 		}
 	}
@@ -289,14 +279,14 @@ func (odr *OriginDestinationRouter) handleFlush(clientID string, totalSurvivors 
 
 	for _, key := range odr.groupByOriginExchangeKeys {
 		slog.Debug("sending EOF to Client")
-		if err := odr.groupByOriginExchange.SendWithKey(key, msg); err != nil {
+		if err := odr.groupByExchange.SendWithKey(key, msg); err != nil {
 			return err
 		}
 	}
 
 	for _, key := range odr.groupByDestinationExchangeKeys {
 		slog.Debug("sending EOF to Client")
-		if err := odr.groupByDestinationExchange.SendWithKey(key, msg); err != nil {
+		if err := odr.groupByExchange.SendWithKey(key, msg); err != nil {
 			return err
 		}
 	}
