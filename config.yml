@@ -43,7 +43,7 @@ services:
       HEARTBEAT_INTERVAL_SECONDS: 5
 
   microtransaction_filter:
-    count: 2
+    count: 1
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue

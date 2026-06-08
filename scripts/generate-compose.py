@@ -15,6 +15,7 @@ def build_rabbitmq(cfg):
     
     return {
         'image': 'rabbitmq:3-management',
+        'container_name': 'rabbitmq',
         'environment': ['RABBITMQ_LOG_LEVELS=error'],
         'healthcheck': {
             'interval': '5s',
