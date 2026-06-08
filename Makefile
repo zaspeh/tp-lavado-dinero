@@ -1,7 +1,8 @@
-.PHONY: generate up down logs clean test
+.PHONY: generate up down logs clean test chaos real_chaos
 
 COMPOSE_FILE=Compose.yml
 GENERATOR_SCRIPT=scripts/generate-compose.py
+CHAOS_SCRIPT=scripts/chaos_monkey.py
 
 generate:
 	@python3 $(GENERATOR_SCRIPT)
@@ -23,3 +24,9 @@ clean:
 
 test:
 	@python3 scripts/verify_outputs.py --all
+
+chaos:
+	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL))
+
+real_chaos:
+	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) --kill
