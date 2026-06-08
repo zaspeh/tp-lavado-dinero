@@ -21,13 +21,11 @@ type FaultHypervisorConfig struct {
 }
 
 type FaultHypervisor struct {
-	HeartbeatQueue middleware.Middleware
-
+	HeartbeatQueue          middleware.Middleware
 	CheckIntervalSeconds    int
 	HeartbeatTimeoutSeconds int
-
-	lastSeen map[string]time.Time
-	mu       sync.RWMutex
+	lastSeen                map[string]time.Time
+	mu                      sync.RWMutex
 }
 
 func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) {
@@ -57,7 +55,7 @@ func (fh *FaultHypervisor) Run() error {
 
 	return fh.HeartbeatQueue.StartConsuming(
 		func(msg middleware.Message, ack, nack func()) {
-			slog.Info("message received")
+			slog.Debug("message received")
 			fh.handleHeartbeat(msg, ack, nack)
 		},
 	)
@@ -65,17 +63,13 @@ func (fh *FaultHypervisor) Run() error {
 
 func (fh *FaultHypervisor) handleSignals() {
 	signals := make(chan os.Signal, 1)
-
 	signal.Notify(
 		signals,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 	)
-
 	<-signals
-
 	slog.Info("fault hypervisor shutting down")
-
 	fh.HeartbeatQueue.Close()
 }
 
