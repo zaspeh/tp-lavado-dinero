@@ -13,6 +13,13 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
+type WorkerStatus struct {
+	WorkerID   int64
+	WorkerType string
+	LastSeen   time.Time
+	IsAlive    bool
+}
+
 type FaultHypervisorConfig struct {
 	ConnectionSettings      middleware.ConnSettings
 	HeartbeatQueueName      string
@@ -24,7 +31,7 @@ type FaultHypervisor struct {
 	HeartbeatQueue          middleware.Middleware
 	CheckIntervalSeconds    int
 	HeartbeatTimeoutSeconds int
-	lastSeen                map[string]time.Time
+	lastSeen                map[string]*WorkerStatus
 	mu                      sync.RWMutex
 }
 
@@ -43,7 +50,7 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		CheckIntervalSeconds:    config.CheckIntervalSeconds,
 		HeartbeatTimeoutSeconds: config.HeartbeatTimeoutSeconds,
 
-		lastSeen: make(map[string]time.Time),
+		lastSeen: make(map[string]*WorkerStatus),
 	}, nil
 }
 
@@ -89,9 +96,21 @@ func (fh *FaultHypervisor) handleHeartbeat(msg middleware.Message, ack, nack fun
 
 	workerID := heartbeat.GetWorkerId()
 	parsedWorkerID := strconv.FormatInt(workerID, 10)
+	worker_name := heartbeat.GetWorkerType() + "-" + parsedWorkerID
+
+	slog.Debug(
+		"processing heartbeat",
+		"worker_id", parsedWorkerID,
+		"worker_type", heartbeat.GetWorkerType(),
+	)
 
 	fh.mu.Lock()
-	fh.lastSeen[parsedWorkerID] = time.Now()
+	fh.lastSeen[worker_name] = &WorkerStatus{
+		WorkerID:   workerID,
+		WorkerType: heartbeat.GetWorkerType(),
+		LastSeen:   time.Now(),
+		IsAlive:    true,
+	}
 	fh.mu.Unlock()
 
 	slog.Debug(
@@ -124,12 +143,14 @@ func (fh *FaultHypervisor) checkWorkers() {
 	fh.mu.RLock()
 	defer fh.mu.RUnlock()
 
-	for workerID, lastHeartbeat := range fh.lastSeen {
-		if now.Sub(lastHeartbeat) > timeout {
+	for workerID, workerStatus := range fh.lastSeen {
+		if workerStatus.IsAlive && now.Sub(workerStatus.LastSeen) > timeout {
+			workerStatus.IsAlive = false
+
 			slog.Warn(
 				"worker timeout detected",
 				"worker", workerID,
-				"last_seen", lastHeartbeat,
+				"last_seen", workerStatus.LastSeen,
 			)
 		}
 	}
