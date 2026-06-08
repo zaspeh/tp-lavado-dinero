@@ -148,10 +148,12 @@ def build_fault_hypervisor(cfg):
             'dockerfile': 'internal/fault_hypervisor/Dockerfile'
         },
         'container_name': 'fault_hypervisor',
+        'privileged': True,
         'environment': env_list,
         'volumes': [
-            '/var/run/docker.sock:/var/run/docker.sock',
-            './Compose.yml:/app/Compose.yml:ro'
+            './Compose.yml:/app/Compose.yml:ro',
+            './config.yml:/app/config.yml:ro',
+            '.:/workspace:ro'
         ],
         'depends_on': {
             'rabbitmq': {'condition': 'service_healthy'}
@@ -168,25 +170,55 @@ def generate_compose(cfg):
         },
         'services': {}
     }
-    
+
     compose['services']['rabbitmq'] = build_rabbitmq(cfg)
 
-    gateway_log_level = cfg['gateway'].get('log_level', global_log_level)
-    compose['services']['gateway'] = build_gateway(cfg, gateway_log_level)
-    
+    gateway_log_level = cfg['gateway'].get(
+        'log_level',
+        global_log_level,
+    )
+
+    compose['services']['gateway'] = build_gateway(
+        cfg,
+        gateway_log_level,
+    )
+
+    hypervisor_manages_workers = (
+        cfg.get('fault_hypervisor', {})
+           .get('manages_workers', False)
+    )
+
     for svc_name, svc_data in cfg.get('services', {}).items():
+
         count = svc_data.get('count', 0)
-        svc_log_level = svc_data.get('log_level', global_log_level)
+        svc_log_level = svc_data.get(
+            'log_level',
+            global_log_level,
+        )
+
         if svc_name == 'client':
             for i in range(count):
-                compose['services'][f"client_{i}"] = build_client(cfg, i, svc_log_level)
-        else:
-            for i in range(count):
-                compose['services'][f"{svc_name}_{i}"] = build_worker(svc_name, cfg, i, svc_log_level)
+                compose['services'][f"client_{i}"] = build_client(
+                    cfg,
+                    i,
+                    svc_log_level,
+                )
+            continue
+
+        if hypervisor_manages_workers:
+            continue
+
+        for i in range(count):
+            compose['services'][f"{svc_name}_{i}"] = build_worker(
+                svc_name,
+                cfg,
+                i,
+                svc_log_level,
+            )
 
     if cfg.get('fault_hypervisor', {}).get('enabled', False):
         compose['services']['fault_hypervisor'] = build_fault_hypervisor(cfg)
-            
+
     return compose
 
 def main():

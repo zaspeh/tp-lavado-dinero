@@ -16,7 +16,8 @@ rabbitmq:
 
 fault_hypervisor:
   enabled: true
-
+  manages_workers: true
+  
   env:
     HEARTBEAT_QUEUE_NAME: heartbeat_queue
     CHECK_INTERVAL_SECONDS: 5

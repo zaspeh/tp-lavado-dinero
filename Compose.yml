@@ -61,108 +61,12 @@ services:
     - gateway
     networks:
     - money_laundering_network
-  currency_filter_0:
-    build:
-      context: .
-      dockerfile: cmd/worker/Dockerfile
-    container_name: currency_filter_0
-    environment:
-    - ID=0
-    - CONTAINER_NAME=currency_filter_0
-    - LOG_LEVEL=debug
-    - WORKER_TYPE=CURRENCY_FILTER
-    - MOM_HOST=rabbitmq
-    - MOM_PORT=5672
-    - WORKER_COUNT=2
-    - WORKER_EXCHANGE_NAME=CURRENCY_FILTER
-    - INPUT_QUEUE_NAME=currency_filter_input_queue
-    - MICROTRANSACTION_FILTER_QUEUE_NAME=microtransaction_filter_input_queue
-    - BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
-    - PERIOD_FILTER_QUEUE_NAME=period_filter_input_queue
-    - CURRENCY_TO_FILTER=US Dollar
-    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
-    - HEARTBEAT_INTERVAL_SECONDS=5
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-    - money_laundering_network
-  currency_filter_1:
-    build:
-      context: .
-      dockerfile: cmd/worker/Dockerfile
-    container_name: currency_filter_1
-    environment:
-    - ID=1
-    - CONTAINER_NAME=currency_filter_1
-    - LOG_LEVEL=debug
-    - WORKER_TYPE=CURRENCY_FILTER
-    - MOM_HOST=rabbitmq
-    - MOM_PORT=5672
-    - WORKER_COUNT=2
-    - WORKER_EXCHANGE_NAME=CURRENCY_FILTER
-    - INPUT_QUEUE_NAME=currency_filter_input_queue
-    - MICROTRANSACTION_FILTER_QUEUE_NAME=microtransaction_filter_input_queue
-    - BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
-    - PERIOD_FILTER_QUEUE_NAME=period_filter_input_queue
-    - CURRENCY_TO_FILTER=US Dollar
-    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
-    - HEARTBEAT_INTERVAL_SECONDS=5
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-    - money_laundering_network
-  microtransaction_filter_0:
-    build:
-      context: .
-      dockerfile: cmd/worker/Dockerfile
-    container_name: microtransaction_filter_0
-    environment:
-    - ID=0
-    - CONTAINER_NAME=microtransaction_filter_0
-    - LOG_LEVEL=debug
-    - WORKER_TYPE=AMOUNT_FILTER
-    - MOM_HOST=rabbitmq
-    - MOM_PORT=5672
-    - WORKER_COUNT=1
-    - WORKER_EXCHANGE_NAME=AMOUNT_FILTER
-    - INPUT_QUEUE_NAME=microtransaction_filter_input_queue
-    - OUTPUT_QUEUE_NAME=microtransaction_join_input_queue
-    - AMOUNT_TO_FILTER=50
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-    - money_laundering_network
-  microtransaction_join_0:
-    build:
-      context: .
-      dockerfile: cmd/worker/Dockerfile
-    container_name: microtransaction_join_0
-    environment:
-    - ID=0
-    - CONTAINER_NAME=microtransaction_join_0
-    - LOG_LEVEL=debug
-    - WORKER_TYPE=MICROTRANSACTION_JOIN
-    - MOM_HOST=rabbitmq
-    - MOM_PORT=5672
-    - WORKER_COUNT=1
-    - WORKER_EXCHANGE_NAME=MICROTRANSACTION_JOIN
-    - INPUT_QUEUE_NAME=microtransaction_join_input_queue
-    - CLIENT_EXCHANGE_NAME=client_results_exchange
-    - MAX_BATCH_TRANSACTIONS=100
-    - MAX_BATCH_BYTES=8000
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-    - money_laundering_network
   fault_hypervisor:
     build:
       context: .
       dockerfile: internal/fault_hypervisor/Dockerfile
     container_name: fault_hypervisor
+    privileged: true
     environment:
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -170,8 +74,9 @@ services:
     - CHECK_INTERVAL_SECONDS=5
     - HEARTBEAT_TIMEOUT_SECONDS=15
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
     - ./Compose.yml:/app/Compose.yml:ro
+    - ./config.yml:/app/config.yml:ro
+    - .:/workspace:ro
     depends_on:
       rabbitmq:
         condition: service_healthy

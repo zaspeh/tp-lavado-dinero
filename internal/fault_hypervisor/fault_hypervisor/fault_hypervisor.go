@@ -1,6 +1,7 @@
 package faulthypervisor
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -10,11 +11,14 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
-	composeLoader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/compose_loader"
+	configloader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/config_loader"
+	runtimepkg "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/runtime"
 )
 
 type WorkerStatus struct {
 	ContainerName string
+	WorkerID      int
+	Definition    configloader.WorkerDefinition
 	LastSeen      time.Time
 	IsAlive       bool
 }
@@ -31,6 +35,7 @@ type FaultHypervisor struct {
 	CheckIntervalSeconds    int
 	HeartbeatTimeoutSeconds int
 	workers                 map[string]*WorkerStatus
+	runtime                 runtimepkg.Runtime
 	mu                      sync.RWMutex
 }
 
@@ -43,19 +48,32 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		return nil, err
 	}
 
-	workers, err := composeLoader.LoadWorkersFromCompose("/app/Compose.yml")
+	workerDefinitions, err := configloader.LoadWorkersFromConfig("/app/config.yml")
 	if err != nil {
 		return nil, err
 	}
 
 	workerMap := make(map[string]*WorkerStatus)
 
-	for _, worker := range workers {
-		slog.Debug("worker loaded from compose", "container_name", worker.ContainerName)
-		workerMap[worker.ContainerName] = &WorkerStatus{
-			ContainerName: worker.ContainerName,
-			IsAlive:       true,
-			LastSeen:      time.Now(),
+	for _, definition := range workerDefinitions {
+		for i := 0; i < definition.Count; i++ {
+
+			containerName := fmt.Sprintf("%s_%d", definition.ServiceName, i)
+
+			slog.Info(
+				"worker loaded from config",
+				"container_name",
+				containerName,
+				"worker_type",
+				definition.WorkerType,
+			)
+
+			workerMap[containerName] = &WorkerStatus{
+				ContainerName: containerName,
+				WorkerID:      i,
+				Definition:    definition,
+				IsAlive:       false,
+			}
 		}
 	}
 
@@ -66,10 +84,36 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		HeartbeatTimeoutSeconds: config.HeartbeatTimeoutSeconds,
 
 		workers: workerMap,
+		runtime: runtimepkg.NewDockerRuntime(),
 	}, nil
 }
 
 func (fh *FaultHypervisor) Run() error {
+	slog.Info("creating worker network")
+
+	if err := fh.runtime.EnsureNetwork("money_laundering_network"); err != nil {
+		return err
+	}
+
+	imageExists, err := fh.runtime.ImageExists("tp-worker")
+	if err != nil {
+		return err
+	}
+
+	if !imageExists {
+		slog.Info("building worker image")
+
+		if err := fh.runtime.BuildWorkerImage(); err != nil {
+			return err
+		}
+
+		slog.Info("worker image built")
+	}
+
+	if err := fh.StartWorkers(); err != nil {
+		return err
+	}
+
 	go fh.handleSignals()
 	go fh.monitorWorkers()
 
@@ -174,5 +218,39 @@ func (fh *FaultHypervisor) markWorkerDead(worker *WorkerStatus) {
 }
 
 func (fh *FaultHypervisor) reviveWorker(worker *WorkerStatus) {
-	slog.Info("would restart worker", "container", worker.ContainerName)
+	slog.Info("restarting worker", "container", worker.ContainerName)
+
+	err := fh.runtime.RestartWorker(worker.ContainerName)
+	if err != nil {
+		slog.Error("restart failed", "container", worker.ContainerName, "error", err)
+		return
+	}
+
+	slog.Info("worker restarted", "container", worker.ContainerName)
+}
+
+func (fh *FaultHypervisor) StartWorkers() error {
+	for _, worker := range fh.workers {
+		exists, err := fh.runtime.ContainerExists(worker.ContainerName)
+		if err != nil {
+			return err
+		}
+
+		if exists {
+			continue
+		}
+
+		slog.Info(
+			"creating worker",
+			"container",
+			worker.ContainerName,
+		)
+
+		err = fh.runtime.CreateWorker(worker.ContainerName, worker.WorkerID, worker.Definition)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
