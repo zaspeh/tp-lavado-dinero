@@ -70,3 +70,14 @@ func InsertToConvertTypeFilteredPaymentBatch(clientID string, batch *protobuf.To
 		innerMessage,
 	)
 }
+
+func InsertScatterGatherBatch(clientID string, batch *protobuf.ScatterGatherBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_ScattergatherBatch{
+		ScattergatherBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_SCATTERGATHER_BATCH,
+		innerMessage,
+	)
+}

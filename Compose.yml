@@ -31,7 +31,7 @@ services:
     - CLIENT_EXCHANGE_NAME=client_results_exchange
     - RAW_DATA_QUEUE_NAME=raw_transactions
     - MAX_BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     ports:
     - 8080:8080
     depends_on:
@@ -52,7 +52,7 @@ services:
     - INPUT_FILE_ACCOUNTS=/datasets/client_0_accounts.csv
     - OUTPUT_DIR=/outputs
     - MAX_BATCH_WEIGHT=1000000
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     volumes:
     - ./datasets:/datasets
     - ./outputs/client_0:/outputs
@@ -67,7 +67,7 @@ services:
     container_name: currency_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -92,7 +92,7 @@ services:
     container_name: currency_filter_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -110,6 +110,175 @@ services:
         condition: service_healthy
     networks:
     - money_laundering_network
+  microtransaction_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_filter_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AMOUNT_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AMOUNT_FILTER
+    - INPUT_QUEUE_NAME=microtransaction_filter_input_queue
+    - OUTPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - AMOUNT_TO_FILTER=50
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  microtransaction_filter_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_filter_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AMOUNT_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AMOUNT_FILTER
+    - INPUT_QUEUE_NAME=microtransaction_filter_input_queue
+    - OUTPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - AMOUNT_TO_FILTER=50
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  microtransaction_join_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_join_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=MICROTRANSACTION_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=1
+    - WORKER_EXCHANGE_NAME=MICROTRANSACTION_JOIN
+    - INPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
+    - MAX_BATCH_TRANSACTIONS=100
+    - MAX_BATCH_BYTES=8000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  bank_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: bank_router_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=BANK_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=BANK_ROUTER
+    - INPUT_QUEUE_NAME=bank_router_input_queue
+    - MAX_BANK_EXCHANGE_NAME=max_bank_input_exchange
+    - MAX_BANK_WORKER_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  bank_router_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: bank_router_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=BANK_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=BANK_ROUTER
+    - INPUT_QUEUE_NAME=bank_router_input_queue
+    - MAX_BANK_EXCHANGE_NAME=max_bank_input_exchange
+    - MAX_BANK_WORKER_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  max_bank_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: max_bank_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=MAX_BANK
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=MAX_BANK
+    - INPUT_EXCHANGE_NAME=max_bank_input_exchange
+    - OUTPUT_QUEUE_NAME=max_bank_join_input
+    - MAX_BATCH_WEIGHT=8000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  max_bank_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: max_bank_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=MAX_BANK
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=MAX_BANK
+    - INPUT_EXCHANGE_NAME=max_bank_input_exchange
+    - OUTPUT_QUEUE_NAME=max_bank_join_input
+    - MAX_BATCH_WEIGHT=8000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  max_bank_join_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: max_bank_join_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=MAX_BANK_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=1
+    - WORKER_EXCHANGE_NAME=MAX_BANK_JOIN
+    - INPUT_QUEUE_NAME=max_bank_join_input
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
+    - MAX_BANK_WORKER_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
   period_filter_0:
     build:
       context: .
@@ -117,7 +286,7 @@ services:
     container_name: period_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=PERIOD_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -148,7 +317,7 @@ services:
     container_name: period_filter_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=PERIOD_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -172,6 +341,48 @@ services:
         condition: service_healthy
     networks:
     - money_laundering_network
+  payment_type_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: payment_type_router_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=PAYMENT_TYPE_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=PAYMENT_TYPE_ROUTER
+    - INPUT_QUEUE_NAME=payment_type_router_input
+    - PAYMENT_TYPE_EXCHANGE_NAME=payment_type_exchange
+    - AVG_BY_TYPE_WORKER_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  payment_type_router_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: payment_type_router_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=PAYMENT_TYPE_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=PAYMENT_TYPE_ROUTER
+    - INPUT_QUEUE_NAME=payment_type_router_input
+    - PAYMENT_TYPE_EXCHANGE_NAME=payment_type_exchange
+    - AVG_BY_TYPE_WORKER_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
   origin_destination_router_0:
     build:
       context: .
@@ -179,7 +390,7 @@ services:
     container_name: origin_destination_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=ORIGIN_DESTINATION_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -201,7 +412,7 @@ services:
     container_name: origin_destination_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=ORIGIN_DESTINATION_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -223,7 +434,7 @@ services:
     container_name: group_by_origin_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=GROUP_BY_ORIGIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -244,7 +455,7 @@ services:
     container_name: group_by_origin_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=GROUP_BY_ORIGIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -265,7 +476,7 @@ services:
     container_name: group_by_destination_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=GROUP_BY_DESTINATION
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -286,7 +497,7 @@ services:
     container_name: group_by_destination_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=GROUP_BY_DESTINATION
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -307,7 +518,7 @@ services:
     container_name: origin_intermediary_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -329,7 +540,7 @@ services:
     container_name: origin_intermediary_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -351,7 +562,7 @@ services:
     container_name: destination_intermediary_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -373,7 +584,7 @@ services:
     container_name: destination_intermediary_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -395,7 +606,7 @@ services:
     container_name: aggregate_by_intermediary_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -417,7 +628,7 @@ services:
     container_name: aggregate_by_intermediary_1
     environment:
     - ID=1
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -432,6 +643,213 @@ services:
         condition: service_healthy
     networks:
     - money_laundering_network
+  avg_by_type_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: avg_by_type_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AVG_BY_TYPE
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AVG_BY_TYPE
+    - INPUT_EXCHANGE_NAME=payment_type_exchange
+    - OUTPUT_QUEUE_NAME=avg_by_type_join_input
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  avg_by_type_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: avg_by_type_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AVG_BY_TYPE
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AVG_BY_TYPE
+    - INPUT_EXCHANGE_NAME=payment_type_exchange
+    - OUTPUT_QUEUE_NAME=avg_by_type_join_input
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  avg_by_type_join_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: avg_by_type_join_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AVG_BY_TYPE_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=1
+    - WORKER_EXCHANGE_NAME=AVG_BY_TYPE_JOIN
+    - INPUT_QUEUE_NAME=avg_by_type_join_input
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
+    - EXPECTED_EOFS=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  payment_format_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: payment_format_filter_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=FORMAT_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=FORMAT_FILTER
+    - INPUT_QUEUE_NAME=payment_format_filter_input
+    - OUTPUT_QUEUE_NAME=conversion_format_input
+    - VALID_PAYMENT_FORMATS=Wire,ACH
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  payment_format_filter_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: payment_format_filter_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=FORMAT_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=FORMAT_FILTER
+    - INPUT_QUEUE_NAME=payment_format_filter_input
+    - OUTPUT_QUEUE_NAME=conversion_format_input
+    - VALID_PAYMENT_FORMATS=Wire,ACH
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  currency_converter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: currency_converter_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=CURRENCY_CONVERTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=CURRENCY_CONVERTER
+    - INPUT_QUEUE_NAME=conversion_format_input
+    - OUTPUT_QUEUE_NAME=filtered_currency_conversion_input
+    - EXCHANGE_RATE_API_URL=https://api.frankfurter.dev/v2/rates?base=USD
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  currency_converter_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: currency_converter_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=CURRENCY_CONVERTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=CURRENCY_CONVERTER
+    - INPUT_QUEUE_NAME=conversion_format_input
+    - OUTPUT_QUEUE_NAME=filtered_currency_conversion_input
+    - EXCHANGE_RATE_API_URL=https://api.frankfurter.dev/v2/rates?base=USD
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  amount_converted_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: amount_converted_filter_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AMOUNT_CONVERTED_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AMOUNT_CONVERTED_FILTER
+    - INPUT_QUEUE_NAME=filtered_currency_conversion_input
+    - OUTPUT_QUEUE_NAME=conversion_join_input_queue
+    - AMOUNT_TO_FILTER=1.0
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  amount_converted_filter_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: amount_converted_filter_1
+    environment:
+    - ID=1
+    - LOG_LEVEL=info
+    - WORKER_TYPE=AMOUNT_CONVERTED_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AMOUNT_CONVERTED_FILTER
+    - INPUT_QUEUE_NAME=filtered_currency_conversion_input
+    - OUTPUT_QUEUE_NAME=conversion_join_input_queue
+    - AMOUNT_TO_FILTER=1.0
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  converter_join_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: converter_join_0
+    environment:
+    - ID=0
+    - LOG_LEVEL=info
+    - WORKER_TYPE=CONVERSION_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=1
+    - WORKER_EXCHANGE_NAME=CONVERSION_JOIN
+    - INPUT_QUEUE_NAME=conversion_join_input_queue
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
   scatter_gather_join_0:
     build:
       context: .
@@ -439,7 +857,7 @@ services:
     container_name: scatter_gather_join_0
     environment:
     - ID=0
-    - LOG_LEVEL=debug
+    - LOG_LEVEL=info
     - WORKER_TYPE=SCATTER_GATHER_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672

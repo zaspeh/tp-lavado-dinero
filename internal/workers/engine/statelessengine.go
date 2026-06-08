@@ -71,6 +71,9 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) err
 			if err := e.sender.Add(clientID, result); err != nil {
 				return err
 			}
+		}
+
+		if len(results) > 0 {
 			if err := e.coordinator.RecordSurvivor(clientID); err != nil {
 				return err
 			}

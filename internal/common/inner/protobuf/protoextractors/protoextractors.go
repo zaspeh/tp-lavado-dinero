@@ -25,3 +25,7 @@ func GetToConvertPeriodFilteredItems(batch *protobuf.MoneyLaundry) []*protobuf.T
 func GetToConvertTypeFilteredPaymentItems(batch *protobuf.MoneyLaundry) []*protobuf.ToConvertTypeFilteredPayment {
 	return batch.GetToConvertTypeFilteredPaymentBatch().GetItems()
 }
+
+func GetScatterGatherBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.ScatterGather {
+	return batch.GetScattergatherBatch().GetItems()
+}

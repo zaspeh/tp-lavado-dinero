@@ -79,12 +79,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 }
 
 func buildOriginDestinationRouterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
-	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
+	mom, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -108,25 +103,48 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {
 		return nil, err
 	}
 
-	config := routers.OriginDestinationRouterConfig{
-		ID:                              id,
-		InputQueueName:                  inQ,
-		GroupByExchangeName:             groupByExchangeName,
-		GroupByOriginWorkersAmount:      groupByOriginWorkerAmount,
-		GroupByDestinationWorkersAmount: groupByDestinationWorkerAmount,
-		MomHost:                         host,
-		MomPort:                         port,
-		WorkerCount:                     workerCount,
-		WorkerExchangeName:              workerExchangeName,
+	originDestinationRouterKeys := make([]string, groupByOriginWorkerAmount+groupByDestinationWorkerAmount)
+	for i := 0; i < groupByOriginWorkerAmount; i++ {
+		originDestinationRouterKeys[i] = fmt.Sprintf("origin.%d", i)
+	}
+	for i := 0; i < groupByDestinationWorkerAmount; i++ {
+		originDestinationRouterKeys[groupByOriginWorkerAmount+i] = fmt.Sprintf("destination.%d", i)
 	}
 
-	return routers.NewOriginDestinationRouter(config)
+	groupByExchange, err := m.CreateExchangeMiddleware(groupByExchangeName, originDestinationRouterKeys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		groupByExchange,
+		protowrappers.WrapScatterGather,
+		protowrappers.ProtoSizer[*protobuf.ScatterGather](),
+		0,
+		protoinserters.InsertScatterGatherBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.ScatterGather,
+		sender.RoutedItem[*protobuf.ScatterGather],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       0,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_SCATTERGATHER_BATCH,
+		ExtractInputItems:  protoextractors.GetScatterGatherBatchItems,
+		Processor:          processorrouters.NewOriginDestinationRouter(originDestinationRouterKeys[:groupByOriginWorkerAmount], originDestinationRouterKeys[groupByOriginWorkerAmount:]),
+		Sender:             routedSender,
+	})
 }
 
 func buildPaymentTypeRouterWorker() (workers.Worker, error) {
