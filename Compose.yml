@@ -31,7 +31,7 @@ services:
     - CLIENT_EXCHANGE_NAME=client_results_exchange
     - RAW_DATA_QUEUE_NAME=raw_transactions
     - MAX_BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     ports:
     - 8080:8080
     depends_on:
@@ -52,7 +52,7 @@ services:
     - INPUT_FILE_ACCOUNTS=/datasets/client_0_accounts.csv
     - OUTPUT_DIR=/outputs
     - MAX_BATCH_WEIGHT=1000000
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     volumes:
     - ./datasets:/datasets
     - ./outputs/client_0:/outputs
@@ -67,7 +67,7 @@ services:
     container_name: currency_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -92,7 +92,7 @@ services:
     container_name: currency_filter_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -117,7 +117,7 @@ services:
     container_name: microtransaction_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AMOUNT_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -138,7 +138,7 @@ services:
     container_name: microtransaction_filter_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AMOUNT_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -159,7 +159,7 @@ services:
     container_name: microtransaction_join_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=MICROTRANSACTION_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -181,7 +181,7 @@ services:
     container_name: bank_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=BANK_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -202,7 +202,7 @@ services:
     container_name: bank_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=BANK_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -223,7 +223,7 @@ services:
     container_name: max_bank_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=MAX_BANK
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -244,7 +244,7 @@ services:
     container_name: max_bank_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=MAX_BANK
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -265,7 +265,7 @@ services:
     container_name: max_bank_join_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=MAX_BANK_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -286,7 +286,7 @@ services:
     container_name: period_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=PERIOD_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -317,7 +317,7 @@ services:
     container_name: period_filter_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=PERIOD_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -348,7 +348,7 @@ services:
     container_name: payment_type_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=PAYMENT_TYPE_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -369,7 +369,7 @@ services:
     container_name: payment_type_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=PAYMENT_TYPE_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -390,7 +390,7 @@ services:
     container_name: origin_destination_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=ORIGIN_DESTINATION_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -412,7 +412,7 @@ services:
     container_name: origin_destination_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=ORIGIN_DESTINATION_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -434,7 +434,7 @@ services:
     container_name: group_by_origin_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=GROUP_BY_ORIGIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -455,7 +455,7 @@ services:
     container_name: group_by_origin_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=GROUP_BY_ORIGIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -476,7 +476,7 @@ services:
     container_name: group_by_destination_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=GROUP_BY_DESTINATION
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -497,7 +497,7 @@ services:
     container_name: group_by_destination_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=GROUP_BY_DESTINATION
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -518,7 +518,7 @@ services:
     container_name: origin_intermediary_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -540,7 +540,7 @@ services:
     container_name: origin_intermediary_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -562,7 +562,7 @@ services:
     container_name: destination_intermediary_router_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -584,7 +584,7 @@ services:
     container_name: destination_intermediary_router_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=INTERMEDIARY_ROUTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -606,7 +606,7 @@ services:
     container_name: aggregate_by_intermediary_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -628,7 +628,7 @@ services:
     container_name: aggregate_by_intermediary_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -650,7 +650,7 @@ services:
     container_name: avg_by_type_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AVG_BY_TYPE
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -670,7 +670,7 @@ services:
     container_name: avg_by_type_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AVG_BY_TYPE
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -690,7 +690,7 @@ services:
     container_name: avg_by_type_join_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AVG_BY_TYPE_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -711,7 +711,7 @@ services:
     container_name: payment_format_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=FORMAT_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -732,7 +732,7 @@ services:
     container_name: payment_format_filter_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=FORMAT_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -753,7 +753,7 @@ services:
     container_name: currency_converter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_CONVERTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -774,7 +774,7 @@ services:
     container_name: currency_converter_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_CONVERTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -795,7 +795,7 @@ services:
     container_name: amount_converted_filter_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AMOUNT_CONVERTED_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -816,7 +816,7 @@ services:
     container_name: amount_converted_filter_1
     environment:
     - ID=1
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=AMOUNT_CONVERTED_FILTER
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -837,7 +837,7 @@ services:
     container_name: converter_join_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=CONVERSION_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
@@ -857,7 +857,7 @@ services:
     container_name: scatter_gather_join_0
     environment:
     - ID=0
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - WORKER_TYPE=SCATTER_GATHER_JOIN
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672

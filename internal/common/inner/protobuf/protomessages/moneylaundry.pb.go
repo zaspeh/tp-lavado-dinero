@@ -190,6 +190,7 @@ type MoneyLaundry struct {
 	//	*MoneyLaundry_IntermediarypairBatch
 	//	*MoneyLaundry_MaxBankResultBatch
 	//	*MoneyLaundry_Heartbeat
+	//	*MoneyLaundry_GroupedAccountsBatch
 	InnerMessage  isMoneyLaundry_InnerMessage `protobuf_oneof:"inner_message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -379,6 +380,15 @@ func (x *MoneyLaundry) GetHeartbeat() *Heartbeat {
 	return nil
 }
 
+func (x *MoneyLaundry) GetGroupedAccountsBatch() *GroupedAccountsBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_GroupedAccountsBatch); ok {
+			return x.GroupedAccountsBatch
+		}
+	}
+	return nil
+}
+
 type isMoneyLaundry_InnerMessage interface {
 	isMoneyLaundry_InnerMessage()
 }
@@ -439,6 +449,10 @@ type MoneyLaundry_Heartbeat struct {
 	Heartbeat *Heartbeat `protobuf:"bytes,17,opt,name=heartbeat,proto3,oneof"`
 }
 
+type MoneyLaundry_GroupedAccountsBatch struct {
+	GroupedAccountsBatch *GroupedAccountsBatch `protobuf:"bytes,18,opt,name=grouped_accounts_batch,json=groupedAccountsBatch,proto3,oneof"`
+}
+
 func (*MoneyLaundry_Transactions) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ToConvertBatch) isMoneyLaundry_InnerMessage() {}
@@ -467,11 +481,13 @@ func (*MoneyLaundry_MaxBankResultBatch) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_Heartbeat) isMoneyLaundry_InnerMessage() {}
 
+func (*MoneyLaundry_GroupedAccountsBatch) isMoneyLaundry_InnerMessage() {}
+
 var File_internal_common_inner_protobuf_protomessages_moneylaundry_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"?internal/common/inner/protobuf/protomessages/moneylaundry.proto\x12\bprotobuf\x1a>internal/common/inner/protobuf/protomessages/transaction.proto\x1a=internal/common/inner/protobuf/protomessages/conversion.proto\x1a6internal/common/inner/protobuf/protomessages/eof.proto\x1a:internal/common/inner/protobuf/protomessages/maxbank.proto\x1aCinternal/common/inner/protobuf/protomessages/microtransaction.proto\x1a?internal/common/inner/protobuf/protomessages/periodfilter.proto\x1aGinternal/common/inner/protobuf/protomessages/avgbytypetransaction.proto\x1a@internal/common/inner/protobuf/protomessages/scattergather.proto\x1aCinternal/common/inner/protobuf/protomessages/intermediarypair.proto\x1a<internal/common/inner/protobuf/protomessages/heartbeat.proto\"\x97\n" +
+	"?internal/common/inner/protobuf/protomessages/moneylaundry.proto\x12\bprotobuf\x1a>internal/common/inner/protobuf/protomessages/transaction.proto\x1a=internal/common/inner/protobuf/protomessages/conversion.proto\x1a6internal/common/inner/protobuf/protomessages/eof.proto\x1a:internal/common/inner/protobuf/protomessages/maxbank.proto\x1aCinternal/common/inner/protobuf/protomessages/microtransaction.proto\x1a?internal/common/inner/protobuf/protomessages/periodfilter.proto\x1aGinternal/common/inner/protobuf/protomessages/avgbytypetransaction.proto\x1a@internal/common/inner/protobuf/protomessages/scattergather.proto\x1aCinternal/common/inner/protobuf/protomessages/intermediarypair.proto\x1a<internal/common/inner/protobuf/protomessages/heartbeat.proto\x1aGinternal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto\"\xef\n" +
 	"\n" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
@@ -492,7 +508,8 @@ const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDe
 	"\x13scattergather_batch\x18\x0e \x01(\v2\x1c.protobuf.ScatterGatherBatchH\x00R\x12scattergatherBatch\x12X\n" +
 	"\x16intermediarypair_batch\x18\x0f \x01(\v2\x1f.protobuf.IntermediaryPairBatchH\x00R\x15intermediarypairBatch\x12Q\n" +
 	"\x15max_bank_result_batch\x18\x10 \x01(\v2\x1c.protobuf.MaxBankResultBatchH\x00R\x12maxBankResultBatch\x123\n" +
-	"\theartbeat\x18\x11 \x01(\v2\x13.protobuf.HeartbeatH\x00R\theartbeatB\x0f\n" +
+	"\theartbeat\x18\x11 \x01(\v2\x13.protobuf.HeartbeatH\x00R\theartbeat\x12V\n" +
+	"\x16grouped_accounts_batch\x18\x12 \x01(\v2\x1e.protobuf.GroupedAccountsBatchH\x00R\x14groupedAccountsBatchB\x0f\n" +
 	"\rinner_message*\x8d\a\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
@@ -563,6 +580,7 @@ var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_goTypes
 	(*IntermediaryPairBatch)(nil),             // 13: protobuf.IntermediaryPairBatch
 	(*MaxBankResultBatch)(nil),                // 14: protobuf.MaxBankResultBatch
 	(*Heartbeat)(nil),                         // 15: protobuf.Heartbeat
+	(*GroupedAccountsBatch)(nil),              // 16: protobuf.GroupedAccountsBatch
 }
 var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_depIdxs = []int32{
 	0,  // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
@@ -580,11 +598,12 @@ var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_depIdxs
 	13, // 12: protobuf.MoneyLaundry.intermediarypair_batch:type_name -> protobuf.IntermediaryPairBatch
 	14, // 13: protobuf.MoneyLaundry.max_bank_result_batch:type_name -> protobuf.MaxBankResultBatch
 	15, // 14: protobuf.MoneyLaundry.heartbeat:type_name -> protobuf.Heartbeat
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	16, // 15: protobuf.MoneyLaundry.grouped_accounts_batch:type_name -> protobuf.GroupedAccountsBatch
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init() }
@@ -602,6 +621,7 @@ func file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init()
 	file_internal_common_inner_protobuf_protomessages_scattergather_proto_init()
 	file_internal_common_inner_protobuf_protomessages_intermediarypair_proto_init()
 	file_internal_common_inner_protobuf_protomessages_heartbeat_proto_init()
+	file_internal_common_inner_protobuf_protomessages_groupedaccountsbatch_proto_init()
 	file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_msgTypes[0].OneofWrappers = []any{
 		(*MoneyLaundry_Transactions)(nil),
 		(*MoneyLaundry_ToConvertBatch)(nil),
@@ -617,6 +637,7 @@ func file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init()
 		(*MoneyLaundry_IntermediarypairBatch)(nil),
 		(*MoneyLaundry_MaxBankResultBatch)(nil),
 		(*MoneyLaundry_Heartbeat)(nil),
+		(*MoneyLaundry_GroupedAccountsBatch)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

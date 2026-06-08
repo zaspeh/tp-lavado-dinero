@@ -14,6 +14,7 @@ import "internal/common/inner/protobuf/protomessages/avgbytypetransaction.proto"
 import "internal/common/inner/protobuf/protomessages/scattergather.proto";
 import "internal/common/inner/protobuf/protomessages/intermediarypair.proto";
 import "internal/common/inner/protobuf/protomessages/heartbeat.proto";
+import "internal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -79,5 +80,6 @@ message MoneyLaundry {
         IntermediaryPairBatch intermediarypair_batch = 15;
         MaxBankResultBatch max_bank_result_batch = 16;
         Heartbeat heartbeat = 17;
+        GroupedAccountsBatch grouped_accounts_batch = 18;
     }
 }

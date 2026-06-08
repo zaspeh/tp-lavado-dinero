@@ -151,7 +151,7 @@ func createInputOutputQueues() (m.Middleware, m.Middleware, error) {
 	return inputQueue, outputQueue, nil
 }
 
-func createInputExchangeOutputQueue() (m.Middleware, m.Middleware, error) {
+func createInputExchangeOutputQueue(keyPrefix string) (m.Middleware, m.Middleware, error) {
 	momConfig, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, nil, err
@@ -172,7 +172,10 @@ func createInputExchangeOutputQueue() (m.Middleware, m.Middleware, error) {
 		return nil, nil, err
 	}
 
-	inputKeys := []string{inputExchangeName + "." + id}
+	if keyPrefix == "" {
+		keyPrefix = inputExchangeName
+	}
+	inputKeys := []string{keyPrefix + "." + id}
 
 	inputExchange, err := middleware.CreateExchangeMiddleware(inputExchangeName, inputKeys, momConfig)
 	if err != nil {

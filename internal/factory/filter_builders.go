@@ -198,7 +198,7 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 }
 
 func buildAvgByTypeWorker() (workers.Worker, error) {
-	inputExchangeName, outputQueueName, err := createInputExchangeOutputQueue()
+	inputExchangeName, outputQueueName, err := createInputExchangeOutputQueue("")
 	if err != nil {
 		return nil, err
 	}

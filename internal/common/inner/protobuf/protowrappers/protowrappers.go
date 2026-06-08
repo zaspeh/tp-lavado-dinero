@@ -102,3 +102,9 @@ func WrapScatterGather(items []*protobuf.ScatterGather) *protobuf.ScatterGatherB
 		Items: items,
 	}
 }
+
+func WrapGroupedAccounts(items []*protobuf.GroupedAccounts) *protobuf.GroupedAccountsBatch {
+	return &protobuf.GroupedAccountsBatch{
+		Groups: items,
+	}
+}

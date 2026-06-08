@@ -24,6 +24,7 @@ type InputExchangeOutputQueueStatefulConfig[T, V, R any] struct {
 	Sizer               batch.Sizer[V]
 	Inserter            func(clientID string, batch R) (middleware.Message, error)
 	processor           processor.StatefulProcessor[T, V]
+	keys                string //prefijo explicito de las claves, en caso de ausencia se usa el nombre del exchange
 }
 
 func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeOutputQueueStatefulConfig[T, V, R]) (workers.Worker, error) {
@@ -32,7 +33,7 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		return nil, err
 	}
 
-	inputExchange, outputQueue, err := createInputExchangeOutputQueue()
+	inputExchange, outputQueue, err := createInputExchangeOutputQueue(cfg.keys)
 	if err != nil {
 		return nil, err
 	}

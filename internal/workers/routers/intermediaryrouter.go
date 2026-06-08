@@ -10,7 +10,6 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 )
 
@@ -107,7 +106,7 @@ func (ir *IntermediaryRouter) handleSignals() {
 }
 
 func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
@@ -126,9 +125,9 @@ func (ir *IntermediaryRouter) handleMessage(msg middleware.Message, ack, nack fu
 func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	clientID := moneyLaundry.GetClientID()
 	slog.Debug("ClientID", "clientID", clientID)
-	batch, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.GroupedAccountsBatch{})
-	if err != nil {
-		nack()
+	batch := moneyLaundry.GetGroupedAccountsBatch()
+	if batch == nil || len(batch.GetGroups()) == 0 {
+		ack()
 		return
 	}
 

@@ -38,7 +38,7 @@ func (w *MaxBankProcessor) Process(clientID string, maxBankMsg *protobuf.MaxBank
 	return nil
 }
 
-func (w *MaxBankProcessor) Finalize(clientID string, yield func(result *protobuf.MaxBankResult) error) error {
+func (w *MaxBankProcessor) Finalize(clientID string, yield func(result *protobuf.MaxBankResult) error) (uint64, error) {
 	store := w.getStore(clientID)
 	reader := store.Reader()
 
@@ -51,14 +51,14 @@ func (w *MaxBankProcessor) Finalize(clientID string, yield func(result *protobuf
 		}
 
 		if err := yield(maxBankResult); err != nil {
-			return err
+			return 0, err
 		}
 		reader.Next()
 	}
 
 	store.Clear()
 	delete(w.maxBankStores, clientID)
-	return nil
+	return 0, nil
 }
 
 func (w *MaxBankProcessor) Cleanup(clientID string) error {

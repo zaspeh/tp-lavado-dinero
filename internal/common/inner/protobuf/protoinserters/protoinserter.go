@@ -81,3 +81,14 @@ func InsertScatterGatherBatch(clientID string, batch *protobuf.ScatterGatherBatc
 		innerMessage,
 	)
 }
+
+func InsertGroupedAccountsBatch(clientID string, batch *protobuf.GroupedAccountsBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_GroupedAccountsBatch{
+		GroupedAccountsBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_GROUPED_ACCOUNTS_BATCH,
+		innerMessage,
+	)
+}
