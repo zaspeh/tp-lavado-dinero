@@ -4,20 +4,19 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	composeLoader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/compose_loader"
 )
 
 type WorkerStatus struct {
-	WorkerID   int64
-	WorkerType string
-	LastSeen   time.Time
-	IsAlive    bool
+	ContainerName string
+	LastSeen      time.Time
+	IsAlive       bool
 }
 
 type FaultHypervisorConfig struct {
@@ -31,7 +30,7 @@ type FaultHypervisor struct {
 	HeartbeatQueue          middleware.Middleware
 	CheckIntervalSeconds    int
 	HeartbeatTimeoutSeconds int
-	lastSeen                map[string]*WorkerStatus
+	workers                 map[string]*WorkerStatus
 	mu                      sync.RWMutex
 }
 
@@ -44,13 +43,29 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		return nil, err
 	}
 
+	workers, err := composeLoader.LoadWorkersFromCompose("/app/Compose.yml")
+	if err != nil {
+		return nil, err
+	}
+
+	workerMap := make(map[string]*WorkerStatus)
+
+	for _, worker := range workers {
+		slog.Debug("worker loaded from compose", "container_name", worker.ContainerName)
+		workerMap[worker.ContainerName] = &WorkerStatus{
+			ContainerName: worker.ContainerName,
+			IsAlive:       true,
+			LastSeen:      time.Now(),
+		}
+	}
+
 	return &FaultHypervisor{
 		HeartbeatQueue: heartbeatQueue,
 
 		CheckIntervalSeconds:    config.CheckIntervalSeconds,
 		HeartbeatTimeoutSeconds: config.HeartbeatTimeoutSeconds,
 
-		lastSeen: make(map[string]*WorkerStatus),
+		workers: workerMap,
 	}, nil
 }
 
@@ -94,31 +109,25 @@ func (fh *FaultHypervisor) handleHeartbeat(msg middleware.Message, ack, nack fun
 		return
 	}
 
-	workerID := heartbeat.GetWorkerId()
-	parsedWorkerID := strconv.FormatInt(workerID, 10)
-	worker_name := heartbeat.GetWorkerType() + "-" + parsedWorkerID
-
-	slog.Debug(
-		"processing heartbeat",
-		"worker_id", parsedWorkerID,
-		"worker_type", heartbeat.GetWorkerType(),
-	)
+	containerName := heartbeat.GetContainerName()
 
 	fh.mu.Lock()
-	fh.lastSeen[worker_name] = &WorkerStatus{
-		WorkerID:   workerID,
-		WorkerType: heartbeat.GetWorkerType(),
-		LastSeen:   time.Now(),
-		IsAlive:    true,
+
+	worker, exists := fh.workers[containerName]
+
+	if !exists {
+		fh.mu.Unlock()
+		slog.Warn("heartbeat from unknown worker", "container", containerName)
+		nack()
+		return
 	}
+
+	worker.LastSeen = time.Now()
+	worker.IsAlive = true
+
 	fh.mu.Unlock()
 
-	slog.Debug(
-		"heartbeat received",
-		"worker_id", parsedWorkerID,
-		"worker_type", heartbeat.GetWorkerType(),
-	)
-
+	slog.Debug("heartbeat received", "container_name", worker.ContainerName)
 	ack()
 }
 
@@ -140,18 +149,30 @@ func (fh *FaultHypervisor) checkWorkers() {
 
 	now := time.Now()
 
-	fh.mu.RLock()
-	defer fh.mu.RUnlock()
+	var deadWorkers []*WorkerStatus
 
-	for workerID, workerStatus := range fh.lastSeen {
-		if workerStatus.IsAlive && now.Sub(workerStatus.LastSeen) > timeout {
-			workerStatus.IsAlive = false
+	fh.mu.Lock()
 
-			slog.Warn(
-				"worker timeout detected",
-				"worker", workerID,
-				"last_seen", workerStatus.LastSeen,
-			)
+	for _, worker := range fh.workers {
+		if worker.IsAlive && now.Sub(worker.LastSeen) > timeout {
+			worker.IsAlive = false
+			deadWorkers = append(deadWorkers, worker)
 		}
 	}
+
+	fh.mu.Unlock()
+
+	for _, worker := range deadWorkers {
+		fh.markWorkerDead(worker)
+	}
+}
+
+func (fh *FaultHypervisor) markWorkerDead(worker *WorkerStatus) {
+	slog.Warn("worker marked as dead", "container_name", worker.ContainerName)
+
+	fh.reviveWorker(worker)
+}
+
+func (fh *FaultHypervisor) reviveWorker(worker *WorkerStatus) {
+	slog.Info("would restart worker", "container", worker.ContainerName)
 }

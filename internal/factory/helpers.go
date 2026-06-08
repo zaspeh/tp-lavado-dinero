@@ -276,5 +276,10 @@ func buildHeartbeatPublisher(id int, workerType string) (*heartbeat.HeartbeatPub
 		return nil, err
 	}
 
-	return heartbeat.NewHeartbeatPublisher(heartbeatQueue, id, workerType, intervalSeconds), nil
+	containerName, err := getEnvStrict("CONTAINER_NAME")
+	if err != nil {
+		containerName = fmt.Sprintf("%s_%d", workerType, id)
+	}
+
+	return heartbeat.NewHeartbeatPublisher(heartbeatQueue, containerName, intervalSeconds), nil
 }

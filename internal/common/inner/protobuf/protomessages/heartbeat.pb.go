@@ -25,9 +25,8 @@ const (
 
 type Heartbeat struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkerId      int64                  `protobuf:"varint,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
-	WorkerType    string                 `protobuf:"bytes,2,opt,name=worker_type,json=workerType,proto3" json:"worker_type,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	ContainerName string                 `protobuf:"bytes,1,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -62,16 +61,9 @@ func (*Heartbeat) Descriptor() ([]byte, []int) {
 	return file_internal_common_inner_protobuf_protomessages_heartbeat_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Heartbeat) GetWorkerId() int64 {
+func (x *Heartbeat) GetContainerName() string {
 	if x != nil {
-		return x.WorkerId
-	}
-	return 0
-}
-
-func (x *Heartbeat) GetWorkerType() string {
-	if x != nil {
-		return x.WorkerType
+		return x.ContainerName
 	}
 	return ""
 }
@@ -87,12 +79,10 @@ var File_internal_common_inner_protobuf_protomessages_heartbeat_proto protorefle
 
 const file_internal_common_inner_protobuf_protomessages_heartbeat_proto_rawDesc = "" +
 	"\n" +
-	"<internal/common/inner/protobuf/protomessages/heartbeat.proto\x12\bprotobuf\"g\n" +
-	"\tHeartbeat\x12\x1b\n" +
-	"\tworker_id\x18\x01 \x01(\x03R\bworkerId\x12\x1f\n" +
-	"\vworker_type\x18\x02 \x01(\tR\n" +
-	"workerType\x12\x1c\n" +
-	"\ttimestamp\x18\x03 \x01(\x03R\ttimestampB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"<internal/common/inner/protobuf/protomessages/heartbeat.proto\x12\bprotobuf\"P\n" +
+	"\tHeartbeat\x12%\n" +
+	"\x0econtainer_name\x18\x01 \x01(\tR\rcontainerName\x12\x1c\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestampB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_protomessages_heartbeat_proto_rawDescOnce sync.Once

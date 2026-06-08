@@ -100,9 +100,11 @@ def build_worker(svc_name, cfg, i, log_level):
     worker_type = svc_config.get('worker_type', 'UNKNOWN')
     count = svc_config.get('count', 1)
     worker_exchange_name = svc_config.get('worker_exchange_name', worker_type)
-    
+    container_name = f"{svc_name}_{i}"
+
     env_list = [
         f"ID={i}",
+        f"CONTAINER_NAME={container_name}",
         f"LOG_LEVEL={log_level}",
         f"WORKER_TYPE={worker_type}",
         "MOM_HOST=rabbitmq",
@@ -110,7 +112,7 @@ def build_worker(svc_name, cfg, i, log_level):
         f"WORKER_COUNT={count}",
         f"WORKER_EXCHANGE_NAME={worker_exchange_name}"
     ]
-    
+        
     if 'env' in svc_config:
         for key, value in svc_config['env'].items():
             env_list.append(f"{key}={value}")
@@ -120,7 +122,7 @@ def build_worker(svc_name, cfg, i, log_level):
             'context': '.',
             'dockerfile': 'cmd/worker/Dockerfile'
         },
-        'container_name': f'{svc_name}_{i}',
+        'container_name': container_name,
         'environment': env_list,
         'depends_on': {
             'rabbitmq': {'condition': 'service_healthy'}
@@ -148,7 +150,8 @@ def build_fault_hypervisor(cfg):
         'container_name': 'fault_hypervisor',
         'environment': env_list,
         'volumes': [
-            '/var/run/docker.sock:/var/run/docker.sock'
+            '/var/run/docker.sock:/var/run/docker.sock',
+            './Compose.yml:/app/Compose.yml:ro'
         ],
         'depends_on': {
             'rabbitmq': {'condition': 'service_healthy'}

@@ -9,20 +9,18 @@ import (
 )
 
 type HeartbeatPublisher struct {
-	queue      middleware.Middleware
-	workerID   int
-	workerType string
-	interval   time.Duration
-	stop       chan struct{}
+	queue         middleware.Middleware
+	containerName string
+	interval      time.Duration
+	stop          chan struct{}
 }
 
-func NewHeartbeatPublisher(queue middleware.Middleware, workerID int, workerType string, intervalSeconds int) *HeartbeatPublisher {
+func NewHeartbeatPublisher(queue middleware.Middleware, containerName string, intervalSeconds int) *HeartbeatPublisher {
 	return &HeartbeatPublisher{
-		queue:      queue,
-		workerID:   workerID,
-		workerType: workerType,
-		interval:   time.Duration(intervalSeconds) * time.Second,
-		stop:       make(chan struct{}),
+		queue:         queue,
+		containerName: containerName,
+		interval:      time.Duration(intervalSeconds) * time.Second,
+		stop:          make(chan struct{}),
 	}
 }
 
@@ -46,12 +44,10 @@ func (p *HeartbeatPublisher) Run() {
 func (p *HeartbeatPublisher) publishHeartbeat() {
 	slog.Debug(
 		"heartbeat sent",
-		"worker_id", p.workerID,
-		"worker_type", p.workerType,
+		"container_name", p.containerName,
 	)
 	msg, err := protobuf.SerializeProtoHeartbeatONTRIAL(
-		int64(p.workerID),
-		p.workerType,
+		p.containerName,
 	)
 
 	if err != nil {

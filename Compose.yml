@@ -68,6 +68,7 @@ services:
     container_name: currency_filter_0
     environment:
     - ID=0
+    - CONTAINER_NAME=currency_filter_0
     - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
@@ -93,6 +94,7 @@ services:
     container_name: currency_filter_1
     environment:
     - ID=1
+    - CONTAINER_NAME=currency_filter_1
     - LOG_LEVEL=debug
     - WORKER_TYPE=CURRENCY_FILTER
     - MOM_HOST=rabbitmq
@@ -118,6 +120,7 @@ services:
     container_name: microtransaction_filter_0
     environment:
     - ID=0
+    - CONTAINER_NAME=microtransaction_filter_0
     - LOG_LEVEL=debug
     - WORKER_TYPE=AMOUNT_FILTER
     - MOM_HOST=rabbitmq
@@ -139,6 +142,7 @@ services:
     container_name: microtransaction_join_0
     environment:
     - ID=0
+    - CONTAINER_NAME=microtransaction_join_0
     - LOG_LEVEL=debug
     - WORKER_TYPE=MICROTRANSACTION_JOIN
     - MOM_HOST=rabbitmq
@@ -167,6 +171,7 @@ services:
     - HEARTBEAT_TIMEOUT_SECONDS=15
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+    - ./Compose.yml:/app/Compose.yml:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
