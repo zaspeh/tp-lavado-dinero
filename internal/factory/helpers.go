@@ -132,23 +132,13 @@ func createInputOutputQueues() (m.Middleware, m.Middleware, error) {
 		return nil, nil, err
 	}
 
-	inputQueue, err := createInputQueue(momConfig)
+	queuesNames := []string{"INPUT_QUEUE_NAMES", "OUTPUT_QUEUE_NAME"}
+	queues, err := createQueues(queuesNames, momConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	outputQueue, err := middleware.CreateQueueMiddleware(outputQueueName, momConfig)
-	if err != nil {
-		inputQueue.Close()
-		return nil, nil, err
-	}
-
-	return inputQueue, outputQueue, nil
+	return queues[0], queues[1], nil
 }
 
 func createInputExchangeOutputQueue(keyPrefix string) (m.Middleware, m.Middleware, error) {
@@ -217,18 +207,29 @@ func getCoordinator() (*c.EOFCoordinator, error) {
 	return coordinator, nil
 }
 
-func createInputQueue(momConfig m.ConnSettings) (m.Middleware, error) {
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
+func createQueues(queuesAlias []string, momConfig m.ConnSettings) ([]m.Middleware, error) {
+	queuesNames := make([]string, len(queuesAlias))
+	for i, key := range queuesAlias {
+		if name, err := getEnvStrict(key); err != nil {
+			return nil, err
+		} else {
+			queuesNames[i] = name
+		}
 	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(inputQueueName, momConfig)
-	if err != nil {
-		return nil, err
+	queues := make([]m.Middleware, len(queuesNames))
+	for i, queueName := range queuesNames {
+		queue, err := middleware.CreateQueueMiddleware(queueName, momConfig)
+		if err != nil {
+			for j := range i {
+				queues[j].Close()
+			}
+			return nil, err
+		}
+		queues[i] = queue
 	}
 
-	return inputQueue, nil
+	return queues, nil
 }
 
 func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, workerAmountName string) (*middleware.ExchangeMiddleware, []string, error) {

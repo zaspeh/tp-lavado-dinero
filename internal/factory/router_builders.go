@@ -151,10 +151,12 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
-	inputQueue, err := createInputQueue(momConfig)
+	queues, err := createQueues([]string{"INPUT_QUEUE_NAME"}, momConfig)
 	if err != nil {
 		return nil, err
 	}
+
+	inputQueue := queues[0]
 
 	paymentTypeExchange, paymentTypeKeys, err := createExchangeOutput(momConfig, "PAYMENT_TYPE_EXCHANGE_NAME", "AVG_BY_TYPE_WORKER_AMOUNT")
 	if err != nil {
