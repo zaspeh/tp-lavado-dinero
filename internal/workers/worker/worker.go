@@ -8,15 +8,18 @@ import (
 	"syscall"
 
 	e "github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/heartbeat"
 )
 
 type Worker struct {
-	engines []e.Engine
+	engines            []e.Engine
+	heartbeatPublisher *heartbeat.HeartbeatPublisher
 }
 
-func NewWorker() *Worker {
+func NewWorker(heartbeatPublisher *heartbeat.HeartbeatPublisher) *Worker {
 	return &Worker{
-		engines: []e.Engine{},
+		engines:            []e.Engine{},
+		heartbeatPublisher: heartbeatPublisher,
 	}
 }
 
@@ -41,15 +44,20 @@ func (w *Worker) Run() error {
 		})
 	}
 
+	// Corremos el heartbeat en paralelo una vez levantamos los engines
+	go w.heartbeatPublisher.Run()
+
 	wg.Wait()
 	close(errChan)
 	return <-errChan
 }
 
+// TODO: hacer log de los close fallidos.
 func (w *Worker) shutdown() {
 	for _, e := range w.engines {
 		e.Shutdown()
 	}
+	w.heartbeatPublisher.Close()
 }
 
 func (w *Worker) handleSignals() {

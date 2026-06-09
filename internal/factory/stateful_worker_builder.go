@@ -54,8 +54,13 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		cfg.Inserter,
 	)
 
+	heartbeatPublisher, err := buildHeartbeatPublisher()
+	if err != nil {
+		return nil, err
+	}
+
 	engine := engine.NewStatefulEngine(receiver, sender, cfg.processor, newCoordinator)
-	worker := worker.NewWorker()
+	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil
 }

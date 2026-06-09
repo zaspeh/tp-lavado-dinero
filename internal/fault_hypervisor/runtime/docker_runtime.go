@@ -25,6 +25,9 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 		"--network",
 		"money_laundering_network",
 
+		"-e", "HEARTBEAT_QUEUE_NAME=heartbeat_queue",
+		"-e", "HEARTBEAT_INTERVAL_SECONDS=5",
+
 		"-e", fmt.Sprintf("ID=%d", workerID),
 		"-e", fmt.Sprintf("CONTAINER_NAME=%s", containerName),
 		"-e", fmt.Sprintf("WORKER_TYPE=%s", definition.WorkerType),

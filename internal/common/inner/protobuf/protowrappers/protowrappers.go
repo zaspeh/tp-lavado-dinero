@@ -1,6 +1,8 @@
 package protowrappers
 
 import (
+	"strconv"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"google.golang.org/protobuf/proto"
@@ -18,6 +20,60 @@ func WrapTransactions(transactions []*protobuf.Transaction) *protobuf.Transactio
 	}
 }
 
+func WrapTransactionToMicroTransactionBatch(transactions []*protobuf.Transaction) *protobuf.MicrotransactionBatch {
+	microtransactions := make([]*protobuf.Microtransaction, len(transactions))
+	for _, transaction := range transactions {
+		parsedAmount, err := strconv.ParseFloat(transaction.GetAmountPaid(), 64)
+		if err != nil {
+			continue
+		}
+		microtransaction := &protobuf.Microtransaction{
+			Account:   transaction.GetAccount(),
+			ToAccount: transaction.GetToAccount(),
+			Amount:    parsedAmount,
+		}
+		microtransactions = append(microtransactions, microtransaction)
+	}
+	return WrapToMicrotransactionBatch(microtransactions)
+}
+
+func WrapTransactionToMaxBankBatch(transactions []*protobuf.Transaction) *protobuf.MaxBankBatch {
+	maxBankMessages := make([]*protobuf.MaxBank, len(transactions))
+	for _, transaction := range transactions {
+		transferSummary := &protobuf.TransferSummary{
+			Account: transaction.GetAccount(),
+			Amount:  transaction.GetAmountPaid(),
+		}
+
+		maxbank := &protobuf.MaxBank{
+			FromBank: transaction.GetFromBank(),
+			Payload: &protobuf.MaxBank_TransferSummary{
+				TransferSummary: transferSummary,
+			},
+		}
+		maxBankMessages = append(maxBankMessages, maxbank)
+	}
+
+	return WrapMaxBank(maxBankMessages)
+}
+
+func WrapTransactionToPeriodFilterBatch(transactions []*protobuf.Transaction) *protobuf.PeriodFilterBatch {
+	periodFilterList := make([]*protobuf.PeriodFilter, 0, len(transactions))
+	for _, transaction := range transactions {
+		periodFilter := &protobuf.PeriodFilter{
+			Timestamp:     transaction.GetTimestamp(),
+			FromBank:      transaction.GetFromBank(),
+			ToBank:        transaction.GetToBank(),
+			Account:       transaction.GetAccount(),
+			ToAccount:     transaction.GetToAccount(),
+			AmountPaid:    transaction.GetAmountPaid(),
+			PaymentFormat: transaction.GetPaymentFormat(),
+		}
+		periodFilterList = append(periodFilterList, periodFilter)
+	}
+	return WrapPeriodFilter(periodFilterList)
+}
+
 func WrapMicrotransactions(transactions []*protobuf.Microtransaction) *protobuf.MicrotransactionResult {
 	return &protobuf.MicrotransactionResult{
 		Transactions: transactions,
@@ -30,7 +86,7 @@ func WrapToConvertTransactions(transactions []*protobuf.ToConvertTransaction) *p
 	}
 }
 
-func WrapToMicrotrasactionBatch(transactions []*protobuf.Microtransaction) *protobuf.MicrotransactionBatch {
+func WrapToMicrotransactionBatch(transactions []*protobuf.Microtransaction) *protobuf.MicrotransactionBatch {
 	return &protobuf.MicrotransactionBatch{
 		Items: transactions,
 	}

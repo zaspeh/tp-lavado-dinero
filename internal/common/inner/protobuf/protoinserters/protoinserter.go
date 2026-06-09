@@ -27,6 +27,17 @@ func InsertMicrotransactionBatch(clientID string, batch *protobuf.Microtransacti
 	)
 }
 
+func InsertPeriodFilterBatch(clientID string, batch *protobuf.PeriodFilterBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_PeriodFilterBatch{
+		PeriodFilterBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_PERIOD_FILTER_BATCH,
+		innerMessage,
+	)
+}
+
 func InsertMaxBankBatch(clientID string, batch *protobuf.MaxBankBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_MaxBankBatch{
 		MaxBankBatch: batch,

@@ -185,6 +185,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		protoextractors.GetAvgByTypeTransactionBatchItems,
 	)
 
+	// TODO: ESTA MAL, HACER PROCESADOR ESPECIFICO
 	processor := processorrouters.NewRouterProcessor(
 		paymentTypeKeys,
 		func(item *protobuf.AvgByTypeTransaction) string {
@@ -192,14 +193,15 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		},
 	)
 
-	engine, err := engine.NewStatelessEngine(receiver, routedSender, processor, coordinator)
+	engine := engine.NewStatelessEngine(receiver, routedSender, processor, coordinator)
+
+	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
-		inputQueue.Close()
-		paymentTypeExchange.Close()
+		engine.Shutdown()
 		return nil, err
 	}
 
-	worker := worker.NewWorker()
+	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil
 }

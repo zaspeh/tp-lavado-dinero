@@ -8,74 +8,107 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
+	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
+	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
 
 func buildCurrencyFilterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
+	connSettings, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
-	if err != nil {
-		return nil, err
+	queuesAlias := []string{
+		"INPUT_QUEUE_NAME",
+		"MICROTRANSACTION_FILTER_QUEUE_NAME",
+		"BANK_ROUTER_QUEUE_NAME",
+		"PAYMENT_TYPE_PERIOD_FILTER_QUEUE_NAME",
+		"SCATTER_GATHER_PERIOD_FILTER_QUEUE_NAME",
 	}
 
-	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	microQ, err := getEnvStrict("MICROTRANSACTION_FILTER_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	routerQ, err := getEnvStrict("BANK_ROUTER_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	periodQ, err := getEnvStrict("PERIOD_FILTER_QUEUE_NAME")
+	queues, err := createQueues(queuesAlias, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
 	currency, err := getEnvStrict("CURRENCY_TO_FILTER")
 	if err != nil {
+		closeQueues(queues)
 		return nil, err
 	}
 
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	coordinator, err := getCoordinator()
 	if err != nil {
+		closeQueues(queues)
 		return nil, err
 	}
 
-	workerType := "CURRENCY_FILTER"
-
-	heartbeat, err := buildHeartbeatPublisher(id, workerType)
+	heartbeat, err := buildHeartbeatPublisher()
 	if err != nil {
+		closeQueues(queues)
+		coordinator.Close()
 		return nil, err
 	}
 
-	config := filters.CurrencyFilterConfig{
-		InputQueueName:                  inQ,
-		MicrotransactionFilterQueueName: microQ,
-		BankRouterQueueName:             routerQ,
-		PeriodFilterQueueName:           periodQ,
-		MomHost:                         host,
-		MomPort:                         port,
-		CurrencyToFilter:                currency,
-		WorkerCount:                     workerCount,
-		WorkerExchangeName:              workerExchangeName,
-		ID:                              id,
-		Heartbeat:                       heartbeat,
-	}
+	receiver := r.NewSingleReceiver(
+		queues[0],
+		protobuf.MessageType_TRANSACTION_BATCH,
+		protoextractors.GetTransactionBatchItems,
+	)
 
-	return filters.NewCurrencyFilter(config)
+	// TODO: PESO DEL BATCH BATCH
+	senderMicroTransaction := s.NewSingleSender(
+		queues[1],
+		protowrappers.WrapTransactionToMicroTransactionBatch,
+		protowrappers.ProtoSizer[*protobuf.Transaction](),
+		0,
+		protoinserters.InsertMicrotransactionBatch,
+	)
+
+	senderMaxBankRouter := s.NewSingleSender(
+		queues[2],
+		protowrappers.WrapTransactionToMaxBankBatch,
+		protowrappers.ProtoSizer[*protobuf.Transaction](),
+		0,
+		protoinserters.InsertMaxBankBatch,
+	)
+
+	senderPaymentTypePeriod := s.NewSingleSender(
+		queues[3],
+		protowrappers.WrapTransactionToPeriodFilterBatch,
+		protowrappers.ProtoSizer[*protobuf.Transaction](),
+		0,
+		protoinserters.InsertPeriodFilterBatch,
+	)
+
+	senderScatterGatherPeriod := s.NewSingleSender(
+		queues[4],
+		protowrappers.WrapTransactionToPeriodFilterBatch,
+		protowrappers.ProtoSizer[*protobuf.Transaction](),
+		0,
+		protoinserters.InsertPeriodFilterBatch,
+	)
+
+	multisender := s.NewMultiSender(senderMicroTransaction, senderMaxBankRouter, senderPaymentTypePeriod, senderScatterGatherPeriod)
+
+	processor := filterprocessor.NewCurrencyFilterProcessor(currency)
+
+	engineInstance := engine.NewStatelessEngine(
+		receiver,
+		multisender,
+		processor,
+		coordinator,
+	)
+
+	workerInstance := worker.NewWorker(heartbeat)
+	workerInstance.AddEngine(engineInstance)
+
+	return workerInstance, nil
+
 }
 
 func buildPeriodFilterWorker() (workers.Worker, error) {
@@ -237,7 +270,7 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 	return buildStatelessWorkerInputQueueOutputQueue(
 		InputQueueOutputQueueStatelessConfig[*protobuf.Microtransaction, *protobuf.Microtransaction, *protobuf.MicrotransactionBatch]{
 			ReceivedMessageType: protobuf.MessageType_MICROTRANSACTION_BATCH,
-			Wrapper:             protowrappers.WrapToMicrotrasactionBatch,
+			Wrapper:             protowrappers.WrapToMicrotransactionBatch,
 			Extractor:           protoextractors.GetMicrotransactionBatchItems,
 			Inserter:            protoinserters.InsertMicrotransactionBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.Microtransaction](),

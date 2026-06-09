@@ -57,14 +57,14 @@ func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderCo
 		return nil, err
 	}
 
-	engine, err := e.NewStatelessEngine(receiver, config.Sender, config.Processor, coordinator)
+	engine := e.NewStatelessEngine(receiver, config.Sender, config.Processor, coordinator)
+
+	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
-		inputQueue.Close()
-		config.Sender.Close()
-		return nil, err
+		engine.Shutdown()
 	}
 
-	worker := worker.NewWorker()
+	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil
 }
@@ -105,20 +105,20 @@ func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutput
 		cfg.Extractor,
 	)
 
-	engineInstance, err := engine.NewStatelessEngine(
+	engineInstance := engine.NewStatelessEngine(
 		singleReceiver,
 		singleSender,
 		cfg.Processor,
 		coordinator,
 	)
+
+	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
-		singleSender.Close()
-		singleReceiver.Close()
-		coordinator.Close()
+		engineInstance.Shutdown()
 		return nil, err
 	}
 
-	workerInstance := worker.NewWorker()
+	workerInstance := worker.NewWorker(heartbeatPublisher)
 	workerInstance.AddEngine(engineInstance)
 
 	return workerInstance, nil

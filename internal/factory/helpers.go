@@ -132,7 +132,7 @@ func createInputOutputQueues() (m.Middleware, m.Middleware, error) {
 		return nil, nil, err
 	}
 
-	queuesNames := []string{"INPUT_QUEUE_NAMES", "OUTPUT_QUEUE_NAME"}
+	queuesNames := []string{"INPUT_QUEUE_NAME", "OUTPUT_QUEUE_NAME"}
 	queues, err := createQueues(queuesNames, momConfig)
 	if err != nil {
 		return nil, nil, err
@@ -232,6 +232,12 @@ func createQueues(queuesAlias []string, momConfig m.ConnSettings) ([]m.Middlewar
 	return queues, nil
 }
 
+func closeQueues(queues []m.Middleware) {
+	for _, q := range queues {
+		q.Close()
+	}
+}
+
 func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, workerAmountName string) (*middleware.ExchangeMiddleware, []string, error) {
 	exchangeName, err := getEnvStrict(exchangeNameKey)
 	if err != nil {
@@ -257,11 +263,12 @@ func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, work
 	return paymentTypeExchange, exchangeKeys, nil
 }
 
-func buildHeartbeatPublisher(id int, workerType string) (*heartbeat.HeartbeatPublisher, error) {
+func buildHeartbeatPublisher() (*heartbeat.HeartbeatPublisher, error) {
 	momConfig, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
+
 	heartbeatQueueName, err := getEnvStrict("HEARTBEAT_QUEUE_NAME")
 	if err != nil {
 		return nil, err
@@ -279,7 +286,7 @@ func buildHeartbeatPublisher(id int, workerType string) (*heartbeat.HeartbeatPub
 
 	containerName, err := getEnvStrict("CONTAINER_NAME")
 	if err != nil {
-		containerName = fmt.Sprintf("%s_%d", workerType, id)
+		return nil, err
 	}
 
 	return heartbeat.NewHeartbeatPublisher(heartbeatQueue, containerName, intervalSeconds), nil
