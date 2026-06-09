@@ -12,7 +12,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	processorrouters "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/routers"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/routers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
@@ -204,17 +203,12 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 }
 
 func buildIntermediaryRouterWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
+	mom, err := getMomConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
 
-	port, err := getEnvIntStrict("MOM_PORT")
-	if err != nil {
-		return nil, err
-	}
-
-	inputQueue, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -240,18 +234,38 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	config := routers.IntermediaryRouterConfig{
-		ID:                            id,
-		InputQueueName:                inputQueue,
-		AggregateByIntermediaryName:   exchangeName,
-		AggregateByIntermediaryAmount: aggregateByIntermediaryWorkerAmount,
-		MomHost:                       host,
-		MomPort:                       port,
-		WorkerCount:                   workerCount,
-		WorkerExchangeName:            workerExchangeName,
-		InputWorkersAmount:            inputWorkersAmount,
+	keys := make([]string, aggregateByIntermediaryWorkerAmount)
+	for i := 0; i < aggregateByIntermediaryWorkerAmount; i++ {
+		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
 	}
 
-	return routers.NewIntermediaryRouter(config)
+	AggregateByIntermediaryExchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		AggregateByIntermediaryExchange,
+		protowrappers.WrapIntermediaryPair,
+		protowrappers.ProtoSizer[*protobuf.IntermediaryPair](),
+		0,
+		protoinserters.InsertIntermediaryPairBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.GroupedAccounts,
+		sender.RoutedItem[*protobuf.IntermediaryPair],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       inputWorkersAmount,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_GROUPED_ACCOUNTS_BATCH,
+		ExtractInputItems:  protoextractors.GetGroupedAccountsBatchItems,
+		Processor:          processorrouters.NewIntermediaryRouter(keys),
+		Sender:             routedSender,
+	})
 
 }

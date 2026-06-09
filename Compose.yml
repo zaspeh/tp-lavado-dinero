@@ -61,6 +61,462 @@ services:
     - gateway
     networks:
     - money_laundering_network
+  currency_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: currency_filter_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=currency_filter_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=CURRENCY_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=CURRENCY_FILTER
+    - INPUT_QUEUE_NAME=currency_filter_input_queue
+    - MICROTRANSACTION_FILTER_QUEUE_NAME=microtransaction_filter_input_queue
+    - BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
+    - PERIOD_FILTER_QUEUE_NAME=period_filter_input_queue
+    - CURRENCY_TO_FILTER=US Dollar
+    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
+    - HEARTBEAT_INTERVAL_SECONDS=5
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  currency_filter_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: currency_filter_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=currency_filter_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=CURRENCY_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=CURRENCY_FILTER
+    - INPUT_QUEUE_NAME=currency_filter_input_queue
+    - MICROTRANSACTION_FILTER_QUEUE_NAME=microtransaction_filter_input_queue
+    - BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
+    - PERIOD_FILTER_QUEUE_NAME=period_filter_input_queue
+    - CURRENCY_TO_FILTER=US Dollar
+    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
+    - HEARTBEAT_INTERVAL_SECONDS=5
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  microtransaction_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_filter_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=microtransaction_filter_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=AMOUNT_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=1
+    - WORKER_EXCHANGE_NAME=AMOUNT_FILTER
+    - INPUT_QUEUE_NAME=microtransaction_filter_input_queue
+    - OUTPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - AMOUNT_TO_FILTER=50
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  microtransaction_join_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: microtransaction_join_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=microtransaction_join_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=MICROTRANSACTION_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=1
+    - WORKER_EXCHANGE_NAME=MICROTRANSACTION_JOIN
+    - INPUT_QUEUE_NAME=microtransaction_join_input_queue
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
+    - MAX_BATCH_TRANSACTIONS=100
+    - MAX_BATCH_BYTES=8000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  period_filter_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: period_filter_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=period_filter_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=PERIOD_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=PERIOD_FILTER
+    - USD_INPUT_QUEUE_NAME=period_filter_input_queue
+    - RAW_INPUT_QUEUE_NAME=raw_transactions
+    - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
+    - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_format_filter_input
+    - SCATTER_GATHER_PERIOD_START=2022-09-01T00:00:00Z
+    - SCATTER_GATHER_PERIOD_END=2022-09-05T23:59:59Z
+    - PAYMENT_TYPE_PERIOD_START=2022-09-01T00:00:00Z
+    - PAYMENT_TYPE_PERIOD_END=2022-09-05T23:59:59Z
+    - PAYMENT_TYPE_ROUTER_QUEUE_NAME=payment_type_router_input
+    - QUERY3_PERIOD_1_START=2022-09-01T00:00:00Z
+    - QUERY3_PERIOD_1_END=2022-09-05T23:59:59Z
+    - QUERY3_PERIOD_2_START=2022-09-06T00:00:00Z
+    - QUERY3_PERIOD_2_END=2022-09-14T23:59:59Z
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  period_filter_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: period_filter_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=period_filter_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=PERIOD_FILTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=PERIOD_FILTER
+    - USD_INPUT_QUEUE_NAME=period_filter_input_queue
+    - RAW_INPUT_QUEUE_NAME=raw_transactions
+    - ORIGIN_DESTINATION_ROUTER_QUEUE_NAME=origin_destination_router
+    - PAYMENT_TYPE_FILTER_QUEUE_NAME=payment_format_filter_input
+    - SCATTER_GATHER_PERIOD_START=2022-09-01T00:00:00Z
+    - SCATTER_GATHER_PERIOD_END=2022-09-05T23:59:59Z
+    - PAYMENT_TYPE_PERIOD_START=2022-09-01T00:00:00Z
+    - PAYMENT_TYPE_PERIOD_END=2022-09-05T23:59:59Z
+    - PAYMENT_TYPE_ROUTER_QUEUE_NAME=payment_type_router_input
+    - QUERY3_PERIOD_1_START=2022-09-01T00:00:00Z
+    - QUERY3_PERIOD_1_END=2022-09-05T23:59:59Z
+    - QUERY3_PERIOD_2_START=2022-09-06T00:00:00Z
+    - QUERY3_PERIOD_2_END=2022-09-14T23:59:59Z
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  origin_destination_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: origin_destination_router_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=origin_destination_router_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=ORIGIN_DESTINATION_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=ORIGIN_DESTINATION_ROUTER
+    - INPUT_QUEUE_NAME=origin_destination_router
+    - GROUP_BY_EXCHANGE_NAME=group_by_origin_destination
+    - GROUP_BY_ORIGIN_WORKER_AMOUNT=2
+    - GROUP_BY_DESTINATION_WORKER_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  origin_destination_router_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: origin_destination_router_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=origin_destination_router_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=ORIGIN_DESTINATION_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=ORIGIN_DESTINATION_ROUTER
+    - INPUT_QUEUE_NAME=origin_destination_router
+    - GROUP_BY_EXCHANGE_NAME=group_by_origin_destination
+    - GROUP_BY_ORIGIN_WORKER_AMOUNT=2
+    - GROUP_BY_DESTINATION_WORKER_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  group_by_origin_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: group_by_origin_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=group_by_origin_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=GROUP_BY_ORIGIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=GROUP_BY_ORIGIN
+    - INPUT_EXCHANGE_NAME=group_by_origin_destination
+    - OUTPUT_QUEUE_NAME=grouped_origin_accounts
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  group_by_origin_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: group_by_origin_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=group_by_origin_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=GROUP_BY_ORIGIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=GROUP_BY_ORIGIN
+    - INPUT_EXCHANGE_NAME=group_by_origin_destination
+    - OUTPUT_QUEUE_NAME=grouped_origin_accounts
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  group_by_destination_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: group_by_destination_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=group_by_destination_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=GROUP_BY_DESTINATION
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=GROUP_BY_DESTINATION
+    - INPUT_EXCHANGE_NAME=group_by_origin_destination
+    - OUTPUT_QUEUE_NAME=grouped_destination_accounts
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  group_by_destination_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: group_by_destination_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=group_by_destination_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=GROUP_BY_DESTINATION
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=GROUP_BY_DESTINATION
+    - INPUT_EXCHANGE_NAME=group_by_origin_destination
+    - OUTPUT_QUEUE_NAME=grouped_destination_accounts
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  origin_intermediary_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: origin_intermediary_router_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=origin_intermediary_router_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=INTERMEDIARY_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=ORIGIN_INTERMEDIARY_ROUTER
+    - INPUT_QUEUE_NAME=grouped_origin_accounts
+    - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=origin_intermediary_aggregation
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
+    - INPUT_WORKERS_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  origin_intermediary_router_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: origin_intermediary_router_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=origin_intermediary_router_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=INTERMEDIARY_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=ORIGIN_INTERMEDIARY_ROUTER
+    - INPUT_QUEUE_NAME=grouped_origin_accounts
+    - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=origin_intermediary_aggregation
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
+    - INPUT_WORKERS_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  destination_intermediary_router_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: destination_intermediary_router_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=destination_intermediary_router_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=INTERMEDIARY_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=DESTINATION_INTERMEDIARY_ROUTER
+    - INPUT_QUEUE_NAME=grouped_destination_accounts
+    - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=destination_intermediary_aggregation
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
+    - INPUT_WORKERS_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  destination_intermediary_router_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: destination_intermediary_router_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=destination_intermediary_router_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=INTERMEDIARY_ROUTER
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=DESTINATION_INTERMEDIARY_ROUTER
+    - INPUT_QUEUE_NAME=grouped_destination_accounts
+    - AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME=destination_intermediary_aggregation
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
+    - INPUT_WORKERS_AMOUNT=2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  aggregate_by_intermediary_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: aggregate_by_intermediary_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=aggregate_by_intermediary_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AGGREGATE_BY_INTERMEDIARY
+    - ORIGIN_INPUT_EXCHANGE_NAME=origin_intermediary_aggregation
+    - DESTINATION_INPUT_EXCHANGE_NAME=destination_intermediary_aggregation
+    - OUTPUT_QUEUE_NAME=suspicious_paths_output
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  aggregate_by_intermediary_1:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: aggregate_by_intermediary_1
+    environment:
+    - ID=1
+    - CONTAINER_NAME=aggregate_by_intermediary_1
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=AGGREGATE_BY_INTERMEDIARY
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=2
+    - WORKER_EXCHANGE_NAME=AGGREGATE_BY_INTERMEDIARY
+    - ORIGIN_INPUT_EXCHANGE_NAME=origin_intermediary_aggregation
+    - DESTINATION_INPUT_EXCHANGE_NAME=destination_intermediary_aggregation
+    - OUTPUT_QUEUE_NAME=suspicious_paths_output
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  scatter_gather_join_0:
+    build:
+      context: .
+      dockerfile: cmd/worker/Dockerfile
+    container_name: scatter_gather_join_0
+    environment:
+    - ID=0
+    - CONTAINER_NAME=scatter_gather_join_0
+    - LOG_LEVEL=debug
+    - WORKER_TYPE=SCATTER_GATHER_JOIN
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - WORKER_COUNT=1
+    - WORKER_EXCHANGE_NAME=SCATTER_GATHER_JOIN
+    - INPUT_QUEUE_NAME=suspicious_paths_output
+    - CLIENT_EXCHANGE_NAME=client_results_exchange
+    - AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT=2
+    - MAX_BATCH_WEIGHT=40000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
   fault_hypervisor:
     build:
       context: .

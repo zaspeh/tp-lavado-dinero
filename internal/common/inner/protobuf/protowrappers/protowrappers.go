@@ -108,3 +108,9 @@ func WrapGroupedAccounts(items []*protobuf.GroupedAccounts) *protobuf.GroupedAcc
 		Groups: items,
 	}
 }
+
+func WrapIntermediaryPair(items []*protobuf.IntermediaryPair) *protobuf.IntermediaryPairBatch {
+	return &protobuf.IntermediaryPairBatch{
+		Items: items,
+	}
+}

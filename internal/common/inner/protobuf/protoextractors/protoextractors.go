@@ -29,3 +29,7 @@ func GetToConvertTypeFilteredPaymentItems(batch *protobuf.MoneyLaundry) []*proto
 func GetScatterGatherBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.ScatterGather {
 	return batch.GetScattergatherBatch().GetItems()
 }
+
+func GetGroupedAccountsBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.GroupedAccounts {
+	return batch.GetGroupedAccountsBatch().GetGroups()
+}

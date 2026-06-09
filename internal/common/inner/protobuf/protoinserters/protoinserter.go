@@ -92,3 +92,14 @@ func InsertGroupedAccountsBatch(clientID string, batch *protobuf.GroupedAccounts
 		innerMessage,
 	)
 }
+
+func InsertIntermediaryPairBatch(clientID string, batch *protobuf.IntermediaryPairBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_IntermediarypairBatch{
+		IntermediarypairBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_INTERMEDIARYPAIR_BATCH,
+		innerMessage,
+	)
+}
