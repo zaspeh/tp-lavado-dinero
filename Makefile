@@ -1,7 +1,8 @@
-.PHONY: generate up down logs clean test chaos real_chaos
+.PHONY: generate up down logs clean small_test medium_test chaos real_chaos 
 
 COMPOSE_FILE=Compose.yml
 GENERATOR_SCRIPT=scripts/generate-compose.py
+TEST_SCRIPT=scripts/verify_outputs.py
 CHAOS_SCRIPT=scripts/chaos_monkey.py
 
 generate:
@@ -22,8 +23,11 @@ clean:
 	docker compose -f $(COMPOSE_FILE) down -v --remove-orphans
 	docker image prune -f
 
-test:
-	@python3 scripts/verify_outputs.py --all
+medium_test:
+	@python3 $(TEST_SCRIPT) --expected-dir expected_outputs/expected_hi_medium
+
+small_test:
+	@python3 $(TEST_SCRIPT) --expected-dir expected_outputs/expected_hi_small
 
 chaos:
 	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL))

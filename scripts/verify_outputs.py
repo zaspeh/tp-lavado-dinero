@@ -6,12 +6,13 @@ import pandas as pd
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-EXPECTED_DIR = ROOT_DIR / "expected_outputs" / "expected_hi_medium"
+EXPECTED_DIR = ROOT_DIR / "expected_outputs" / "expected_hi_small"
 OUTPUTS_DIR = ROOT_DIR / "outputs" / "client_0"
 
-QUERY_SPECS = {
+def get_queries_spec(expected_dir) -> dict:
+    query_specs = {
     "q1": {
-        "expected": EXPECTED_DIR / "q1_results.csv",
+        "expected": expected_dir / "q1_results.csv",
         "actual": OUTPUTS_DIR / "q1_result.csv",
         "columns": ["account", "to_account", "amount"],
         "types": {"account": "str", "to_account": "str", "amount": "float"},
@@ -19,7 +20,7 @@ QUERY_SPECS = {
         "atol": 1e-2,
     },
     "q2": {
-        "expected": EXPECTED_DIR / "q2_results.csv",
+        "expected": expected_dir / "q2_results.csv",
         "actual": OUTPUTS_DIR / "q2_result.csv",
         "columns": ["bank_name", "account", "amount"],
         "types": {"bank_name": "str", "account": "str", "amount": "float"},
@@ -27,7 +28,7 @@ QUERY_SPECS = {
         "atol": 1e-2,
     },
     "q3": {
-        "expected": EXPECTED_DIR / "q3_results.csv",
+        "expected": expected_dir / "q3_results.csv",
         "actual": OUTPUTS_DIR / "q3_result.csv",
         "columns": ["account", "amount"],
         "types": {"account": "str", "amount": "float"},
@@ -35,7 +36,7 @@ QUERY_SPECS = {
         "atol": 1e-2,
     },
     "q4": {
-        "expected": EXPECTED_DIR / "q4_results.csv",
+        "expected": expected_dir / "q4_results.csv",
         "actual": OUTPUTS_DIR / "q4_result.csv",
         "columns": ["bank", "account"],
         "types": {"bank": "str", "account": "str"},
@@ -43,14 +44,15 @@ QUERY_SPECS = {
         "atol": 1e-2,
     },
     "q5": {
-        "expected": EXPECTED_DIR / "q5_results.csv",
+        "expected": expected_dir / "q5_results.csv",
         "actual": OUTPUTS_DIR / "q5_result.csv",
         "columns": ["count"],
         "types": {"count": "int"},
         "sort": ["count"],
         "atol": 1e-2,
     },
-}
+    }
+    return query_specs
 
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -116,27 +118,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Verifica outputs contra los esperados."
     )
+
     parser.add_argument(
-        "--query",
-        choices=sorted(QUERY_SPECS.keys()),
-        action="append",
-        help="Consulta especifica a verificar (ej: --query q1).",
+        "--expected-dir",
+        type=Path,
+        default=EXPECTED_DIR,
+        help="Directorio con los archivos de resultados esperados.",
     )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Ejecuta todas las verificaciones.",
-    )
+
     args = parser.parse_args()
 
-    if not args.all and not args.query:
-        parser.error("Usa --all o al menos un --query.")
-
-    queries = sorted(QUERY_SPECS.keys()) if args.all else args.query
+    query_specs = get_queries_spec(args.expected_dir)
 
     all_ok = True
-    for query in queries:
-        ok = _compare(query, QUERY_SPECS[query])
+    for query_name in sorted(query_specs.keys()):
+        ok = _compare(query_name, query_specs[query_name])
         all_ok = all_ok and ok
         print("")
 
