@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	configloader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/config_loader"
 	runtimepkg "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/runtime"
@@ -48,33 +49,9 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		return nil, err
 	}
 
-	workerDefinitions, err := configloader.LoadWorkersFromConfig("/app/config.yml")
+	workers, err := loadWorkers()
 	if err != nil {
 		return nil, err
-	}
-
-	workerMap := make(map[string]*WorkerStatus)
-
-	for _, definition := range workerDefinitions {
-		for i := 0; i < definition.Count; i++ {
-
-			containerName := fmt.Sprintf("%s_%d", definition.ServiceName, i)
-
-			slog.Info(
-				"worker loaded from config",
-				"container_name",
-				containerName,
-				"worker_type",
-				definition.WorkerType,
-			)
-
-			workerMap[containerName] = &WorkerStatus{
-				ContainerName: containerName,
-				WorkerID:      i,
-				Definition:    definition,
-				IsAlive:       false,
-			}
-		}
 	}
 
 	return &FaultHypervisor{
@@ -83,45 +60,39 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		CheckIntervalSeconds:    config.CheckIntervalSeconds,
 		HeartbeatTimeoutSeconds: config.HeartbeatTimeoutSeconds,
 
-		workers: workerMap,
+		workers: workers,
 		runtime: runtimepkg.NewDockerRuntime(),
 	}, nil
 }
 
 func (fh *FaultHypervisor) Run() error {
-	slog.Info("creating worker network")
-
-	if err := fh.runtime.EnsureNetwork("money_laundering_network"); err != nil {
+	if err := fh.initializeRuntime(); err != nil {
 		return err
-	}
-
-	imageExists, err := fh.runtime.ImageExists("tp-worker")
-	if err != nil {
-		return err
-	}
-
-	if !imageExists {
-		slog.Info("building worker image")
-
-		if err := fh.runtime.BuildWorkerImage(); err != nil {
-			return err
-		}
-
-		slog.Info("worker image built")
 	}
 
 	if err := fh.StartWorkers(); err != nil {
 		return err
 	}
 
-	go fh.handleSignals()
-	go fh.monitorWorkers()
+	fh.startBackgroundTasks()
 
 	slog.Info("starting consuming heartbeats")
 
+	return fh.consumeHeartbeats()
+}
+
+func (fh *FaultHypervisor) startBackgroundTasks() {
+	go fh.handleSignals()
+	go fh.monitorWorkers()
+}
+
+func (fh *FaultHypervisor) consumeHeartbeats() error {
 	return fh.HeartbeatQueue.StartConsuming(
-		func(msg middleware.Message, ack, nack func()) {
-			slog.Debug("message received")
+		func(
+			msg middleware.Message,
+			ack,
+			nack func(),
+		) {
 			fh.handleHeartbeat(msg, ack, nack)
 		},
 	)
@@ -140,39 +111,55 @@ func (fh *FaultHypervisor) handleSignals() {
 }
 
 func (fh *FaultHypervisor) handleHeartbeat(msg middleware.Message, ack, nack func()) {
-	slog.Debug("entered handleHeartbeat")
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	heartbeat, err := extractHeartbeat(msg)
+
 	if err != nil {
 		nack()
 		return
 	}
 
-	heartbeat := moneyLaundry.GetHeartbeat()
-	if heartbeat == nil {
+	if !fh.registerHeartbeat(
+		heartbeat.GetContainerName(),
+	) {
 		nack()
 		return
 	}
 
-	containerName := heartbeat.GetContainerName()
+	ack()
+}
+
+func extractHeartbeat(msg middleware.Message) (*protobuf.Heartbeat, error) {
+	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	heartbeat := moneyLaundry.GetHeartbeat()
+
+	if heartbeat == nil {
+		return nil, fmt.Errorf("message is not a heartbeat")
+	}
+
+	return heartbeat, nil
+}
+
+func (fh *FaultHypervisor) registerHeartbeat(containerName string) bool {
 
 	fh.mu.Lock()
+	defer fh.mu.Unlock()
 
 	worker, exists := fh.workers[containerName]
 
 	if !exists {
-		fh.mu.Unlock()
 		slog.Warn("heartbeat from unknown worker", "container", containerName)
-		nack()
-		return
+
+		return false
 	}
 
 	worker.LastSeen = time.Now()
 	worker.IsAlive = true
 
-	fh.mu.Unlock()
-
-	slog.Debug("heartbeat received", "container_name", worker.ContainerName)
-	ack()
+	return true
 }
 
 func (fh *FaultHypervisor) monitorWorkers() {
@@ -207,22 +194,21 @@ func (fh *FaultHypervisor) checkWorkers() {
 	fh.mu.Unlock()
 
 	for _, worker := range deadWorkers {
-		fh.markWorkerDead(worker)
+		fh.handleDeadWorker(worker)
 	}
 }
 
-func (fh *FaultHypervisor) markWorkerDead(worker *WorkerStatus) {
-	slog.Warn("worker marked as dead", "container_name", worker.ContainerName)
+func (fh *FaultHypervisor) handleDeadWorker(worker *WorkerStatus) {
+	slog.Warn("worker marked as dead", "container", worker.ContainerName)
 
-	fh.reviveWorker(worker)
-}
-
-func (fh *FaultHypervisor) reviveWorker(worker *WorkerStatus) {
-	slog.Info("restarting worker", "container", worker.ContainerName)
-
-	err := fh.runtime.RestartWorker(worker.ContainerName)
-	if err != nil {
-		slog.Error("restart failed", "container", worker.ContainerName, "error", err)
+	if err := fh.runtime.RestartWorker(worker.ContainerName); err != nil {
+		slog.Error(
+			"restart failed",
+			"container",
+			worker.ContainerName,
+			"error",
+			err,
+		)
 		return
 	}
 
@@ -251,6 +237,77 @@ func (fh *FaultHypervisor) StartWorkers() error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func loadWorkers() (map[string]*WorkerStatus, error) {
+	definitions, err := configloader.LoadWorkersFromConfig(
+		"/app/config.yml",
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	workers := make(map[string]*WorkerStatus)
+
+	for _, definition := range definitions {
+		for i := 0; i < definition.Count; i++ {
+
+			containerName := fmt.Sprintf(
+				"%s_%d",
+				definition.ServiceName,
+				i,
+			)
+
+			workers[containerName] = &WorkerStatus{
+				ContainerName: containerName,
+				WorkerID:      i,
+				Definition:    definition,
+			}
+
+			slog.Info(
+				"worker loaded from config",
+				"container_name",
+				containerName,
+				"worker_type",
+				definition.WorkerType,
+			)
+		}
+	}
+
+	return workers, nil
+}
+
+func (fh *FaultHypervisor) initializeRuntime() error {
+	slog.Info("creating worker network")
+
+	if err := fh.runtime.EnsureNetwork(
+		"money_laundering_network",
+	); err != nil {
+		return err
+	}
+
+	exists, err := fh.runtime.ImageExists(
+		"tp-worker",
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		return nil
+	}
+
+	slog.Info("building worker image")
+
+	if err := fh.runtime.BuildWorkerImage(); err != nil {
+		return err
+	}
+
+	slog.Info("worker image built")
 
 	return nil
 }

@@ -61,11 +61,7 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 }
 
 func (r *DockerRuntime) ContainerExists(containerName string) (bool, error) {
-	cmd := exec.Command(
-		"docker",
-		"inspect",
-		containerName,
-	)
+	cmd := exec.Command("docker", "inspect", containerName)
 
 	err := cmd.Run()
 
@@ -86,12 +82,7 @@ func (r *DockerRuntime) RestartWorker(containerName string) error {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return fmt.Errorf(
-			"restart %s failed: %w (%s)",
-			containerName,
-			err,
-			string(output),
-		)
+		return fmt.Errorf("restart %s failed: %w (%s)", containerName, err, string(output))
 	}
 
 	return nil
@@ -111,23 +102,14 @@ func (r *DockerRuntime) BuildWorkerImage() error {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return fmt.Errorf(
-			"build worker image failed: %w (%s)",
-			err,
-			string(output),
-		)
+		return fmt.Errorf("build worker image failed: %w (%s)", err, string(output))
 	}
 
 	return nil
 }
 
 func (r *DockerRuntime) ImageExists(imageName string) (bool, error) {
-	cmd := exec.Command(
-		"docker",
-		"image",
-		"inspect",
-		imageName,
-	)
+	cmd := exec.Command("docker", "image", "inspect", imageName)
 
 	err := cmd.Run()
 
@@ -144,32 +126,18 @@ func (r *DockerRuntime) ImageExists(imageName string) (bool, error) {
 
 func (r *DockerRuntime) EnsureNetwork(networkName string) error {
 
-	cmd := exec.Command(
-		"docker",
-		"network",
-		"inspect",
-		networkName,
-	)
+	cmd := exec.Command("docker", "network", "inspect", networkName)
 
 	if err := cmd.Run(); err == nil {
 		return nil
 	}
 
-	cmd = exec.Command(
-		"docker",
-		"network",
-		"create",
-		networkName,
-	)
+	cmd = exec.Command("docker", "network", "create", networkName)
 
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return fmt.Errorf(
-			"create network failed: %w (%s)",
-			err,
-			string(output),
-		)
+		return fmt.Errorf("create network failed: %w (%s)", err, string(output))
 	}
 
 	return nil

@@ -85,10 +85,7 @@ func ExpandWorkers(definitions []WorkerDefinition) []string {
 
 	for _, def := range definitions {
 		for i := 0; i < def.Count; i++ {
-			workers = append(
-				workers,
-				def.ServiceName+"_"+strconv.Itoa(i),
-			)
+			workers = append(workers, def.ServiceName+"_"+strconv.Itoa(i))
 		}
 	}
 
