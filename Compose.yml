@@ -58,7 +58,10 @@ services:
     - ./datasets:/datasets
     - ./outputs/client_0:/outputs
     depends_on:
-    - gateway
+      gateway:
+        condition: service_started
+      fault_hypervisor:
+        condition: service_healthy
     networks:
     - money_laundering_network
   fault_hypervisor:
@@ -73,6 +76,16 @@ services:
     - HEARTBEAT_QUEUE_NAME=heartbeat_queue
     - CHECK_INTERVAL_SECONDS=5
     - HEARTBEAT_TIMEOUT_SECONDS=15
+    healthcheck:
+      test:
+      - CMD
+      - test
+      - -f
+      - /tmp/ready
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     volumes:
     - ./Compose.yml:/app/Compose.yml:ro
     - ./config.yml:/app/config.yml:ro

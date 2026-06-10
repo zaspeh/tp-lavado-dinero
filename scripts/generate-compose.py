@@ -90,7 +90,14 @@ def build_client(cfg, i, log_level):
             f'{host_datasets}:/datasets',
             f'{host_output_base}/client_{i}:/outputs'
         ],
-        'depends_on': ['gateway'],
+        'depends_on': {
+            'gateway': {
+                'condition': 'service_started'
+            },
+            'fault_hypervisor': {
+                'condition': 'service_healthy'
+            }
+        },
         'networks': ['money_laundering_network']
     }
 
@@ -150,6 +157,13 @@ def build_fault_hypervisor(cfg):
         'container_name': 'fault_hypervisor',
         'privileged': True,
         'environment': env_list,
+        'healthcheck': {
+            'test': ['CMD', 'test', '-f', '/tmp/ready'],
+            'interval': '5s',
+            'timeout': '3s',
+            'retries': 20,
+            'start_period': '10s'
+        },
         'volumes': [
             './Compose.yml:/app/Compose.yml:ro',
             './config.yml:/app/config.yml:ro',

@@ -41,6 +41,7 @@ type FaultHypervisor struct {
 	workers                 map[string]*WorkerStatus
 	runtime                 runtimepkg.Runtime
 	mu                      sync.RWMutex
+	ready                   bool
 }
 
 func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) {
@@ -79,6 +80,11 @@ func (fh *FaultHypervisor) Run() error {
 	}
 
 	if err := fh.StartWorkers(); err != nil {
+		return err
+	}
+
+	if err := os.WriteFile("/tmp/ready", []byte("ready"), 0644); err != nil {
+		slog.Error("failed to create ready file", "error", err)
 		return err
 	}
 
