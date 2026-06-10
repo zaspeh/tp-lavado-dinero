@@ -3,14 +3,25 @@ package runtime
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	configloader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/config_loader"
 )
 
-type DockerRuntime struct{}
+type DockerRuntime struct {
+	config  RuntimeConfig
+	gateway string
+}
 
-func NewDockerRuntime() *DockerRuntime {
-	return &DockerRuntime{}
+func NewDockerRuntime(config RuntimeConfig) (*DockerRuntime, error) {
+	gateway, err := discoverGateway()
+	if err != nil {
+		return nil, err
+	}
+	return &DockerRuntime{
+		config:  config,
+		gateway: gateway,
+	}, nil
 }
 
 func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definition configloader.WorkerDefinition) error {
@@ -23,18 +34,15 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 		containerName,
 
 		"--network",
-		"money_laundering_network",
+		r.config.NetworkName,
 
-		"-e", "HEARTBEAT_QUEUE_NAME=heartbeat_queue",
-		"-e", "HEARTBEAT_INTERVAL_SECONDS=5",
-
+		"-e", fmt.Sprintf("HEARTBEAT_QUEUE_NAME=%s", r.config.HeartbeatQueueName),
+		"-e", fmt.Sprintf("HEARTBEAT_INTERVAL_SECONDS=%d", r.config.HeartbeatInterval),
 		"-e", fmt.Sprintf("ID=%d", workerID),
 		"-e", fmt.Sprintf("CONTAINER_NAME=%s", containerName),
 		"-e", fmt.Sprintf("WORKER_TYPE=%s", definition.WorkerType),
-
-		"-e", "MOM_HOST=172.19.0.2",
-		"-e", "MOM_PORT=5672",
-
+		"-e", fmt.Sprintf("MOM_HOST=%s", r.gateway),
+		"-e", fmt.Sprintf("MOM_PORT=%d", r.config.MomPort),
 		"-e", fmt.Sprintf("WORKER_COUNT=%d", definition.Count),
 		"-e", fmt.Sprintf("WORKER_EXCHANGE_NAME=%s", definition.WorkerExchangeName),
 	}
@@ -43,7 +51,7 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 		args = append(args, "-e", fmt.Sprintf("%s=%s", key, value))
 	}
 
-	args = append(args, "tp-worker")
+	args = append(args, r.config.WorkerImage)
 
 	cmd := exec.Command("docker", args...)
 
@@ -95,8 +103,8 @@ func (r *DockerRuntime) BuildWorkerImage() error {
 		"-t",
 		"tp-worker",
 		"-f",
-		"/workspace/cmd/worker/Dockerfile",
-		"/workspace",
+		r.config.WorkerDockerfile,
+		r.config.BuildContext,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -108,8 +116,8 @@ func (r *DockerRuntime) BuildWorkerImage() error {
 	return nil
 }
 
-func (r *DockerRuntime) ImageExists(imageName string) (bool, error) {
-	cmd := exec.Command("docker", "image", "inspect", imageName)
+func (r *DockerRuntime) ImageExists() (bool, error) {
+	cmd := exec.Command("docker", "image", "inspect", r.config.WorkerImage)
 
 	err := cmd.Run()
 
@@ -124,15 +132,15 @@ func (r *DockerRuntime) ImageExists(imageName string) (bool, error) {
 	return false, err
 }
 
-func (r *DockerRuntime) EnsureNetwork(networkName string) error {
+func (r *DockerRuntime) EnsureNetwork() error {
 
-	cmd := exec.Command("docker", "network", "inspect", networkName)
+	cmd := exec.Command("docker", "network", "inspect", r.config.NetworkName)
 
 	if err := cmd.Run(); err == nil {
 		return nil
 	}
 
-	cmd = exec.Command("docker", "network", "create", networkName)
+	cmd = exec.Command("docker", "network", "create", r.config.NetworkName)
 
 	output, err := cmd.CombinedOutput()
 
@@ -141,4 +149,21 @@ func (r *DockerRuntime) EnsureNetwork(networkName string) error {
 	}
 
 	return nil
+}
+
+func discoverGateway() (string, error) {
+	cmd := exec.Command("sh", "-c", "ip route | grep default")
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	fields := strings.Fields(string(output))
+
+	if len(fields) < 3 {
+		return "", fmt.Errorf("unable to parse gateway")
+	}
+
+	return fields[2], nil
 }

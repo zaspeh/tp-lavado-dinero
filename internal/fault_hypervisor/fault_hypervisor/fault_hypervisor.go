@@ -16,6 +16,8 @@ import (
 	runtimepkg "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/runtime"
 )
 
+const configPath = "/app/config.yml"
+
 type WorkerStatus struct {
 	ContainerName string
 	WorkerID      int
@@ -29,6 +31,7 @@ type FaultHypervisorConfig struct {
 	HeartbeatQueueName      string
 	CheckIntervalSeconds    int
 	HeartbeatTimeoutSeconds int
+	RuntimeConfig           runtimepkg.RuntimeConfig
 }
 
 type FaultHypervisor struct {
@@ -54,6 +57,11 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		return nil, err
 	}
 
+	runtime, err := runtimepkg.NewDockerRuntime(config.RuntimeConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return &FaultHypervisor{
 		HeartbeatQueue: heartbeatQueue,
 
@@ -61,7 +69,7 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		HeartbeatTimeoutSeconds: config.HeartbeatTimeoutSeconds,
 
 		workers: workers,
-		runtime: runtimepkg.NewDockerRuntime(),
+		runtime: runtime,
 	}, nil
 }
 
@@ -201,6 +209,7 @@ func (fh *FaultHypervisor) checkWorkers() {
 func (fh *FaultHypervisor) handleDeadWorker(worker *WorkerStatus) {
 	slog.Warn("worker marked as dead", "container", worker.ContainerName)
 
+	// TODO: Podría ocurrir que se reviva infinitamente si el worker tira panic.
 	if err := fh.runtime.RestartWorker(worker.ContainerName); err != nil {
 		slog.Error(
 			"restart failed",
@@ -242,9 +251,7 @@ func (fh *FaultHypervisor) StartWorkers() error {
 }
 
 func loadWorkers() (map[string]*WorkerStatus, error) {
-	definitions, err := configloader.LoadWorkersFromConfig(
-		"/app/config.yml",
-	)
+	definitions, err := configloader.LoadWorkersFromConfig(configPath)
 
 	if err != nil {
 		return nil, err
@@ -283,15 +290,11 @@ func loadWorkers() (map[string]*WorkerStatus, error) {
 func (fh *FaultHypervisor) initializeRuntime() error {
 	slog.Info("creating worker network")
 
-	if err := fh.runtime.EnsureNetwork(
-		"money_laundering_network",
-	); err != nil {
+	if err := fh.runtime.EnsureNetwork(); err != nil {
 		return err
 	}
 
-	exists, err := fh.runtime.ImageExists(
-		"tp-worker",
-	)
+	exists, err := fh.runtime.ImageExists()
 
 	if err != nil {
 		return err

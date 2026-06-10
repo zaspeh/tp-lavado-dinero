@@ -12,20 +12,30 @@ type WorkerDefinition struct {
 	WorkerType         string
 	WorkerExchangeName string
 	Count              int
-
-	MomHost string
-	MomPort int
-
-	Env map[string]string
+	Env                map[string]string
 }
 
 type configFile struct {
-	RabbitMQ rabbitConfig             `yaml:"rabbitmq"`
-	Services map[string]serviceConfig `yaml:"services"`
+	RabbitMQ        rabbitConfig             `yaml:"rabbitmq"`
+	FaultHypervisor faultHypervisorConfig    `yaml:"fault_hypervisor"`
+	Services        map[string]serviceConfig `yaml:"services"`
 }
 
 type rabbitConfig struct {
 	AmqpPort int `yaml:"amqp_port"`
+}
+
+type RuntimeConfig struct {
+	NetworkName              string `yaml:"network_name"`
+	WorkerImage              string `yaml:"worker_image"`
+	WorkerDockerfile         string `yaml:"worker_dockerfile"`
+	BuildContext             string `yaml:"build_context"`
+	MomPort                  int    `yaml:"mom_port"`
+	HeartbeatIntervalSeconds int    `yaml:"heartbeat_interval_seconds"`
+}
+
+type faultHypervisorConfig struct {
+	Runtime RuntimeConfig `yaml:"runtime"`
 }
 
 type serviceConfig struct {
@@ -70,6 +80,29 @@ func LoadWorkersFromConfig(path string) ([]WorkerDefinition, error) {
 	}
 
 	return workers, nil
+}
+
+func LoadRuntimeConfig(path string) (RuntimeConfig, error) {
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return RuntimeConfig{}, err
+	}
+
+	var cfg configFile
+
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return RuntimeConfig{}, err
+	}
+
+	return RuntimeConfig{
+		NetworkName:              cfg.FaultHypervisor.Runtime.NetworkName,
+		WorkerImage:              cfg.FaultHypervisor.Runtime.WorkerImage,
+		WorkerDockerfile:         cfg.FaultHypervisor.Runtime.WorkerDockerfile,
+		BuildContext:             cfg.FaultHypervisor.Runtime.BuildContext,
+		MomPort:                  cfg.FaultHypervisor.Runtime.MomPort,
+		HeartbeatIntervalSeconds: cfg.FaultHypervisor.Runtime.HeartbeatIntervalSeconds,
+	}, nil
 }
 
 func isWorker(serviceName string, service serviceConfig) bool {

@@ -2,6 +2,16 @@ package runtime
 
 import configloader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/config_loader"
 
+type RuntimeConfig struct {
+	NetworkName        string
+	WorkerImage        string
+	MomPort            int
+	HeartbeatQueueName string
+	HeartbeatInterval  int
+	WorkerDockerfile   string
+	BuildContext       string
+}
+
 type Runtime interface {
 	ContainerExists(containerName string) (bool, error)
 
@@ -11,7 +21,7 @@ type Runtime interface {
 
 	BuildWorkerImage() error
 
-	ImageExists(imageName string) (bool, error)
+	ImageExists() (bool, error)
 
-	EnsureNetwork(networkName string) error
+	EnsureNetwork() error
 }

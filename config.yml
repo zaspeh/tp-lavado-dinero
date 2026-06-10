@@ -17,11 +17,23 @@ rabbitmq:
 fault_hypervisor:
   enabled: true
   manages_workers: true
-  
+
   env:
     HEARTBEAT_QUEUE_NAME: heartbeat_queue
     CHECK_INTERVAL_SECONDS: 5
     HEARTBEAT_TIMEOUT_SECONDS: 15
+
+  runtime:
+    network_name: money_laundering_network
+
+    worker_image: tp-worker
+
+    worker_dockerfile: /workspace/cmd/worker/Dockerfile
+    build_context: /workspace
+
+    mom_port: 5672
+
+    heartbeat_interval_seconds: 5
 
 # Nodos de la aplicación
 services:
