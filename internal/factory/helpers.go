@@ -10,8 +10,8 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/heartbeat"
+	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
 )
 
 const (
@@ -40,28 +40,28 @@ func getEnvIntStrict(key string) (int, error) {
 	return val, nil
 }
 
-func buildPeriodFromEnv(startKey, endKey string) (periodfilter.Period, error) {
+func buildPeriodFromEnv(startKey, endKey string) (filterprocessor.Period, error) {
 	startStr, err := getEnvStrict(startKey)
 	if err != nil {
-		return periodfilter.Period{}, err
+		return filterprocessor.Period{}, err
 	}
 
 	endStr, err := getEnvStrict(endKey)
 	if err != nil {
-		return periodfilter.Period{}, err
+		return filterprocessor.Period{}, err
 	}
 
 	startTime, err := time.Parse(time.RFC3339, startStr)
 	if err != nil {
-		return periodfilter.Period{}, err
+		return filterprocessor.Period{}, err
 	}
 
 	endTime, err := time.Parse(time.RFC3339, endStr)
 	if err != nil {
-		return periodfilter.Period{}, err
+		return filterprocessor.Period{}, err
 	}
 
-	return periodfilter.Period{
+	return filterprocessor.Period{
 		StartDate: startTime,
 		EndDate:   endTime,
 	}, nil

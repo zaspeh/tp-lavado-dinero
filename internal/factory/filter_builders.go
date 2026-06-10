@@ -2,7 +2,6 @@ package factory
 
 import (
 	"fmt"
-	"time"
 
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
@@ -203,57 +202,9 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	rawProcessor := filterprocessor.NewPeriodMapperProcessor(
-		func(item *protobuf.ToConvertTransaction) time.Time {
-			return item.GetTimestamp().AsTime()
-		},
-		filterprocessor.PeriodMapperRule[*protobuf.ToConvertTransaction, *protobuf.ToConvertPeriodFiltered]{
-			Period: paymentTypePeriod,
-			Map: func(item *protobuf.ToConvertTransaction) *protobuf.ToConvertPeriodFiltered {
-				return &protobuf.ToConvertPeriodFiltered{
-					AmountPaid:      item.GetAmountPaid(),
-					PaymentCurrency: item.GetPaymentCurrency(),
-					PaymentFormat:   item.GetPaymentFormat(),
-					Timestamp:       item.GetTimestamp(),
-				}
-			},
-		},
-	)
-
-	query3Processor := filterprocessor.NewPeriodMapperProcessor(
-		func(item *protobuf.PeriodFilter) time.Time {
-			return item.GetTimestamp().AsTime()
-		},
-		filterprocessor.PeriodMapperRule[*protobuf.PeriodFilter, *protobuf.AvgByTypeTransaction]{
-			Period: query3Period1,
-			Map: func(item *protobuf.PeriodFilter) *protobuf.AvgByTypeTransaction {
-				return buildAvgByTypeTransaction(item, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_FIRST)
-			},
-		},
-		filterprocessor.PeriodMapperRule[*protobuf.PeriodFilter, *protobuf.AvgByTypeTransaction]{
-			Period: query3Period2,
-			Map: func(item *protobuf.PeriodFilter) *protobuf.AvgByTypeTransaction {
-				return buildAvgByTypeTransaction(item, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_SECOND)
-			},
-		},
-	)
-
-	query4Processor := filterprocessor.NewPeriodMapperProcessor(
-		func(item *protobuf.PeriodFilter) time.Time {
-			return item.GetTimestamp().AsTime()
-		},
-		filterprocessor.PeriodMapperRule[*protobuf.PeriodFilter, *protobuf.ScatterGather]{
-			Period: scatterGatherPeriod,
-			Map: func(item *protobuf.PeriodFilter) *protobuf.ScatterGather {
-				return &protobuf.ScatterGather{
-					FromBank:  item.GetFromBank(),
-					ToBank:    item.GetToBank(),
-					Account:   item.GetAccount(),
-					ToAccount: item.GetToAccount(),
-				}
-			},
-		},
-	)
+	rawProcessor := filterprocessor.NewToConvertPeriodFilterProcessor(paymentTypePeriod)
+	query3Processor := filterprocessor.NewAvgByTypePeriodFilterProcessor(query3Period1, query3Period2)
+	query4Processor := filterprocessor.NewScatterGatherPeriodFilterProcessor(scatterGatherPeriod)
 
 	rawEngine := buildSingleReceiverSingleSenderEngine(
 		singleReceiverSingleSenderEngineConfig[*protobuf.ToConvertTransaction, *protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]{
@@ -325,18 +276,6 @@ func buildPeriodFilterCoordinator(
 		WorkerID:          id,
 		WorkerCount:       workerCount,
 	})
-}
-
-func buildAvgByTypeTransaction(
-	item *protobuf.PeriodFilter,
-	period protobuf.AvgByTypePeriod,
-) *protobuf.AvgByTypeTransaction {
-	return &protobuf.AvgByTypeTransaction{
-		Account:       item.GetAccount(),
-		AmountPaid:    item.GetAmountPaid(),
-		PaymentFormat: item.GetPaymentFormat(),
-		Period:        period,
-	}
 }
 
 func buildFormatFilterWorker() (workers.Worker, error) {
