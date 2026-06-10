@@ -22,7 +22,7 @@ func WrapTransactions(transactions []*protobuf.Transaction) *protobuf.Transactio
 
 func WrapTransactionToMicroTransactionBatch(transactions []*protobuf.Transaction) *protobuf.MicrotransactionBatch {
 	microtransactions := make([]*protobuf.Microtransaction, len(transactions))
-	for _, transaction := range transactions {
+	for i, transaction := range transactions {
 		parsedAmount, err := strconv.ParseFloat(transaction.GetAmountPaid(), 64)
 		if err != nil {
 			continue
@@ -32,14 +32,14 @@ func WrapTransactionToMicroTransactionBatch(transactions []*protobuf.Transaction
 			ToAccount: transaction.GetToAccount(),
 			Amount:    parsedAmount,
 		}
-		microtransactions = append(microtransactions, microtransaction)
+		microtransactions[i] = microtransaction
 	}
 	return WrapToMicrotransactionBatch(microtransactions)
 }
 
 func WrapTransactionToMaxBankBatch(transactions []*protobuf.Transaction) *protobuf.MaxBankBatch {
 	maxBankMessages := make([]*protobuf.MaxBank, len(transactions))
-	for _, transaction := range transactions {
+	for i, transaction := range transactions {
 		transferSummary := &protobuf.TransferSummary{
 			Account: transaction.GetAccount(),
 			Amount:  transaction.GetAmountPaid(),
@@ -51,15 +51,15 @@ func WrapTransactionToMaxBankBatch(transactions []*protobuf.Transaction) *protob
 				TransferSummary: transferSummary,
 			},
 		}
-		maxBankMessages = append(maxBankMessages, maxbank)
+		maxBankMessages[i] = maxbank
 	}
 
 	return WrapMaxBank(maxBankMessages)
 }
 
 func WrapTransactionToPeriodFilterBatch(transactions []*protobuf.Transaction) *protobuf.PeriodFilterBatch {
-	periodFilterList := make([]*protobuf.PeriodFilter, 0, len(transactions))
-	for _, transaction := range transactions {
+	periodFilterList := make([]*protobuf.PeriodFilter, len(transactions))
+	for i, transaction := range transactions {
 		periodFilter := &protobuf.PeriodFilter{
 			Timestamp:     transaction.GetTimestamp(),
 			FromBank:      transaction.GetFromBank(),
@@ -69,7 +69,7 @@ func WrapTransactionToPeriodFilterBatch(transactions []*protobuf.Transaction) *p
 			AmountPaid:    transaction.GetAmountPaid(),
 			PaymentFormat: transaction.GetPaymentFormat(),
 		}
-		periodFilterList = append(periodFilterList, periodFilter)
+		periodFilterList[i] = periodFilter
 	}
 	return WrapPeriodFilter(periodFilterList)
 }
