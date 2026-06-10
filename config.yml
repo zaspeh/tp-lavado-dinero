@@ -99,11 +99,12 @@ services:
     
 
   period_filter:
-    count: 0
+    count: 3
     worker_type: PERIOD_FILTER
     env:
-      USD_INPUT_QUEUE_NAME: period_filter_input_queue
       RAW_INPUT_QUEUE_NAME: raw_transactions
+      PAYMENT_TYPE_PERIOD_FILTER_QUEUE_NAME: payment_type_period_filter_input_queue
+      SCATTER_GATHER_PERIOD_FILTER_QUEUE_NAME: scatter_gather_period_filter_input_queue
       ORIGIN_DESTINATION_ROUTER_QUEUE_NAME: origin_destination_router
       PAYMENT_TYPE_FILTER_QUEUE_NAME: payment_format_filter_input
       SCATTER_GATHER_PERIOD_START: "2022-09-01T00:00:00Z"
@@ -117,26 +118,26 @@ services:
       QUERY3_PERIOD_2_END:   "2022-09-14T23:59:59Z"
 
   payment_type_router:
-    count: 0
+    count: 1
     worker_type: PAYMENT_TYPE_ROUTER
     env:
       INPUT_QUEUE_NAME: payment_type_router_input
       PAYMENT_TYPE_EXCHANGE_NAME: payment_type_exchange
-      AVG_BY_TYPE_WORKER_AMOUNT: 2
+      AVG_BY_TYPE_WORKER_AMOUNT: 1
 
   origin_destination_router:
-    count: 0
+    count: 1
     worker_type: ORIGIN_DESTINATION_ROUTER
     env:
       INPUT_QUEUE_NAME: origin_destination_router
 
       GROUP_BY_EXCHANGE_NAME: group_by_origin_destination
 
-      GROUP_BY_ORIGIN_WORKER_AMOUNT: 2
-      GROUP_BY_DESTINATION_WORKER_AMOUNT: 2
+      GROUP_BY_ORIGIN_WORKER_AMOUNT: 1
+      GROUP_BY_DESTINATION_WORKER_AMOUNT: 1
   
   group_by_origin:
-    count: 0
+    count: 1
     worker_type: GROUP_BY_ORIGIN
 
     env:
@@ -146,7 +147,7 @@ services:
       MAX_BATCH_WEIGHT: 40000
 
   group_by_destination:
-    count: 0
+    count: 1
     worker_type: GROUP_BY_DESTINATION
 
     env:
@@ -156,29 +157,29 @@ services:
       MAX_BATCH_WEIGHT: 40000
   
   origin_intermediary_router:
-    count: 0
+    count: 1
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: ORIGIN_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_origin_accounts
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: origin_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
-      INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_origin
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+      INPUT_WORKERS_AMOUNT: 1 # Cantidad de workers group_by_origin
 
   destination_intermediary_router:
-    count: 0
+    count: 1
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: DESTINATION_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_destination_accounts
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: destination_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
-      INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_destination
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+      INPUT_WORKERS_AMOUNT: 1 # Cantidad de workers group_by_destination
 
   aggregate_by_intermediary:
-    count: 0
+    count: 1
     worker_type: AGGREGATE_BY_INTERMEDIARY
 
     env:
@@ -190,7 +191,7 @@ services:
       MAX_BATCH_WEIGHT: 40000
 
   avg_by_type:
-    count: 0
+    count: 1
     worker_type: AVG_BY_TYPE
 
     env:
@@ -198,16 +199,16 @@ services:
       OUTPUT_QUEUE_NAME: avg_by_type_join_input
 
   avg_by_type_join:
-    count: 0
+    count: 1
     worker_type: AVG_BY_TYPE_JOIN
 
     env:
       INPUT_QUEUE_NAME: avg_by_type_join_input
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      EXPECTED_EOFS: 2
+      EXPECTED_EOFS: 1
       
   payment_format_filter:
-    count: 0
+    count: 1
     worker_type: FORMAT_FILTER
     env:
       INPUT_QUEUE_NAME: payment_format_filter_input
@@ -215,7 +216,7 @@ services:
       VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   currency_converter:
-    count: 0
+    count: 1
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
@@ -223,7 +224,7 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 0
+    count: 1
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
@@ -231,18 +232,18 @@ services:
       AMOUNT_TO_FILTER: 1.00
 
   converter_join:
-    count: 0
+    count: 1
     worker_type: CONVERSION_JOIN
     env:
       INPUT_QUEUE_NAME: conversion_join_input_queue
       CLIENT_EXCHANGE_NAME: client_results_exchange
   
   scatter_gather_join:
-    count: 0
+    count: 1
     worker_type: SCATTER_GATHER_JOIN
 
     env:
       INPUT_QUEUE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
       MAX_BATCH_WEIGHT: 40000

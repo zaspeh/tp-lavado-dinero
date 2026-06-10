@@ -2,15 +2,17 @@ package factory
 
 import (
 	"fmt"
+	"time"
 
+	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserters"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters/periodfilter"
 	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
@@ -117,36 +119,33 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	usdInputQ, err := getEnvStrict("USD_INPUT_QUEUE_NAME")
+	queueAliases := []string{
+		"RAW_INPUT_QUEUE_NAME",
+		"PAYMENT_TYPE_PERIOD_FILTER_QUEUE_NAME",
+		"SCATTER_GATHER_PERIOD_FILTER_QUEUE_NAME",
+		"PAYMENT_TYPE_FILTER_QUEUE_NAME",
+		"PAYMENT_TYPE_ROUTER_QUEUE_NAME",
+		"ORIGIN_DESTINATION_ROUTER_QUEUE_NAME",
+	}
+
+	queues, err := createQueues(queueAliases, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
-	rawInputQ, err := getEnvStrict("RAW_INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	originDestinationRouterQ, err := getEnvStrict("ORIGIN_DESTINATION_ROUTER_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	paymentTypeQ, err := getEnvStrict("PAYMENT_TYPE_FILTER_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	paymentTypeRouterQ, err := getEnvStrict("PAYMENT_TYPE_ROUTER_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
+	rawInputQueue := queues[0]
+	paymentTypePeriodInputQueue := queues[1]
+	scatterGatherPeriodInputQueue := queues[2]
+	paymentTypeFilterQueue := queues[3]
+	paymentTypeRouterQueue := queues[4]
+	originDestinationRouterQueue := queues[5]
 
 	scatterGatherPeriod, err := buildPeriodFromEnv(
 		"SCATTER_GATHER_PERIOD_START",
 		"SCATTER_GATHER_PERIOD_END",
 	)
 	if err != nil {
+		closeQueues(queues)
 		return nil, err
 	}
 
@@ -155,6 +154,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		"PAYMENT_TYPE_PERIOD_END",
 	)
 	if err != nil {
+		closeQueues(queues)
 		return nil, err
 	}
 
@@ -163,6 +163,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		"QUERY3_PERIOD_1_END",
 	)
 	if err != nil {
+		closeQueues(queues)
 		return nil, err
 	}
 
@@ -171,46 +172,171 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		"QUERY3_PERIOD_2_END",
 	)
 	if err != nil {
+		closeQueues(queues)
 		return nil, err
 	}
 
 	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {
+		closeQueues(queues)
 		return nil, err
 	}
 
-	config := periodfilter.PeriodFilterWorkerConfig{
-		UsdInputQueueName: usdInputQ,
-		RawInputQueueName: rawInputQ,
-
-		ScatterGatherPeriod: scatterGatherPeriod,
-
-		Query3Period1: query3Period1,
-		Query3Period2: query3Period2,
-
-		OriginDestinationRouterQueueName: originDestinationRouterQ,
-		PaymentTypeRouterQueueName:       paymentTypeRouterQ,
-
-		PaymentTypePeriod:          paymentTypePeriod,
-		PaymentTypeFilterQueueName: paymentTypeQ,
-
-		MomHost: connSettings.Hostname,
-		MomPort: connSettings.Port,
-
-		RawWorkerID:           id,
-		RawWorkerCount:        workerCount,
-		RawWorkerExchangeName: fmt.Sprintf("%s.q5_raw", workerExchangeName),
-
-		Query4WorkerID:           id,
-		Query4WorkerCount:        workerCount,
-		Query4WorkerExchangeName: fmt.Sprintf("%s.q4_scatter", workerExchangeName),
-
-		Query3WorkerID:           id,
-		Query3WorkerCount:        workerCount,
-		Query3WorkerExchangeName: fmt.Sprintf("%s.q3_periods", workerExchangeName),
+	rawCoordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q5_raw", workerExchangeName))
+	if err != nil {
+		closeQueues(queues)
+		return nil, err
 	}
 
-	return periodfilter.NewPeriodFilterWorker(config)
+	query3Coordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q3_periods", workerExchangeName))
+	if err != nil {
+		rawCoordinator.Close()
+		closeQueues(queues)
+		return nil, err
+	}
+
+	query4Coordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q4_scatter", workerExchangeName))
+	if err != nil {
+		rawCoordinator.Close()
+		query3Coordinator.Close()
+		closeQueues(queues)
+		return nil, err
+	}
+
+	rawProcessor := filterprocessor.NewPeriodMapperProcessor(
+		func(item *protobuf.ToConvertTransaction) time.Time {
+			return item.GetTimestamp().AsTime()
+		},
+		filterprocessor.PeriodMapperRule[*protobuf.ToConvertTransaction, *protobuf.ToConvertPeriodFiltered]{
+			Period: paymentTypePeriod,
+			Map: func(item *protobuf.ToConvertTransaction) *protobuf.ToConvertPeriodFiltered {
+				return &protobuf.ToConvertPeriodFiltered{
+					AmountPaid:      item.GetAmountPaid(),
+					PaymentCurrency: item.GetPaymentCurrency(),
+					PaymentFormat:   item.GetPaymentFormat(),
+					Timestamp:       item.GetTimestamp(),
+				}
+			},
+		},
+	)
+
+	query3Processor := filterprocessor.NewPeriodMapperProcessor(
+		func(item *protobuf.PeriodFilter) time.Time {
+			return item.GetTimestamp().AsTime()
+		},
+		filterprocessor.PeriodMapperRule[*protobuf.PeriodFilter, *protobuf.AvgByTypeTransaction]{
+			Period: query3Period1,
+			Map: func(item *protobuf.PeriodFilter) *protobuf.AvgByTypeTransaction {
+				return buildAvgByTypeTransaction(item, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_FIRST)
+			},
+		},
+		filterprocessor.PeriodMapperRule[*protobuf.PeriodFilter, *protobuf.AvgByTypeTransaction]{
+			Period: query3Period2,
+			Map: func(item *protobuf.PeriodFilter) *protobuf.AvgByTypeTransaction {
+				return buildAvgByTypeTransaction(item, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_SECOND)
+			},
+		},
+	)
+
+	query4Processor := filterprocessor.NewPeriodMapperProcessor(
+		func(item *protobuf.PeriodFilter) time.Time {
+			return item.GetTimestamp().AsTime()
+		},
+		filterprocessor.PeriodMapperRule[*protobuf.PeriodFilter, *protobuf.ScatterGather]{
+			Period: scatterGatherPeriod,
+			Map: func(item *protobuf.PeriodFilter) *protobuf.ScatterGather {
+				return &protobuf.ScatterGather{
+					FromBank:  item.GetFromBank(),
+					ToBank:    item.GetToBank(),
+					Account:   item.GetAccount(),
+					ToAccount: item.GetToAccount(),
+				}
+			},
+		},
+	)
+
+	rawEngine := buildSingleReceiverSingleSenderEngine(
+		singleReceiverSingleSenderEngineConfig[*protobuf.ToConvertTransaction, *protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]{
+			InputQueue:          rawInputQueue,
+			OutputQueue:         paymentTypeFilterQueue,
+			ReceivedMessageType: protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH,
+			Extractor:           protoextractors.GetToConvertTransactionBatchItems,
+			Wrapper:             protowrappers.WrapToConvertPeriodFiltered,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.ToConvertPeriodFiltered](),
+			Inserter:            protoinserters.InsertToConvertPeriodFilteredBatch,
+			Processor:           rawProcessor,
+			Coordinator:         rawCoordinator,
+		},
+	)
+
+	query3Engine := buildSingleReceiverSingleSenderEngine(
+		singleReceiverSingleSenderEngineConfig[*protobuf.PeriodFilter, *protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch]{
+			InputQueue:          paymentTypePeriodInputQueue,
+			OutputQueue:         paymentTypeRouterQueue,
+			ReceivedMessageType: protobuf.MessageType_PERIOD_FILTER_BATCH,
+			Extractor:           protoextractors.GetPeriodFilterBatchItems,
+			Wrapper:             protowrappers.WrapAvgByTypeTransactions,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.AvgByTypeTransaction](),
+			Inserter:            protoinserters.InsertAvgByTypeTransactionBatch,
+			Processor:           query3Processor,
+			Coordinator:         query3Coordinator,
+		},
+	)
+
+	query4Engine := buildSingleReceiverSingleSenderEngine(
+		singleReceiverSingleSenderEngineConfig[*protobuf.PeriodFilter, *protobuf.ScatterGather, *protobuf.ScatterGatherBatch]{
+			InputQueue:          scatterGatherPeriodInputQueue,
+			OutputQueue:         originDestinationRouterQueue,
+			ReceivedMessageType: protobuf.MessageType_PERIOD_FILTER_BATCH,
+			Extractor:           protoextractors.GetPeriodFilterBatchItems,
+			Wrapper:             protowrappers.WrapScatterGather,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.ScatterGather](),
+			Inserter:            protoinserters.InsertScatterGatherBatch,
+			Processor:           query4Processor,
+			Coordinator:         query4Coordinator,
+		},
+	)
+
+	heartbeat, err := buildHeartbeatPublisher()
+	if err != nil {
+		rawEngine.Shutdown()
+		query3Engine.Shutdown()
+		query4Engine.Shutdown()
+		return nil, err
+	}
+
+	workerInstance := worker.NewWorker(heartbeat)
+	workerInstance.AddEngine(rawEngine)
+	workerInstance.AddEngine(query3Engine)
+	workerInstance.AddEngine(query4Engine)
+
+	return workerInstance, nil
+}
+
+func buildPeriodFilterCoordinator(
+	connSettings m.ConnSettings,
+	id int,
+	workerCount int,
+	workerExchangeName string,
+) (*c.EOFCoordinator, error) {
+	return c.NewEOFCoordinator(c.EOFCoordinatorConfig{
+		PeersExchangeName: workerExchangeName,
+		ConnSettings:      connSettings,
+		WorkerID:          id,
+		WorkerCount:       workerCount,
+	})
+}
+
+func buildAvgByTypeTransaction(
+	item *protobuf.PeriodFilter,
+	period protobuf.AvgByTypePeriod,
+) *protobuf.AvgByTypeTransaction {
+	return &protobuf.AvgByTypeTransaction{
+		Account:       item.GetAccount(),
+		AmountPaid:    item.GetAmountPaid(),
+		PaymentFormat: item.GetPaymentFormat(),
+		Period:        period,
+	}
 }
 
 func buildFormatFilterWorker() (workers.Worker, error) {

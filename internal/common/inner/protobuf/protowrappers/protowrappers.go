@@ -135,7 +135,6 @@ func WrapSuspiciousPaths(paths []*protobuf.SuspiciousPath) *protobuf.SuspiciousP
 }
 
 func WrapSuspiciousAccounts(accounts []*protobuf.Account) *protobuf.SuspiciousAccountBatch {
-
 	return &protobuf.SuspiciousAccountBatch{
 		Accounts: accounts,
 	}

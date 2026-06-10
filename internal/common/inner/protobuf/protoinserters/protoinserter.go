@@ -71,6 +71,17 @@ func InsertAvgByTypeTransactionBatch(clientID string, batch *protobuf.AvgByTypeT
 	)
 }
 
+func InsertToConvertPeriodFilteredBatch(clientID string, batch *protobuf.ToConvertPeriodFilteredBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_ToConvertPeriodFilteredBatch{
+		ToConvertPeriodFilteredBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH,
+		innerMessage,
+	)
+}
+
 func InsertToConvertTypeFilteredPaymentBatch(clientID string, batch *protobuf.ToConvertTypeFilteredPaymentBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_ToConvertTypeFilteredPaymentBatch{
 		ToConvertTypeFilteredPaymentBatch: batch,

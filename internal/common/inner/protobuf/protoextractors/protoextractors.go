@@ -6,6 +6,14 @@ func GetTransactionBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.Transact
 	return batch.GetTransactions().GetTransactions()
 }
 
+func GetToConvertTransactionBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.ToConvertTransaction {
+	return batch.GetToConvertBatch().GetItems()
+}
+
+func GetPeriodFilterBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.PeriodFilter {
+	return batch.GetPeriodFilterBatch().GetItems()
+}
+
 func GetConvertedAmountBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.ConvertedAmount {
 	return batch.GetConvertedAmountBatch().GetItems()
 }
