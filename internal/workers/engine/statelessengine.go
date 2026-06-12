@@ -51,7 +51,7 @@ func (e *StatelessEngine[T, V]) Shutdown() {
 func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 	switch event.Type {
 	case r.DataMessage:
-		return e.handleDataMessage(event.ClientID, event.Data)
+		return e.handleDataMessage(event.ClientID, event.Data, event.BatchID)
 	case r.EOFMessage:
 		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount)
 	case r.CleanupMessage:
@@ -60,14 +60,14 @@ func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 	return nil
 }
 
-func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) error {
+func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, batchID string) error {
 	for _, item := range data {
 		results, err := e.processor.Process(clientID, item)
 		if err != nil {
 			return err
 		}
 		for _, result := range results {
-			if err := e.sender.Add(clientID, result); err != nil {
+			if err := e.sender.Add(clientID, result, batchID); err != nil {
 				return err
 			}
 		}

@@ -39,7 +39,7 @@ func NewRoutedSender[T any, B any](
 	}
 }
 
-func (s *RoutedSender[T, B]) Add(clientID string, item RoutedItem[T]) error {
+func (s *RoutedSender[T, B]) Add(clientID string, item RoutedItem[T], batchID string) error {
 	batcherKey := s.batcherKey(clientID, item.Route)
 	batcher, exists := s.batchers[batcherKey]
 	if !exists {
@@ -52,6 +52,7 @@ func (s *RoutedSender[T, B]) Add(clientID string, item RoutedItem[T]) error {
 		batcher = batch.NewBatcher(newBatch, onFlush)
 		s.batchers[batcherKey] = batcher
 	}
+	batcher.SetNewBatchId(batchID)
 	return batcher.Add(item.Item)
 }
 

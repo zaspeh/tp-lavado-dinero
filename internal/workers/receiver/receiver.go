@@ -14,6 +14,7 @@ type Event[T any] struct {
 	ClientID string
 	Data     []T
 	EOFCount uint64
+	BatchID  string
 }
 
 type Receiver[T any] interface {

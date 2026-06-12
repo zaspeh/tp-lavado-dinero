@@ -16,11 +16,17 @@ func NewBatcher[T any, V any](b *Batch[T, V], onFlush func(V) error) *Batcher[T,
 	return &Batcher[T, V]{batch: b, onFlush: onFlush}
 }
 
-func (s *Batcher[T, V]) SetNewBatchId(batchId string) {
-	if noBatchId == batchId {
-		batchId = uuid.New().String()
+func (s *Batcher[T, V]) SetNewBatchId(batchID string) {
+	if noBatchId == batchID {
+		batchID = uuid.New().String()
 	}
-	s.batch.id = batchId
+
+	// si es el mismo que ya tenia, no hago nada
+	if batchID == s.batch.id {
+		return
+	}
+
+	s.batch.id = batchID
 	s.batchFlushed = 0
 }
 

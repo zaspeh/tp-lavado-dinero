@@ -28,7 +28,7 @@ func NewSingleSender[T any, V any](output m.Middleware, wrapper batch.Wrapper[T,
 	}
 }
 
-func (s *SingleSender[T, V]) Add(clientID string, item T) error {
+func (s *SingleSender[T, V]) Add(clientID string, item T, batchId string) error {
 	batcher, exists := s.batchers[clientID]
 	if !exists {
 		newBatch := batch.New(s.maxWeight, s.sizer, s.wrapper)
@@ -40,7 +40,7 @@ func (s *SingleSender[T, V]) Add(clientID string, item T) error {
 		batcher = batch.NewBatcher(newBatch, onFlush)
 		s.batchers[clientID] = batcher
 	}
-	// batcher.SetNewBatchId(batchId)
+	batcher.SetNewBatchId(batchId)
 	return batcher.Add(item)
 }
 

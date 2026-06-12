@@ -70,8 +70,10 @@ func (e *StatefulEngine[T, V]) handleDataMessage(clientID string, data []T) erro
 }
 
 func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64) error {
+	// TODO: me tiene que llegar el batchID desde el coordiandor
+	batchID := ""
 	yield := func(result V) error {
-		return e.sender.Add(clientID, result)
+		return e.sender.Add(clientID, result, batchID)
 	}
 
 	survivors, err := e.processor.Finalize(clientID, yield)

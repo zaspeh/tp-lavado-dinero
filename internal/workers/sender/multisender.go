@@ -10,9 +10,9 @@ func NewMultiSender[V any](senders ...Sender[V]) *MultiSender[V] {
 	}
 }
 
-func (s *MultiSender[V]) Add(clientID string, item V) error {
+func (s *MultiSender[V]) Add(clientID string, item V, batchID string) error {
 	for _, sender := range s.senders {
-		if err := sender.Add(clientID, item); err != nil {
+		if err := sender.Add(clientID, item, batchID); err != nil {
 			return err
 		}
 	}
