@@ -518,3 +518,64 @@ func buildSuspiciousPathRouterToJoinWorker() (workers.Worker, error) {
 		Sender:             routedSender,
 	})
 }
+
+func buildConvertedAmountRouterToJoinWorker() (workers.Worker, error) {
+	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]string, outputWorkerAmount)
+	for i := 0; i < outputWorkerAmount; i++ {
+		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
+	}
+
+	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		exchange,
+		protowrappers.WrapConvertedAmounts,
+		protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+		0,
+		protoinserters.InsertConvertedAmountBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.ConvertedAmount,
+		sender.RoutedItem[*protobuf.ConvertedAmount],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       outputWorkerAmount,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
+		ExtractInputItems:  protoextractors.GetConvertedAmountBatchItems,
+		Processor:          procesorrouters.NewConvertedAmountJoinRouter(keys),
+		Sender:             routedSender,
+	})
+}

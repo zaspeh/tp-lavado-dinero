@@ -49,6 +49,16 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 		return buildAggregateByIntermediaryWorker()
 	case "SCATTER_GATHER_JOIN":
 		return buildScatterGatherJoinWorker()
+	case "MICROTRANSACTION_ROUTER_TO_JOIN":
+		return buildMicrotransactionRouterToJoinWorker()
+	case "MAX_BANK_ROUTER_TO_JOIN":
+		return buildMaxBankRouterToJoinWorker()
+	case "AVG_BY_TYPE_ROUTER_TO_JOIN":
+		return buildAvgByTypeRouterToJoinWorker()
+	case "SUSPICIOUS_PATH_ROUTER_TO_JOIN":
+		return buildSuspiciousPathRouterToJoinWorker()
+	case "CONVERTED_AMOUNT_ROUTER_TO_JOIN":
+		return buildConvertedAmountRouterToJoinWorker()
 	default:
 		return nil, nil
 	}

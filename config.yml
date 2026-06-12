@@ -259,6 +259,15 @@ services:
       OUTPUT_QUEUE_NAME: conversion_join_input_queue
       AMOUNT_TO_FILTER: 1.00
 
+  converted_amount_router_to_join:
+    count: 0
+    worker_type: CONVERTED_AMOUNT_ROUTER_TO_JOIN
+    env:
+      INPUT_QUEUE_NAME: converted_amount_router_join_input
+      OUTPUT_EXCHANGE_NAME: converted_amount_output
+      OUTPUT_WORKER_AMOUNT: 1
+      EXPECTED_EOF_AMOUNT: 1
+
   converter_join:
     count: 1
     worker_type: CONVERSION_JOIN
