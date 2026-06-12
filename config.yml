@@ -61,14 +61,24 @@ services:
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
-      OUTPUT_QUEUE_NAME: microtransaction_join_input_queue
+      OUTPUT_QUEUE_NAME: microtransaction_router_to_join_input_queue
       AMOUNT_TO_FILTER: 50
+
+  microtransaction_router_to_join:
+    count: 0
+    worker_type: MICROTRANSACTION_ROUTER_TO_JOIN
+
+    env:
+      INPUT_QUEUE_NAME: microtransaction_router_to_join_input_queue
+      OUTPUT_EXCHANGE_NAME: microtransaction_join_input_queue
+      OUTPUT_WORKER_AMOUNT: 1
+      EXPECTED_EOF_AMOUNT: 1
 
   microtransaction_join:
     count: 1
     worker_type: MICROTRANSACTION_JOIN
     env:
-      INPUT_QUEUE_NAME: microtransaction_join_input_queue
+      INPUT_QUEUE_NAME: microtransaction_router_to_join_input_queue
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BATCH_TRANSACTIONS: 100
       MAX_BATCH_BYTES: 8000
@@ -88,6 +98,15 @@ services:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
       OUTPUT_QUEUE_NAME: max_bank_join_input
       MAX_BATCH_WEIGHT: 8000 
+
+  max_bank_router_to_join:
+    count: 0
+    worker_type: MAX_BANK_ROUTER_TO_JOIN
+    env:
+      INPUT_QUEUE_NAME: max_bank_join_input
+      OUTPUT_EXCHANGE_NAME: max_bank_join_input
+      OUTPUT_WORKER_AMOUNT: 1
+      EXPECTED_EOF_AMOUNT: 1
 
   max_bank_join:
     count: 1
@@ -198,6 +217,15 @@ services:
       INPUT_EXCHANGE_NAME: payment_type_exchange
       OUTPUT_QUEUE_NAME: avg_by_type_join_input
 
+  avg_by_type_router_to_join:
+    count: 0
+    worker_type: AVG_BY_TYPE_ROUTER_TO_JOIN
+    env:
+      INPUT_QUEUE_NAME: avg_by_type_router_join_input
+      OUTPUT_EXCHANGE_NAME: max_bank_join_input
+      OUTPUT_WORKER_AMOUNT: 1
+      EXPECTED_EOF_AMOUNT: 1
+
   avg_by_type_join:
     count: 1
     worker_type: AVG_BY_TYPE_JOIN
@@ -238,6 +266,15 @@ services:
       INPUT_QUEUE_NAME: conversion_join_input_queue
       CLIENT_EXCHANGE_NAME: client_results_exchange
   
+  suspicious_path_router_to_join:
+    count: 0
+    worker_type: SUSPICIOUS_PATH_ROUTER_TO_JOIN
+    env:
+      INPUT_QUEUE_NAME: suspicious_path_router_join_input
+      OUTPUT_EXCHANGE_NAME: suspicious_paths_output
+      OUTPUT_WORKER_AMOUNT: 1
+      EXPECTED_EOF_AMOUNT: 1
+
   scatter_gather_join:
     count: 1
     worker_type: SCATTER_GATHER_JOIN

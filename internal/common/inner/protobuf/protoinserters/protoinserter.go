@@ -77,6 +77,30 @@ func InsertAvgByTypeTransactionBatch(clientID string, batchID string, batch *pro
 	)
 }
 
+func InsertAvgByTypeResultBatch(clientID string, batchID string, batch *protobuf.AvgByTypeResultBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_AvgbytypeResultBatch{
+		AvgbytypeResultBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_AVGBYTYPE_RESULT_BATCH,
+		innerMessage,
+		batchID,
+	)
+}
+
+func InsertSuspiciousPathBatch(clientID string, batchID string, batch *protobuf.SuspiciousPathBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_SuspiciouspathBatch{
+		SuspiciouspathBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_SUSPICIOUS_PATH_BATCH,
+		innerMessage,
+		batchID,
+	)
+}
+
 func InsertToConvertPeriodFilteredBatch(clientID string, batchID string, batch *protobuf.ToConvertPeriodFilteredBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_ToConvertPeriodFilteredBatch{
 		ToConvertPeriodFilteredBatch: batch,

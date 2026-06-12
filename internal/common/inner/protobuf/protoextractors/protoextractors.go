@@ -45,3 +45,15 @@ func GetScatterGatherBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.Scatte
 func GetGroupedAccountsBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.GroupedAccounts {
 	return batch.GetGroupedAccountsBatch().GetGroups()
 }
+
+func GetMaxBankResultBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.MaxBankResult {
+	return batch.GetMaxBankResultBatch().GetResults()
+}
+
+func GetAvgByTypeResultBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.AvgByTypeResult {
+	return batch.GetAvgbytypeResultBatch().GetResults()
+}
+
+func GetSuspiciousPathBatchItems(batch *protobuf.MoneyLaundry) []*protobuf.SuspiciousPath {
+	return batch.GetSuspiciouspathBatch().GetPaths()
+}

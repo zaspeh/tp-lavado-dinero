@@ -11,6 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	processorrouters "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/routers"
+	procesorrouters "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/routers/joiners"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
@@ -32,7 +33,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	maxBankWorkerAmount, err := getEnvIntStrict("MAX_BANK_WORKER_AMOUNT")
+	maxBankoutputWorkerAmount, err := getEnvIntStrict("MAX_BANK_WORKER_AMOUNT")
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	maxBankExchangeKeys := make([]string, maxBankWorkerAmount)
+	maxBankExchangeKeys := make([]string, maxBankoutputWorkerAmount)
 	for i := range maxBankExchangeKeys {
 		maxBankExchangeKeys[i] = fmt.Sprintf("%s.%d", maxBankExchangeName, i)
 	}
@@ -88,7 +89,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	groupByOriginWorkerAmount, err := getEnvIntStrict("GROUP_BY_ORIGIN_WORKER_AMOUNT")
+	groupByOriginoutputWorkerAmount, err := getEnvIntStrict("GROUP_BY_ORIGIN_WORKER_AMOUNT")
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	groupByDestinationWorkerAmount, err := getEnvIntStrict("GROUP_BY_DESTINATION_WORKER_AMOUNT")
+	groupByDestinationoutputWorkerAmount, err := getEnvIntStrict("GROUP_BY_DESTINATION_WORKER_AMOUNT")
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +109,12 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	originDestinationRouterKeys := make([]string, groupByOriginWorkerAmount+groupByDestinationWorkerAmount)
-	for i := 0; i < groupByOriginWorkerAmount; i++ {
+	originDestinationRouterKeys := make([]string, groupByOriginoutputWorkerAmount+groupByDestinationoutputWorkerAmount)
+	for i := 0; i < groupByOriginoutputWorkerAmount; i++ {
 		originDestinationRouterKeys[i] = fmt.Sprintf("origin.%d", i)
 	}
-	for i := 0; i < groupByDestinationWorkerAmount; i++ {
-		originDestinationRouterKeys[groupByOriginWorkerAmount+i] = fmt.Sprintf("destination.%d", i)
+	for i := 0; i < groupByDestinationoutputWorkerAmount; i++ {
+		originDestinationRouterKeys[groupByOriginoutputWorkerAmount+i] = fmt.Sprintf("destination.%d", i)
 	}
 
 	groupByExchange, err := m.CreateExchangeMiddleware(groupByExchangeName, originDestinationRouterKeys, mom)
@@ -141,7 +142,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		InputQueueName:     inQ,
 		InputMessageType:   protobuf.MessageType_SCATTERGATHER_BATCH,
 		ExtractInputItems:  protoextractors.GetScatterGatherBatchItems,
-		Processor:          processorrouters.NewOriginDestinationRouter(originDestinationRouterKeys[:groupByOriginWorkerAmount], originDestinationRouterKeys[groupByOriginWorkerAmount:]),
+		Processor:          processorrouters.NewOriginDestinationRouter(originDestinationRouterKeys[:groupByOriginoutputWorkerAmount], originDestinationRouterKeys[groupByOriginoutputWorkerAmount:]),
 		Sender:             routedSender,
 	})
 }
@@ -222,7 +223,7 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	aggregateByIntermediaryWorkerAmount, err := getEnvIntStrict("AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT")
+	aggregateByIntermediaryoutputWorkerAmount, err := getEnvIntStrict("AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT")
 	if err != nil {
 		return nil, err
 	}
@@ -238,8 +239,8 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	keys := make([]string, aggregateByIntermediaryWorkerAmount)
-	for i := 0; i < aggregateByIntermediaryWorkerAmount; i++ {
+	keys := make([]string, aggregateByIntermediaryoutputWorkerAmount)
+	for i := 0; i < aggregateByIntermediaryoutputWorkerAmount; i++ {
 		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
 	}
 
@@ -272,4 +273,248 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		Sender:             routedSender,
 	})
 
+}
+
+func buildMicrotransactionRouterToJoinWorker() (workers.Worker, error) {
+	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]string, outputWorkerAmount)
+	for i := 0; i < outputWorkerAmount; i++ {
+		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
+	}
+
+	microtransactionJoinExchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		microtransactionJoinExchange,
+		protowrappers.WrapToMicrotransactionBatch,
+		protowrappers.ProtoSizer[*protobuf.Microtransaction](),
+		0,
+		protoinserters.InsertMicrotransactionBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.Microtransaction,
+		sender.RoutedItem[*protobuf.Microtransaction],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       outputWorkerAmount,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_MICROTRANSACTION_BATCH,
+		ExtractInputItems:  protoextractors.GetMicrotransactionBatchItems,
+		Processor:          procesorrouters.NewMicrotransactionJoinRouter(keys),
+		Sender:             routedSender,
+	})
+}
+
+func buildMaxBankRouterToJoinWorker() (workers.Worker, error) {
+	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]string, outputWorkerAmount)
+	for i := 0; i < outputWorkerAmount; i++ {
+		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
+	}
+
+	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		exchange,
+		protowrappers.WrapMaxBankResults,
+		protowrappers.ProtoSizer[*protobuf.MaxBankResult](),
+		0,
+		protoinserters.InsertMaxBankResultBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.MaxBankResult,
+		sender.RoutedItem[*protobuf.MaxBankResult],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       outputWorkerAmount,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_MAX_BANK_RESULT_BATCH,
+		ExtractInputItems:  protoextractors.GetMaxBankResultBatchItems,
+		Processor:          procesorrouters.NewMaxBankToJoinRouter(keys),
+		Sender:             routedSender,
+	})
+}
+
+func buildAvgByTypeRouterToJoinWorker() (workers.Worker, error) {
+	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]string, outputWorkerAmount)
+	for i := 0; i < outputWorkerAmount; i++ {
+		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
+	}
+
+	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		exchange,
+		protowrappers.WrapAvgByTypeResults,
+		protowrappers.ProtoSizer[*protobuf.AvgByTypeResult](),
+		0,
+		protoinserters.InsertAvgByTypeResultBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.AvgByTypeResult,
+		sender.RoutedItem[*protobuf.AvgByTypeResult],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       outputWorkerAmount,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_AVGBYTYPE_RESULT_BATCH,
+		ExtractInputItems:  protoextractors.GetAvgByTypeResultBatchItems,
+		Processor:          procesorrouters.NewAvgByTypeJoinRouter(keys),
+		Sender:             routedSender,
+	})
+}
+
+func buildSuspiciousPathRouterToJoinWorker() (workers.Worker, error) {
+	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
+	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]string, outputWorkerAmount)
+	for i := 0; i < outputWorkerAmount; i++ {
+		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
+	}
+
+	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	if err != nil {
+		return nil, err
+	}
+
+	routedSender := sender.NewRoutedSender(
+		exchange,
+		protowrappers.WrapSuspiciousPaths,
+		protowrappers.ProtoSizer[*protobuf.SuspiciousPath](),
+		0,
+		protoinserters.InsertSuspiciousPathBatch,
+	)
+
+	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+		*protobuf.SuspiciousPath,
+		sender.RoutedItem[*protobuf.SuspiciousPath],
+	]{
+		Mom:                mom,
+		id:                 id,
+		workerCount:        workerCount,
+		workerExchangeName: workerExchangeName,
+		expectedEOFs:       outputWorkerAmount,
+		InputQueueName:     inQ,
+		InputMessageType:   protobuf.MessageType_SUSPICIOUS_PATH_BATCH,
+		ExtractInputItems:  protoextractors.GetSuspiciousPathBatchItems,
+		Processor:          procesorrouters.NewSuspiciousPathToJoinRouter(keys),
+		Sender:             routedSender,
+	})
 }

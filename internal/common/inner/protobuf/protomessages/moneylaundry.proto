@@ -15,6 +15,8 @@ import "internal/common/inner/protobuf/protomessages/scattergather.proto";
 import "internal/common/inner/protobuf/protomessages/intermediarypair.proto";
 import "internal/common/inner/protobuf/protomessages/heartbeat.proto";
 import "internal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto";
+import "internal/common/inner/protobuf/protomessages/avgbytyperesult.proto";
+import "internal/common/inner/protobuf/protomessages/suspiciouspath.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -52,11 +54,12 @@ enum MessageType {
 
     CLEANUP = 29;
     AVGBYTYPE_TRANSACTION_BATCH = 30;
-    SCATTERGATHER_BATCH = 31;
-    INTERMEDIARYPAIR_BATCH = 32;
-    MAX_BANK_RESULT_BATCH = 33;
+    AVGBYTYPE_RESULT_BATCH = 31;
+    SCATTERGATHER_BATCH = 32;
+    INTERMEDIARYPAIR_BATCH = 33;
+    MAX_BANK_RESULT_BATCH = 34;
 
-    HEARTBEAT = 34;
+    HEARTBEAT = 35;
 }
 
 message MoneyLaundry {
@@ -81,6 +84,8 @@ message MoneyLaundry {
         MaxBankResultBatch max_bank_result_batch = 16;
         Heartbeat heartbeat = 17;
         GroupedAccountsBatch grouped_accounts_batch = 18;
+        AvgByTypeResultBatch avgbytype_result_batch = 19;
+        SuspiciousPathBatch suspiciouspath_batch = 20;
     }
-    string batchID = 19;
+    string batchID = 21;
 }
