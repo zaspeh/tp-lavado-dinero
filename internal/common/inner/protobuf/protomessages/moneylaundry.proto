@@ -82,4 +82,5 @@ message MoneyLaundry {
         Heartbeat heartbeat = 17;
         GroupedAccountsBatch grouped_accounts_batch = 18;
     }
+    string batchID = 19;
 }
