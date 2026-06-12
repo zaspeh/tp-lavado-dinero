@@ -32,12 +32,17 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		return nil, err
 	}
 
+	workerID, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	inputExchange, outputQueue, err := createInputExchangeOutputQueue(cfg.keys)
 	if err != nil {
 		return nil, err
 	}
 
-	newCoordinator := coordinator.NewAloneCoordinator()
+	newCoordinator := coordinator.NewAloneCoordinator(workerID)
 
 	receiver := receiver.NewSingleReceiver(
 		inputExchange,

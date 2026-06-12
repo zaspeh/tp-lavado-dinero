@@ -1,13 +1,16 @@
 package coordinator
 
+import "fmt"
+
 // Implementacion tipo patron Null Object
 // Usado en nodos con router antes que ellos en el flujo
 type AloneCoordinator struct {
 	flushHandler FlushHandler
+	workerID     int
 }
 
-func NewAloneCoordinator() *AloneCoordinator {
-	return &AloneCoordinator{}
+func NewAloneCoordinator(workerID int) *AloneCoordinator {
+	return &AloneCoordinator{workerID: workerID}
 }
 
 func (c *AloneCoordinator) SetFlushHandler(handler FlushHandler) {
@@ -24,7 +27,8 @@ func (c *AloneCoordinator) RecordSurvivor(clientID string) error {
 }
 
 func (c *AloneCoordinator) HandleLocalEOF(clientID string, count uint64, eofID string) error {
-	return c.flushHandler(clientID, count, eofID)
+	newEofID := fmt.Sprintf("%s-%d", eofID, c.workerID)
+	return c.flushHandler(clientID, count, newEofID)
 }
 
 // Siempre es el líder de su propia partición aislada
