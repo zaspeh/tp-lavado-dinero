@@ -115,7 +115,7 @@ func buildBatcher[T any, B any](
 	headerSize int,
 	sizer func(T) int,
 	wrapper func([]T) B,
-	onFlush func(B) error,
+	onFlush func(B, string) error,
 ) *batch.Batcher[T, B] {
 
 	availableWeight := c.config.MaxBatchWeight - headerSize
@@ -215,14 +215,14 @@ func (c *Client) processAccounts() error {
 	return c.protocol.WaitAck()
 }
 
-func (c *Client) sendTransactionBatch(transactions request.TransactionBatch) error {
+func (c *Client) sendTransactionBatch(transactions request.TransactionBatch, batchID string) error {
 	if err := c.protocol.SendTransactionBatch(transactions); err != nil {
 		return err
 	}
 	return c.protocol.WaitAck()
 }
 
-func (c *Client) sendAccountBatch(accounts request.AccountBatch) error {
+func (c *Client) sendAccountBatch(accounts request.AccountBatch, batchID string) error {
 	if err := c.protocol.SendAccountBatch(accounts); err != nil {
 		return err
 	}

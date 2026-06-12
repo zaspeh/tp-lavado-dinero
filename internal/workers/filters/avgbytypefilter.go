@@ -203,7 +203,7 @@ func (f *AvgByTypeFilter) buildResultBatcher(clientID string) *batch.Batcher[*pr
 	sizer := protowrappers.ProtoSizer[*protobuf.AvgByTypeResult]()
 	wrapper := protowrappers.WrapAvgByTypeResults
 	resultBatch := batch.New(0, sizer, wrapper)
-	onFlush := func(batch *protobuf.AvgByTypeResultBatch) error {
+	onFlush := func(batch *protobuf.AvgByTypeResultBatch, batchID string) error {
 		return f.sendResultBatch(clientID, batch)
 	}
 	return batch.NewBatcher(resultBatch, onFlush)

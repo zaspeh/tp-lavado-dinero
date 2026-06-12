@@ -290,7 +290,7 @@ func (abi *AggregateByIntermediaryWorker) publishPairs(clientID string) (uint64,
 		protowrappers.WrapSuspiciousPaths,
 	)
 
-	batcher := batch.NewBatcher(b, func(pb *protobuf.SuspiciousPathBatch) error {
+	batcher := batch.NewBatcher(b, func(pb *protobuf.SuspiciousPathBatch, batchID string) error {
 
 		serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, pb, protobuf.MessageType_SUSPICIOUS_PATH_BATCH)
 		if err != nil {

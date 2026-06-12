@@ -45,7 +45,7 @@ func (s *RoutedSender[T, B]) Add(clientID string, item RoutedItem[T], batchID st
 	if !exists {
 		newBatch := batch.New(s.maxWeight, s.sizer, s.wrapper)
 
-		onFlush := func(batch B) error {
+		onFlush := func(batch B, batchID string) error {
 			return s.flushBatch(clientID, item.Route, batch)
 		}
 

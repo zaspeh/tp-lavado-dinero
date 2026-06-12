@@ -114,7 +114,7 @@ func (j *JoinMicrotransaction) buildBatcher(clientID string) *batch.Batcher[*pro
 	sizer := protowrappers.ProtoSizer[*protobuf.Microtransaction]()
 	wrapper := protowrappers.WrapMicrotransactions
 	joinBatch := batch.New(j.maxBatchBytes, sizer, wrapper)
-	onFlush := func(result *protobuf.MicrotransactionResult) error {
+	onFlush := func(result *protobuf.MicrotransactionResult, batchID string) error {
 		return j.sendBatch(clientID, result)
 	}
 	return batch.NewBatcher(joinBatch, onFlush)

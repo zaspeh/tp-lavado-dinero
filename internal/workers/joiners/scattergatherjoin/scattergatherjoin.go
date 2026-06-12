@@ -235,7 +235,7 @@ func (sgj *ScatterGatherJoinWorker) publishResults(clientID string) error {
 
 	batcher := batch.NewBatcher(
 		b,
-		func(pb *protobuf.SuspiciousAccountBatch) error {
+		func(pb *protobuf.SuspiciousAccountBatch, batchID string) error {
 
 			serializedMsg, err := serializer.SerializeProtoMessage(
 				pb,

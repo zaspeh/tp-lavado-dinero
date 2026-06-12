@@ -203,11 +203,11 @@ func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch)
 	return cc.protocol.SendAck()
 }
 
-func (cc *ClientConnection) sendTransactionBatch(batch *protobuf.TransactionBatch) error {
+func (cc *ClientConnection) sendTransactionBatch(batch *protobuf.TransactionBatch, batchID string) error {
 	innerMessage := &protobuf.MoneyLaundry_Transactions{
 		Transactions: batch,
 	}
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TRANSACTION_BATCH, innerMessage, "")
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TRANSACTION_BATCH, innerMessage, batchID)
 	if err != nil {
 		return err
 	}
@@ -215,11 +215,11 @@ func (cc *ClientConnection) sendTransactionBatch(batch *protobuf.TransactionBatc
 	return cc.currencyFilterQueue.Send(msg)
 }
 
-func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConvertTransactionBatch) error {
+func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConvertTransactionBatch, batchID string) error {
 	innerMessage := &protobuf.MoneyLaundry_ToConvertBatch{
 		ToConvertBatch: batch,
 	}
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH, innerMessage, "")
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH, innerMessage, batchID)
 	if err != nil {
 		return err
 	}
@@ -244,11 +244,11 @@ func (cc *ClientConnection) HandleAccountBatch(msg request.AccountBatch) error {
 	return cc.protocol.SendAck()
 }
 
-func (cc *ClientConnection) sendAccountBatch(batch *protobuf.MaxBankBatch) error {
+func (cc *ClientConnection) sendAccountBatch(batch *protobuf.MaxBankBatch, batchID string) error {
 	innerMessage := &protobuf.MoneyLaundry_MaxBankBatch{
 		MaxBankBatch: batch,
 	}
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_MAXBANK_BATCH, innerMessage, "")
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_MAXBANK_BATCH, innerMessage, batchID)
 	if err != nil {
 		return err
 	}
