@@ -51,9 +51,9 @@ func (e *StatelessEngine[T, V]) Shutdown() {
 func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 	switch event.Type {
 	case r.DataMessage:
-		return e.handleDataMessage(event.ClientID, event.Data, event.BatchID)
+		return e.handleDataMessage(event.ClientID, event.Data, event.EventID)
 	case r.EOFMessage:
-		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount)
+		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
 	case r.CleanupMessage:
 		// e.coordinator.MarkCleanup(event.ClientID)
 	}
@@ -86,7 +86,7 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, bat
 	return e.sender.Flush(clientID)
 }
 
-func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64) error {
+func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64, eventID string) error {
 	if !e.coordinator.IsLeader() {
 		return nil
 	}

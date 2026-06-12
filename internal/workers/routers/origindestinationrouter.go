@@ -252,14 +252,14 @@ func (odr *OriginDestinationRouter) hash(bank int32, account string) uint32 {
 func (odr *OriginDestinationRouter) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	clientID := moneyLaundry.GetClientID()
 	eofMessage := moneyLaundry.GetEofMessage()
-	if err := odr.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
+	if err := odr.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions(), ""); err != nil {
 		nack()
 		return
 	}
 	ack()
 }
 
-func (odr *OriginDestinationRouter) handleFlush(clientID string, totalSurvivors uint64) error {
+func (odr *OriginDestinationRouter) handleFlush(clientID string, totalSurvivors uint64, eofID string) error {
 	slog.Debug("Checking if im leader")
 	if !odr.coordinator.IsLeader() {
 		return nil

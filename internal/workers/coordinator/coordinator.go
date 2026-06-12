@@ -3,7 +3,7 @@ package coordinator
 // Funcion del estilo callback usada para que una vez que los
 // nodos hermanos hayan recibido la totalidad de los mensajes
 // se haga flush correspondiente
-type FlushHandler func(clientID string, survivorCount uint64) error
+type FlushHandler func(clientID string, survivorCount uint64, eventID string) error
 
 type Coordinator interface {
 	Run() error
@@ -12,5 +12,5 @@ type Coordinator interface {
 	RecordSurvivor(clientID string) error
 	IsLeader() bool
 	SetFlushHandler(handler FlushHandler)
-	HandleLocalEOF(clientID string, eofCount uint64) error
+	HandleLocalEOF(clientID string, eofCount uint64, eventID string) error
 }

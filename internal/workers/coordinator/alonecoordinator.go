@@ -23,8 +23,8 @@ func (c *AloneCoordinator) RecordSurvivor(clientID string) error {
 	return nil
 }
 
-func (c *AloneCoordinator) HandleLocalEOF(clientID string, count uint64) error {
-	return c.flushHandler(clientID, count)
+func (c *AloneCoordinator) HandleLocalEOF(clientID string, count uint64, eofID string) error {
+	return c.flushHandler(clientID, count, eofID)
 }
 
 // Siempre es el líder de su propia partición aislada

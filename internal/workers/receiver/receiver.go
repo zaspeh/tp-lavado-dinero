@@ -10,11 +10,11 @@ const (
 
 // Event Necesario para manejar los tipos de mensajes entrantes
 type Event[T any] struct {
+	EventID  string
 	Type     MessageType
 	ClientID string
 	Data     []T
 	EOFCount uint64
-	BatchID  string
 }
 
 type Receiver[T any] interface {

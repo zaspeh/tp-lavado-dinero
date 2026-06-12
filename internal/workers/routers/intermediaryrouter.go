@@ -182,7 +182,7 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 func (ir *IntermediaryRouter) handleEOF(moneyLaundry *protobuf.MoneyLaundry, msg middleware.Message, ack, nack func()) {
 	clientID := moneyLaundry.GetClientID()
 	eofMessage := moneyLaundry.GetEofMessage()
-	if err := ir.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions()); err != nil {
+	if err := ir.coordinator.HandleLocalEOF(clientID, eofMessage.GetTotalTransactions(), ""); err != nil {
 		nack()
 		return
 	}
@@ -196,7 +196,7 @@ func (ir *IntermediaryRouter) selectWorkerKey(intermediary *protobuf.Account) st
 	return ir.aggregateByIntermediaryExchangeKeys[h.Sum32()%uint32(ir.aggregateByIntermediaryWorkers)]
 }
 
-func (ir *IntermediaryRouter) handleFlush(clientID string, totalSurvivors uint64) error {
+func (ir *IntermediaryRouter) handleFlush(clientID string, totalSurvivors uint64, eofID string) error {
 	if !ir.coordinator.IsLeader() {
 		return nil
 	}

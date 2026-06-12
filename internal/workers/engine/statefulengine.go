@@ -53,7 +53,7 @@ func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
 	case r.DataMessage:
 		return e.handleDataMessage(event.ClientID, event.Data)
 	case r.EOFMessage:
-		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount)
+		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
 	case r.CleanupMessage:
 		return e.handleCleanupMessage(event.ClientID)
 	}
@@ -69,7 +69,7 @@ func (e *StatefulEngine[T, V]) handleDataMessage(clientID string, data []T) erro
 	return nil
 }
 
-func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64) error {
+func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, eofID string) error {
 	// TODO: me tiene que llegar el batchID desde el coordiandor
 	batchID := ""
 	yield := func(result V) error {

@@ -125,7 +125,7 @@ func (c *EOFCoordinator) RecordSurvivor(clientID string) error {
 	return c.tryFlush(clientID, state)
 }
 
-func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64) error {
+func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64, eofID string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -261,7 +261,7 @@ func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 		return nil
 	}
 
-	if err := c.flushHandler(clientID, totalSurvivors); err != nil {
+	if err := c.flushHandler(clientID, totalSurvivors, ""); err != nil {
 		return err
 	}
 	state.flushed = true
