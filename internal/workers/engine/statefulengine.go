@@ -70,10 +70,8 @@ func (e *StatefulEngine[T, V]) handleDataMessage(clientID string, data []T) erro
 }
 
 func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, eofID string) error {
-	// TODO: me tiene que llegar el batchID desde el coordiandor
-	batchID := ""
 	yield := func(result V) error {
-		return e.sender.Add(clientID, result, batchID)
+		return e.sender.Add(clientID, result, eofID)
 	}
 
 	survivors, err := e.processor.Finalize(clientID, yield)
@@ -91,7 +89,7 @@ func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, e
 
 	if e.coordinator.IsLeader() {
 		slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivors)
-		return e.sender.SendEOF(clientID, survivors)
+		return e.sender.SendEOF(clientID, survivors, eofID)
 	}
 
 	return nil

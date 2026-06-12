@@ -77,16 +77,14 @@ func (s *RoutedSender[T, B]) Cleanup(clientID string) error {
 	return nil
 }
 
-func (s *RoutedSender[T, B]) SendEOF(clientID string, survivorCount uint64) error {
-	// TODO: RECIBIR BATCH ID DESDE EL MENSAJE, DESDE EL COORDINADOR
-	batchID := ""
+func (s *RoutedSender[T, B]) SendEOF(clientID string, survivorCount uint64, eofID string) error {
 	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{
 			TotalTransactions: survivorCount,
 		},
 	}
 
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofInnerMsg, batchID)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofInnerMsg, eofID)
 	if err != nil {
 		return err
 	}

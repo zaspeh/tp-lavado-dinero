@@ -37,9 +37,9 @@ func (s *MultiSender[V]) Cleanup(clientID string) error {
 	return nil
 }
 
-func (s *MultiSender[V]) SendEOF(clientID string, survivorCount uint64) error {
+func (s *MultiSender[V]) SendEOF(clientID string, survivorCount uint64, eofID string) error {
 	for _, sender := range s.senders {
-		if err := sender.SendEOF(clientID, survivorCount); err != nil {
+		if err := sender.SendEOF(clientID, survivorCount, eofID); err != nil {
 			return err
 		}
 	}

@@ -86,10 +86,10 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, bat
 	return e.sender.Flush(clientID)
 }
 
-func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64, eventID string) error {
+func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64, eofID string) error {
 	if !e.coordinator.IsLeader() {
 		return nil
 	}
 	slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivorCount)
-	return e.sender.SendEOF(clientID, survivorCount)
+	return e.sender.SendEOF(clientID, survivorCount, eofID)
 }
