@@ -18,7 +18,7 @@ type singleReceiverSingleSenderEngineConfig[T, V, R any] struct {
 	Extractor           func(*protobuf.MoneyLaundry) []T
 	Wrapper             batch.Wrapper[V, R]
 	Sizer               batch.Sizer[V]
-	Inserter            func(clientID string, batch R) (middleware.Message, error)
+	Inserter            sender.SerializerFunc[R]
 	Processor           processor.Processor[T, V]
 	Coordinator         coordinator.Coordinator
 }

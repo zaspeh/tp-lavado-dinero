@@ -126,7 +126,7 @@ func (j *MaxBankJoin) handleEOFMessage(msg *protobuf.MoneyLaundry, ack, nack fun
 			EofMessage: &protobuf.EOF{},
 		}
 
-		serializeMsg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMsg)
+		serializeMsg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMsg, "")
 		if err != nil {
 			nack()
 			return

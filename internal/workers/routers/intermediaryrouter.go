@@ -164,7 +164,7 @@ func (ir *IntermediaryRouter) handleBatch(moneyLaundry *protobuf.MoneyLaundry, a
 			},
 		}
 
-		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_INTERMEDIARYPAIR_BATCH, innerMessage)
+		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_INTERMEDIARYPAIR_BATCH, innerMessage, "")
 		if err != nil {
 			nack()
 			return
@@ -208,7 +208,7 @@ func (ir *IntermediaryRouter) handleFlush(clientID string, totalSurvivors uint64
 		},
 	}
 
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, innerMessage)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, innerMessage, "")
 	if err != nil {
 		return err
 	}

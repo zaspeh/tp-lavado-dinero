@@ -18,7 +18,7 @@ type RoutedSender[T any, B any] struct {
 	wrapper    batch.Wrapper[T, B]
 	sizer      batch.Sizer[T]
 	batchers   map[string]*batch.Batcher[T, B]
-	serializer func(clientID string, batch B) (m.Message, error)
+	serializer SerializerFunc[B]
 	maxWeight  int
 }
 
@@ -27,7 +27,7 @@ func NewRoutedSender[T any, B any](
 	wrapper batch.Wrapper[T, B],
 	sizer batch.Sizer[T],
 	maxWeight int,
-	serializer func(clientID string, batch B) (m.Message, error),
+	serializer SerializerFunc[B],
 ) *RoutedSender[T, B] {
 	return &RoutedSender[T, B]{
 		exchange:   exchange,
@@ -78,13 +78,15 @@ func (s *RoutedSender[T, B]) Cleanup(clientID string) error {
 }
 
 func (s *RoutedSender[T, B]) SendEOF(clientID string, survivorCount uint64) error {
+	// TODO: RECIBIR BATCH ID DESDE EL MENSAJE, DESDE EL COORDINADOR
+	batchID := ""
 	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{
 			TotalTransactions: survivorCount,
 		},
 	}
 
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofInnerMsg)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofInnerMsg, batchID)
 	if err != nil {
 		return err
 	}
@@ -99,7 +101,7 @@ func (s *RoutedSender[T, B]) Close() error {
 }
 
 func (s *RoutedSender[T, B]) flushBatch(clientID string, route string, batch B) error {
-	msg, err := s.serializer(clientID, batch)
+	msg, err := s.serializer(clientID, "", batch)
 	if err != nil {
 		return err
 	}

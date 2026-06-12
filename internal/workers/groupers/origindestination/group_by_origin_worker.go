@@ -193,7 +193,7 @@ func (gbow *GroupByOriginWorker) handleEOFMessage(moneyLaundry *protobuf.MoneyLa
 		},
 	}
 
-	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage)
+	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage, "")
 	if err != nil {
 		nack()
 		return

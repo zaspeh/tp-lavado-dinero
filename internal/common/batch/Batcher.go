@@ -17,7 +17,7 @@ func NewBatcher[T any, V any](b *Batch[T, V], onFlush func(V) error) *Batcher[T,
 }
 
 func (s *Batcher[T, V]) SetNewBatchId(batchID string) {
-	if noBatchId == batchID {
+	if DefaultBatchId == batchID {
 		batchID = uuid.New().String()
 	}
 

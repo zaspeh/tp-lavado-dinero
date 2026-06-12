@@ -62,7 +62,7 @@ func EOFToProto(clientID string, transactionCounter int) (m.Message, error) {
 			TotalTransactions: uint64(transactionCounter),
 		},
 	}
-	return protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMessage)
+	return protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofMessage, "")
 }
 
 func ProtoTransactionToProtoConvTransaction(msg *protobuf.Transaction) *protobuf.ToConvertTransaction {

@@ -2,7 +2,6 @@ package factory
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
@@ -12,6 +11,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
 	p "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
@@ -74,7 +74,7 @@ type InputQueueOutputQueueStatelessConfig[T, V, R any] struct {
 	Extractor           func(*protobuf.MoneyLaundry) []T
 	Wrapper             batch.Wrapper[V, R]
 	Sizer               batch.Sizer[V]
-	Inserter            func(clientID string, batch R) (middleware.Message, error)
+	Inserter            sender.SerializerFunc[R]
 	Processor           processor.Processor[T, V]
 }
 

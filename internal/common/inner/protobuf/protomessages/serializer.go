@@ -8,10 +8,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SerializeProtoMessageONTRIAL(clientID string, messageType MessageType, innerMessage isMoneyLaundry_InnerMessage) (middleware.Message, error) {
+func SerializeProtoMessageONTRIAL(clientID string, messageType MessageType, innerMessage isMoneyLaundry_InnerMessage, batchID string) (middleware.Message, error) {
 	moneyLaundering := &MoneyLaundry{
 		ClientID: clientID,
 		Type:     messageType,
+		BatchID:  batchID,
 	}
 	if innerMessage != nil {
 		moneyLaundering.InnerMessage = innerMessage

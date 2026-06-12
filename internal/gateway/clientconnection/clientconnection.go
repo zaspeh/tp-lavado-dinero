@@ -114,10 +114,15 @@ func (cc *ClientConnection) setUpBatchers() {
 		protowrappers.WrapMaxBank,
 	)
 
-	// Set up despues de inicializacion para tener acceso a cc.sendTransactionBatch
+	// Set up despues de inicializacion para tener acceso a handlers
 	cc.transactionBatcher = batch.NewBatcher(transactionBatch, cc.sendTransactionBatch)
 	cc.rawDataBatcher = batch.NewBatcher(toConvertTransactionBatch, cc.sendToConvertTransactionBatch)
 	cc.accountBatcher = batch.NewBatcher(accountBatch, cc.sendAccountBatch)
+
+	// Seteamos el mismo batch id default, internamente es un uuid.
+	cc.transactionBatcher.SetNewBatchId(batch.DefaultBatchId)
+	cc.rawDataBatcher.SetNewBatchId(batch.DefaultBatchId)
+	cc.accountBatcher.SetNewBatchId(batch.DefaultBatchId)
 }
 
 func (cc *ClientConnection) Run() error {
@@ -151,7 +156,7 @@ func (cc *ClientConnection) handleDisconection(err error) error {
 }
 
 func (cc *ClientConnection) broadcastCleanup() error {
-	cleanupMsg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_CLEANUP, nil)
+	cleanupMsg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_CLEANUP, nil, "")
 	if err != nil {
 		return err
 	}
@@ -202,7 +207,7 @@ func (cc *ClientConnection) sendTransactionBatch(batch *protobuf.TransactionBatc
 	innerMessage := &protobuf.MoneyLaundry_Transactions{
 		Transactions: batch,
 	}
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TRANSACTION_BATCH, innerMessage)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TRANSACTION_BATCH, innerMessage, "")
 	if err != nil {
 		return err
 	}
@@ -214,7 +219,7 @@ func (cc *ClientConnection) sendToConvertTransactionBatch(batch *protobuf.ToConv
 	innerMessage := &protobuf.MoneyLaundry_ToConvertBatch{
 		ToConvertBatch: batch,
 	}
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH, innerMessage)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_TO_CONVERT_TRANSACTION_BATCH, innerMessage, "")
 	if err != nil {
 		return err
 	}
@@ -243,7 +248,7 @@ func (cc *ClientConnection) sendAccountBatch(batch *protobuf.MaxBankBatch) error
 	innerMessage := &protobuf.MoneyLaundry_MaxBankBatch{
 		MaxBankBatch: batch,
 	}
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_MAXBANK_BATCH, innerMessage)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(cc.id, protobuf.MessageType_MAXBANK_BATCH, innerMessage, "")
 	if err != nil {
 		return err
 	}

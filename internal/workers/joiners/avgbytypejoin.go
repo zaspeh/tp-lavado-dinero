@@ -131,7 +131,7 @@ func (j *AvgByTypeJoin) sendEOF(clientID string) error {
 		EofMessage: &protobuf.EOF{},
 	}
 
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eof)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eof, "")
 	if err != nil {
 		return err
 	}

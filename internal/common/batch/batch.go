@@ -2,7 +2,7 @@ package batch
 
 const (
 	defaultBatchSize = 8192 // 8KB\
-	noBatchId        = ""
+	DefaultBatchId   = ""
 )
 
 // Sizer es cualquier tipo del que se pueda obtener su peso en bytes.

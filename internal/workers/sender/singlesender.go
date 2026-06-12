@@ -11,12 +11,12 @@ type SingleSender[T any, V any] struct {
 	wrapper    batch.Wrapper[T, V]
 	sizer      batch.Sizer[T]
 	batchers   map[string]*batch.Batcher[T, V]
-	serializer func(clientID string, batch V) (m.Message, error)
+	serializer SerializerFunc[V]
 	maxWeight  int
 }
 
 func NewSingleSender[T any, V any](output m.Middleware, wrapper batch.Wrapper[T, V],
-	sizer batch.Sizer[T], maxWeight int, serializer func(clientID string, batch V) (m.Message, error),
+	sizer batch.Sizer[T], maxWeight int, serializer SerializerFunc[V],
 ) *SingleSender[T, V] {
 	return &SingleSender[T, V]{
 		output:     output,
@@ -57,13 +57,15 @@ func (s *SingleSender[T, V]) Cleanup(clientID string) error {
 }
 
 func (s *SingleSender[T, V]) SendEOF(clientID string, survivorCount uint64) error {
+	// TODO: RECIBIR BATCH ID DESDE EL MENSAJE, DESDE EL COORDINADOR
+	batchID := ""
 	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{
 			TotalTransactions: survivorCount,
 		},
 	}
 
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofInnerMsg)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, eofInnerMsg, batchID)
 	if err != nil {
 		return err
 	}
@@ -78,7 +80,7 @@ func (s *SingleSender[T, V]) Close() error {
 }
 
 func (s *SingleSender[T, V]) flushBatch(clientID string, batch V) error {
-	msg, err := s.serializer(clientID, batch)
+	msg, err := s.serializer(clientID, "", batch)
 	if err != nil {
 		return err
 	}

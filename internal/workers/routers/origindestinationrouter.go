@@ -199,7 +199,7 @@ func (odr *OriginDestinationRouter) publishToGroupByOrigin(originBatchesByKey ma
 			},
 		}
 
-		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_SCATTERGATHER_BATCH, innerMessage)
+		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_SCATTERGATHER_BATCH, innerMessage, "")
 		if err != nil {
 			return err
 		}
@@ -219,7 +219,7 @@ func (odr *OriginDestinationRouter) publishToGroupByDestination(destinationBatch
 			},
 		}
 
-		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_SCATTERGATHER_BATCH, innerMessage)
+		msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_SCATTERGATHER_BATCH, innerMessage, "")
 		if err != nil {
 			return err
 		}
@@ -272,7 +272,7 @@ func (odr *OriginDestinationRouter) handleFlush(clientID string, totalSurvivors 
 		},
 	}
 
-	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, innerMessage)
+	msg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_EOF_, innerMessage, "")
 	if err != nil {
 		return err
 	}

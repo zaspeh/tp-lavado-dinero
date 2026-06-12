@@ -2,7 +2,6 @@ package factory
 
 import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
@@ -22,7 +21,7 @@ type InputExchangeOutputQueueStatefulConfig[T, V, R any] struct {
 	Extractor           func(*protobuf.MoneyLaundry) []T
 	Wrapper             batch.Wrapper[V, R]
 	Sizer               batch.Sizer[V]
-	Inserter            func(clientID string, batch R) (middleware.Message, error)
+	Inserter            sender.SerializerFunc[R]
 	processor           processor.StatefulProcessor[T, V]
 	keys                string //prefijo explicito de las claves, en caso de ausencia se usa el nombre del exchange
 }

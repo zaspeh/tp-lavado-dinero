@@ -5,7 +5,7 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 )
 
-func InsertConvertedAmountBatch(clientID string, batch *protobuf.ConvertedAmountBatch) (middleware.Message, error) {
+func InsertConvertedAmountBatch(clientID string, batchID string, batch *protobuf.ConvertedAmountBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_ConvertedAmountBatch{
 		ConvertedAmountBatch: batch,
 	}
@@ -13,10 +13,11 @@ func InsertConvertedAmountBatch(clientID string, batch *protobuf.ConvertedAmount
 		clientID,
 		protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertMicrotransactionBatch(clientID string, batch *protobuf.MicrotransactionBatch) (middleware.Message, error) {
+func InsertMicrotransactionBatch(clientID string, batchID string, batch *protobuf.MicrotransactionBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_MicrotransactionsBatch{
 		MicrotransactionsBatch: batch,
 	}
@@ -24,10 +25,11 @@ func InsertMicrotransactionBatch(clientID string, batch *protobuf.Microtransacti
 		clientID,
 		protobuf.MessageType_MICROTRANSACTION_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertPeriodFilterBatch(clientID string, batch *protobuf.PeriodFilterBatch) (middleware.Message, error) {
+func InsertPeriodFilterBatch(clientID string, batchID string, batch *protobuf.PeriodFilterBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_PeriodFilterBatch{
 		PeriodFilterBatch: batch,
 	}
@@ -35,10 +37,11 @@ func InsertPeriodFilterBatch(clientID string, batch *protobuf.PeriodFilterBatch)
 		clientID,
 		protobuf.MessageType_PERIOD_FILTER_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertMaxBankBatch(clientID string, batch *protobuf.MaxBankBatch) (middleware.Message, error) {
+func InsertMaxBankBatch(clientID string, batchID string, batch *protobuf.MaxBankBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_MaxBankBatch{
 		MaxBankBatch: batch,
 	}
@@ -46,10 +49,11 @@ func InsertMaxBankBatch(clientID string, batch *protobuf.MaxBankBatch) (middlewa
 		clientID,
 		protobuf.MessageType_MAXBANK_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertMaxBankResultBatch(clientID string, batch *protobuf.MaxBankResultBatch) (middleware.Message, error) {
+func InsertMaxBankResultBatch(clientID string, batchID string, batch *protobuf.MaxBankResultBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_MaxBankResultBatch{
 		MaxBankResultBatch: batch,
 	}
@@ -57,10 +61,11 @@ func InsertMaxBankResultBatch(clientID string, batch *protobuf.MaxBankResultBatc
 		clientID,
 		protobuf.MessageType_MAX_BANK_RESULT_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertAvgByTypeTransactionBatch(clientID string, batch *protobuf.AvgByTypeTransactionBatch) (middleware.Message, error) {
+func InsertAvgByTypeTransactionBatch(clientID string, batchID string, batch *protobuf.AvgByTypeTransactionBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_AvgbytypeTransactionBatch{
 		AvgbytypeTransactionBatch: batch,
 	}
@@ -68,10 +73,11 @@ func InsertAvgByTypeTransactionBatch(clientID string, batch *protobuf.AvgByTypeT
 		clientID,
 		protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertToConvertPeriodFilteredBatch(clientID string, batch *protobuf.ToConvertPeriodFilteredBatch) (middleware.Message, error) {
+func InsertToConvertPeriodFilteredBatch(clientID string, batchID string, batch *protobuf.ToConvertPeriodFilteredBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_ToConvertPeriodFilteredBatch{
 		ToConvertPeriodFilteredBatch: batch,
 	}
@@ -79,10 +85,11 @@ func InsertToConvertPeriodFilteredBatch(clientID string, batch *protobuf.ToConve
 		clientID,
 		protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertToConvertTypeFilteredPaymentBatch(clientID string, batch *protobuf.ToConvertTypeFilteredPaymentBatch) (middleware.Message, error) {
+func InsertToConvertTypeFilteredPaymentBatch(clientID string, batchID string, batch *protobuf.ToConvertTypeFilteredPaymentBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_ToConvertTypeFilteredPaymentBatch{
 		ToConvertTypeFilteredPaymentBatch: batch,
 	}
@@ -90,10 +97,11 @@ func InsertToConvertTypeFilteredPaymentBatch(clientID string, batch *protobuf.To
 		clientID,
 		protobuf.MessageType_TO_CONVERT_TYPE_FILTERED_PAYMENT_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertScatterGatherBatch(clientID string, batch *protobuf.ScatterGatherBatch) (middleware.Message, error) {
+func InsertScatterGatherBatch(clientID string, batchID string, batch *protobuf.ScatterGatherBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_ScattergatherBatch{
 		ScattergatherBatch: batch,
 	}
@@ -101,10 +109,11 @@ func InsertScatterGatherBatch(clientID string, batch *protobuf.ScatterGatherBatc
 		clientID,
 		protobuf.MessageType_SCATTERGATHER_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertGroupedAccountsBatch(clientID string, batch *protobuf.GroupedAccountsBatch) (middleware.Message, error) {
+func InsertGroupedAccountsBatch(clientID string, batchID string, batch *protobuf.GroupedAccountsBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_GroupedAccountsBatch{
 		GroupedAccountsBatch: batch,
 	}
@@ -112,10 +121,11 @@ func InsertGroupedAccountsBatch(clientID string, batch *protobuf.GroupedAccounts
 		clientID,
 		protobuf.MessageType_GROUPED_ACCOUNTS_BATCH,
 		innerMessage,
+		batchID,
 	)
 }
 
-func InsertIntermediaryPairBatch(clientID string, batch *protobuf.IntermediaryPairBatch) (middleware.Message, error) {
+func InsertIntermediaryPairBatch(clientID string, batchID string, batch *protobuf.IntermediaryPairBatch) (middleware.Message, error) {
 	innerMessage := &protobuf.MoneyLaundry_IntermediarypairBatch{
 		IntermediarypairBatch: batch,
 	}
@@ -123,5 +133,6 @@ func InsertIntermediaryPairBatch(clientID string, batch *protobuf.IntermediaryPa
 		clientID,
 		protobuf.MessageType_INTERMEDIARYPAIR_BATCH,
 		innerMessage,
+		batchID,
 	)
 }

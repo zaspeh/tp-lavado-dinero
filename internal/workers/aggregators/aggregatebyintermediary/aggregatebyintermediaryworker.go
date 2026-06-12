@@ -205,7 +205,7 @@ func (abi *AggregateByIntermediaryWorker) handleOriginEOFMessage(moneyLaundry *p
 		},
 	}
 
-	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage)
+	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage, "")
 	if err != nil {
 		nack()
 		return
@@ -252,7 +252,7 @@ func (abi *AggregateByIntermediaryWorker) handleDestinationEOFMessage(moneyLaund
 		},
 	}
 
-	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage)
+	eofMsg, err := protobuf.SerializeProtoMessageONTRIAL(moneyLaundry.GetClientID(), protobuf.MessageType_EOF_, innerMessage, "")
 	if err != nil {
 		nack()
 		return
