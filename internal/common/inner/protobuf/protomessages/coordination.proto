@@ -12,4 +12,5 @@ message EOFCoordination {
   uint64 expected_total = 6;
   bool   eof_arrived = 7;
   uint32 eof_seen = 8;
+  string eofID = 9;
 }

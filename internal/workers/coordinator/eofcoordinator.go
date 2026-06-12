@@ -34,6 +34,7 @@ type clientState struct {
 	localSurvivors uint64
 	eofSeenLocal   uint32
 	expectedTotal  uint64
+	eofID          string // Me quedo con el ultimo que llegue
 	peerCount      map[int]peerCount
 	flushed        bool
 }
@@ -132,6 +133,7 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64, e
 	slog.Info("Handling local EOF", "clientID", clientID, "expectedTotal", expectedTotal)
 	state := c.getClientState(clientID)
 	state.eofSeenLocal++
+	state.eofID = eofID
 	state.expectedTotal += expectedTotal
 
 	slog.Debug("Handling local EOF - current state", "clientID", clientID, "state", state)
@@ -184,6 +186,7 @@ func (c *EOFCoordinator) handleRemoteEOF(progressMsg *protobuf.EOFCoordination) 
 	state := c.getClientState(clientID)
 	state.eofSeenLocal++
 	state.expectedTotal += progressMsg.GetExpectedTotal()
+	state.eofID = progressMsg.GetEofID()
 	c.updateCount(progressMsg)
 
 	// Comunicamos estado actual a los otros nodos para que actualicen conteo
@@ -223,6 +226,7 @@ func (c *EOFCoordinator) broadcastEOFCoordination(clientID string, state *client
 		ExpectedTotal:  totalToAdd,
 		EofArrived:     eofArrived,
 		EofSeen:        state.eofSeenLocal,
+		EofID:          state.eofID,
 	}
 	message, err := serializer.SerializeCoordinationMessage(coordinationMsg)
 	if err != nil {
@@ -261,7 +265,7 @@ func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 		return nil
 	}
 
-	if err := c.flushHandler(clientID, totalSurvivors, ""); err != nil {
+	if err := c.flushHandler(clientID, totalSurvivors, state.eofID); err != nil {
 		return err
 	}
 	state.flushed = true
