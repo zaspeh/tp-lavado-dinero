@@ -46,7 +46,7 @@ func (s *RoutedSender[T, B]) Add(clientID string, item RoutedItem[T], batchID st
 		newBatch := batch.New(s.maxWeight, s.sizer, s.wrapper)
 
 		onFlush := func(batch B, batchID string) error {
-			return s.flushBatch(clientID, item.Route, batch)
+			return s.flushBatch(clientID, item.Route, batch, batchID)
 		}
 
 		batcher = batch.NewBatcher(newBatch, onFlush)
@@ -100,8 +100,8 @@ func (s *RoutedSender[T, B]) Close() error {
 	return s.exchange.Close()
 }
 
-func (s *RoutedSender[T, B]) flushBatch(clientID string, route string, batch B) error {
-	msg, err := s.serializer(clientID, "", batch)
+func (s *RoutedSender[T, B]) flushBatch(clientID string, route string, batch B, batchID string) error {
+	msg, err := s.serializer(clientID, batchID, batch)
 	if err != nil {
 		return err
 	}

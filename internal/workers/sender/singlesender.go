@@ -34,7 +34,7 @@ func (s *SingleSender[T, V]) Add(clientID string, item T, batchID string) error 
 		newBatch := batch.New(s.maxWeight, s.sizer, s.wrapper)
 
 		onFlush := func(batch V, batchID string) error {
-			return s.flushBatch(clientID, batch)
+			return s.flushBatch(clientID, batch, batchID)
 		}
 
 		batcher = batch.NewBatcher(newBatch, onFlush)
@@ -79,8 +79,8 @@ func (s *SingleSender[T, V]) Close() error {
 	return s.output.Close()
 }
 
-func (s *SingleSender[T, V]) flushBatch(clientID string, batch V) error {
-	msg, err := s.serializer(clientID, "", batch)
+func (s *SingleSender[T, V]) flushBatch(clientID string, batch V, batchID string) error {
+	msg, err := s.serializer(clientID, batchID, batch)
 	if err != nil {
 		return err
 	}
