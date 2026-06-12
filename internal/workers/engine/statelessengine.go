@@ -66,7 +66,6 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T) err
 		if err != nil {
 			return err
 		}
-
 		for _, result := range results {
 			if err := e.sender.Add(clientID, result); err != nil {
 				return err

@@ -40,6 +40,7 @@ func (s *SingleSender[T, V]) Add(clientID string, item T) error {
 		batcher = batch.NewBatcher(newBatch, onFlush)
 		s.batchers[clientID] = batcher
 	}
+	// batcher.SetNewBatchId(batchId)
 	return batcher.Add(item)
 }
 

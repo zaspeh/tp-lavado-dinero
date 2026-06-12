@@ -1,7 +1,8 @@
 package batch
 
 const (
-	defaultBatchSize = 8192 // 8KB
+	defaultBatchSize = 8192 // 8KB\
+	noBatchId        = ""
 )
 
 // Sizer es cualquier tipo del que se pueda obtener su peso en bytes.
@@ -11,6 +12,7 @@ type Sizer[T any] func(T) int
 type Wrapper[T any, V any] func(items []T) V
 
 type Batch[T any, V any] struct {
+	id            string
 	maxWeight     int
 	currentWeight int
 	items         []T
