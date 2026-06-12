@@ -46,10 +46,15 @@ func (p *HeartbeatPublisher) publishHeartbeat() {
 		"heartbeat sent",
 		"container_name", p.containerName,
 	)
-	msg, err := protobuf.SerializeProtoHeartbeatONTRIAL(
-		p.containerName,
-	)
 
+	innerMessage := &protobuf.MoneyLaundry_Heartbeat{
+		Heartbeat: &protobuf.Heartbeat{
+			ContainerName: p.containerName,
+			Timestamp:     time.Now().Unix(),
+		},
+	}
+
+	msg, err := protobuf.SerializeProtoMessageONTRIAL("", protobuf.MessageType_HEARTBEAT, innerMessage, "")
 	if err != nil {
 		slog.Error("failed to serialize heartbeat", "err", err)
 		return

@@ -2,7 +2,6 @@ package protobuf
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"google.golang.org/protobuf/proto"
@@ -20,21 +19,6 @@ func SerializeProtoMessageONTRIAL(clientID string, messageType MessageType, inne
 	return serializeMoneyLaundering(moneyLaundering)
 }
 
-func SerializeProtoHeartbeatONTRIAL(containerName string) (middleware.Message, error) {
-	heartbeatMessage := &MoneyLaundry{
-		Type: MessageType_HEARTBEAT,
-		InnerMessage: &MoneyLaundry_Heartbeat{
-			Heartbeat: &Heartbeat{
-				ContainerName: containerName,
-				Timestamp:     time.Now().Unix(),
-			},
-		},
-	}
-
-	return serializeMoneyLaundering(
-		heartbeatMessage,
-	)
-}
 func DeserializeMoneyLaunderingONTRIAL(msg middleware.Message) (*MoneyLaundry, error) {
 	var moneyLaundering MoneyLaundry
 	err := proto.Unmarshal(msg.Body, &moneyLaundering)
