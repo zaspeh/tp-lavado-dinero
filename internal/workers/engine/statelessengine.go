@@ -51,6 +51,7 @@ func (e *StatelessEngine[T, V]) Shutdown() {
 func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 	switch event.Type {
 	case r.DataMessage:
+		slog.Debug("Data message received by pipeline")
 		return e.handleDataMessage(event.ClientID, event.Data, event.EventID)
 	case r.EOFMessage:
 		slog.Debug("EOF received by pipeline")

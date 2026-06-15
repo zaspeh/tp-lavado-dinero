@@ -205,7 +205,7 @@ services:
       ORIGIN_INPUT_EXCHANGE_NAME: origin_intermediary_aggregation
       DESTINATION_INPUT_EXCHANGE_NAME: destination_intermediary_aggregation
 
-      OUTPUT_QUEUE_NAME: suspicious_paths_output
+      OUTPUT_QUEUE_NAME: suspicious_path_router_join_input
 
       MAX_BATCH_WEIGHT: 40000
 
@@ -276,20 +276,20 @@ services:
       CLIENT_EXCHANGE_NAME: client_results_exchange
   
   suspicious_path_router_to_join:
-    count: 0
+    count: 2
     worker_type: SUSPICIOUS_PATH_ROUTER_TO_JOIN
     env:
       INPUT_QUEUE_NAME: suspicious_path_router_join_input
       OUTPUT_EXCHANGE_NAME: suspicious_paths_output
-      OUTPUT_WORKER_AMOUNT: 1
-      EXPECTED_EOF_AMOUNT: 1
+      OUTPUT_WORKER_AMOUNT: 2
+      EXPECTED_EOF_AMOUNT: 2
 
   scatter_gather_join:
-    count: 1
+    count: 2
     worker_type: SCATTER_GATHER_JOIN
 
     env:
-      INPUT_QUEUE_NAME: suspicious_paths_output
+      INPUT_EXCHANGE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
       MAX_BATCH_WEIGHT: 40000

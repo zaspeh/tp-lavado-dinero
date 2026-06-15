@@ -164,7 +164,7 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 
 func buildScatterGatherJoinWorker() (workers.Worker, error) {
 
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +194,14 @@ func buildScatterGatherJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	config := scattergatherjoin.ScatterGatherJoinConfig{
-		InputQueueName:                      inputQueueName,
+		ID:                                  id,
+		InputExchangeName:                   inputExchangeName,
 		ClientExchangeName:                  clientExchangeName,
 		MomHost:                             host,
 		MomPort:                             port,

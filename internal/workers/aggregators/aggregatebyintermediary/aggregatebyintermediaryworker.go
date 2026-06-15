@@ -12,7 +12,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
 type AggregateByIntermediaryWorker struct {
@@ -119,7 +118,7 @@ func (abi *AggregateByIntermediaryWorker) handleOriginMessage(msg middleware.Mes
 }
 
 func (abi *AggregateByIntermediaryWorker) handleDestinationMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
 		return
@@ -291,13 +290,16 @@ func (abi *AggregateByIntermediaryWorker) publishPairs(clientID string) (uint64,
 	)
 
 	batcher := batch.NewBatcher(b, func(pb *protobuf.SuspiciousPathBatch, batchID string) error {
+		innerMessage := &protobuf.MoneyLaundry_SuspiciouspathBatch{
+			SuspiciouspathBatch: pb,
+		}
 
-		serializedMsg, err := serializer.SerializeProtoMessageWithClientID(clientID, pb, protobuf.MessageType_SUSPICIOUS_PATH_BATCH)
+		serializedMsg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_SUSPICIOUS_PATH_BATCH, innerMessage, "")
 		if err != nil {
 			return err
 		}
 
-		return abi.outputQueue.Send(*serializedMsg)
+		return abi.outputQueue.Send(serializedMsg)
 	})
 
 	for pair, intermediaryCount := range store.GetPairs() {

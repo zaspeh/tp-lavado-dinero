@@ -484,6 +484,11 @@ func buildSuspiciousPathRouterToJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
 	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
@@ -525,7 +530,7 @@ func buildSuspiciousPathRouterToJoinWorker() (workers.Worker, error) {
 		id:                 id,
 		workerCount:        workerCount,
 		workerExchangeName: workerExchangeName,
-		expectedEOFs:       outputWorkerAmount,
+		expectedEOFs:       expectedEOFs,
 		InputQueueName:     inQ,
 		InputMessageType:   protobuf.MessageType_SUSPICIOUS_PATH_BATCH,
 		ExtractInputItems:  protoextractors.GetSuspiciousPathBatchItems,

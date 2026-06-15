@@ -17,7 +17,7 @@ import (
 )
 
 type ScatterGatherJoinWorker struct {
-	inputQueue         middleware.Middleware
+	inputExchange      *middleware.ExchangeMiddleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
 	stores             map[string]*ScatterGatherStore
@@ -28,7 +28,8 @@ type ScatterGatherJoinWorker struct {
 }
 
 type ScatterGatherJoinConfig struct {
-	InputQueueName                      string
+	ID                                  string
+	InputExchangeName                   string
 	ClientExchangeName                  string
 	MomHost                             string
 	MomPort                             int
@@ -42,10 +43,14 @@ func NewScatterGatherJoinWorker(config ScatterGatherJoinConfig) (*ScatterGatherJ
 		Port:     config.MomPort,
 	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(
-		config.InputQueueName,
-		connSettings,
-	)
+	inputExchangeKeys := []string{
+		fmt.Sprintf("%s.%s", config.InputExchangeName, config.ID),
+	}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputExchangeKeys, connSettings)
+	if err != nil {
+		return nil, err
+	}
 
 	if err != nil {
 		return nil, err
@@ -58,12 +63,12 @@ func NewScatterGatherJoinWorker(config ScatterGatherJoinConfig) (*ScatterGatherJ
 	)
 
 	if err != nil {
-		inputQueue.Close()
+		inputExchange.Close()
 		return nil, err
 	}
 
 	return &ScatterGatherJoinWorker{
-		inputQueue:         inputQueue,
+		inputExchange:      inputExchange,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
 		stores:             make(map[string]*ScatterGatherStore),
@@ -77,7 +82,7 @@ func (sgj *ScatterGatherJoinWorker) Run() error {
 
 	go sgj.handleSignals()
 
-	sgj.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	sgj.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		sgj.handleMessage(msg, ack, nack)
 	})
 
@@ -100,12 +105,12 @@ func (sgj *ScatterGatherJoinWorker) handleSignals() {
 
 	slog.Info("shutdown signal received")
 
-	sgj.inputQueue.Close()
+	sgj.inputExchange.Close()
 	sgj.resultExchange.Close()
 }
 
 func (sgj *ScatterGatherJoinWorker) handleMessage(msg middleware.Message, ack, nack func()) {
-	moneyLaundry, err := serializer.DeserializeMoneyLaundering(msg)
+	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 
 	if err != nil {
 		nack()
@@ -126,12 +131,9 @@ func (sgj *ScatterGatherJoinWorker) handleMessage(msg middleware.Message, ack, n
 }
 
 func (sgj *ScatterGatherJoinWorker) handleSuspiciousPathBatch(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	batchMsg, err := serializer.DeserializeTransaction(moneyLaundry.GetPayload(), &protobuf.SuspiciousPathBatch{})
+	batchMsg := moneyLaundry.GetSuspiciouspathBatch()
 	store := sgj.getStore(moneyLaundry.GetClientID())
-	if err != nil {
-		nack()
-		return
-	}
+
 	slog.Debug("Handling SuspiciousPathBatch")
 
 	for _, path := range batchMsg.GetPaths() {
