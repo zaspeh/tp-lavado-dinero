@@ -65,20 +65,20 @@ services:
       AMOUNT_TO_FILTER: 50
 
   microtransaction_router_to_join:
-    count: 0
+    count: 2
     worker_type: MICROTRANSACTION_ROUTER_TO_JOIN
 
     env:
       INPUT_QUEUE_NAME: microtransaction_router_to_join_input_queue
-      OUTPUT_EXCHANGE_NAME: microtransaction_join_input_queue
-      OUTPUT_WORKER_AMOUNT: 1
+      OUTPUT_EXCHANGE_NAME: microtransaction_join_exchange
+      OUTPUT_WORKER_AMOUNT: 2
       EXPECTED_EOF_AMOUNT: 1
 
   microtransaction_join:
-    count: 1
+    count: 2
     worker_type: MICROTRANSACTION_JOIN
     env:
-      INPUT_QUEUE_NAME: microtransaction_router_to_join_input_queue
+      INPUT_EXCHANGE_NAME: microtransaction_join_exchange
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BATCH_TRANSACTIONS: 100
       MAX_BATCH_BYTES: 8000
@@ -152,11 +152,11 @@ services:
 
       GROUP_BY_EXCHANGE_NAME: group_by_origin_destination
 
-      GROUP_BY_ORIGIN_WORKER_AMOUNT: 1
-      GROUP_BY_DESTINATION_WORKER_AMOUNT: 1
+      GROUP_BY_ORIGIN_WORKER_AMOUNT: 2
+      GROUP_BY_DESTINATION_WORKER_AMOUNT: 2
   
   group_by_origin:
-    count: 1
+    count: 2
     worker_type: GROUP_BY_ORIGIN
 
     env:
@@ -166,7 +166,7 @@ services:
       MAX_BATCH_WEIGHT: 40000
 
   group_by_destination:
-    count: 1
+    count: 2
     worker_type: GROUP_BY_DESTINATION
 
     env:
@@ -176,29 +176,29 @@ services:
       MAX_BATCH_WEIGHT: 40000
   
   origin_intermediary_router:
-    count: 1
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: ORIGIN_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_origin_accounts
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: origin_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
-      INPUT_WORKERS_AMOUNT: 1 # Cantidad de workers group_by_origin
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
+      INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_origin
 
   destination_intermediary_router:
-    count: 1
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: DESTINATION_INTERMEDIARY_ROUTER
 
     env:
       INPUT_QUEUE_NAME: grouped_destination_accounts
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: destination_intermediary_aggregation
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
-      INPUT_WORKERS_AMOUNT: 1 # Cantidad de workers group_by_destination
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
+      INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_destination
 
   aggregate_by_intermediary:
-    count: 1
+    count: 2
     worker_type: AGGREGATE_BY_INTERMEDIARY
 
     env:
@@ -291,5 +291,5 @@ services:
     env:
       INPUT_QUEUE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
       MAX_BATCH_WEIGHT: 40000

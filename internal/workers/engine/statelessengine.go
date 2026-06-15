@@ -53,6 +53,7 @@ func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 	case r.DataMessage:
 		return e.handleDataMessage(event.ClientID, event.Data, event.EventID)
 	case r.EOFMessage:
+		slog.Debug("EOF received by pipeline")
 		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
 	case r.CleanupMessage:
 		// e.coordinator.MarkCleanup(event.ClientID)

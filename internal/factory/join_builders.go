@@ -46,7 +46,7 @@ func buildMaxBankJoinWorker() (workers.Worker, error) {
 }
 
 func buildMicrotransactionJoinWorker() (workers.Worker, error) {
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,14 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	config := joiners.JoinMicrotransactionConfig{
-		InputQueueName:     inputQueueName,
+		ID:                 id,
+		InputExchangeName:  inputExchangeName,
 		ClientExchangeName: clientExchangeName,
 		MomHost:            host,
 		MomPort:            port,

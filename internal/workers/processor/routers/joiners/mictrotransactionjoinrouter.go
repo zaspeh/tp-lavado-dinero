@@ -2,6 +2,7 @@ package procesorrouters
 
 import (
 	"hash/fnv"
+	"log/slog"
 
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
@@ -18,6 +19,7 @@ func NewMicrotransactionJoinRouter(routes []string) *MicrotransactionJoinRouter 
 }
 
 func (r *MicrotransactionJoinRouter) Process(_ string, item *protobuf.Microtransaction) ([]sender.RoutedItem[*protobuf.Microtransaction], error) {
+	slog.Debug("Routing microtransaction", "transaction_id", item.GetAccount(), "amount", item.GetAmount())
 	return []sender.RoutedItem[*protobuf.Microtransaction]{
 		{
 			Route: r.selectRoute(item.GetAccount()),

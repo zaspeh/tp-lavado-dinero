@@ -15,7 +15,7 @@ import (
 )
 
 type JoinMicrotransaction struct {
-	inputQueue         middleware.Middleware
+	inputExchange      *middleware.ExchangeMiddleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
 	results            map[string][]*protobuf.Microtransaction
@@ -23,7 +23,8 @@ type JoinMicrotransaction struct {
 }
 
 type JoinMicrotransactionConfig struct {
-	InputQueueName     string
+	ID                 string
+	InputExchangeName  string
 	ClientExchangeName string
 	MomHost            string
 	MomPort            int
@@ -35,20 +36,23 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 		Hostname: config.MomHost,
 		Port:     config.MomPort,
 	}
+	inputExchangeKeys := []string{
+		fmt.Sprintf("%s.%s", config.InputExchangeName, config.ID),
+	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(config.InputQueueName, connSettings)
+	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputExchangeKeys, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
 	resultExchange, err := middleware.CreateExchangeMiddleware(config.ClientExchangeName, []string{config.ClientExchangeName}, connSettings)
 	if err != nil {
-		inputQueue.Close()
+		inputExchange.Close()
 		return nil, err
 	}
 
 	return &JoinMicrotransaction{
-		inputQueue:         inputQueue,
+		inputExchange:      inputExchange,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
 		results:            make(map[string][]*protobuf.Microtransaction),
@@ -59,7 +63,7 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 func (j *JoinMicrotransaction) Run() error {
 	go j.handleSignals()
 
-	j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	j.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
 	})
 
@@ -95,7 +99,7 @@ func (j *JoinMicrotransaction) handleSignals() {
 	)
 	<-signals
 	slog.Info("shutdown signal received")
-	j.inputQueue.Close()
+	j.inputExchange.Close()
 	j.resultExchange.Close()
 }
 
