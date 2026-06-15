@@ -100,19 +100,19 @@ services:
       MAX_BATCH_WEIGHT: 8000 
 
   max_bank_router_to_join:
-    count: 0
+    count: 2
     worker_type: MAX_BANK_ROUTER_TO_JOIN
     env:
       INPUT_QUEUE_NAME: max_bank_join_input
-      OUTPUT_EXCHANGE_NAME: max_bank_join_input
-      OUTPUT_WORKER_AMOUNT: 1
-      EXPECTED_EOF_AMOUNT: 1
+      OUTPUT_EXCHANGE_NAME: max_bank_join_exchange
+      OUTPUT_WORKER_AMOUNT: 2
+      EXPECTED_EOF_AMOUNT: 2
 
   max_bank_join:
-    count: 1
+    count: 2
     worker_type: MAX_BANK_JOIN
     env:
-      INPUT_QUEUE_NAME: max_bank_join_input
+      INPUT_EXCHANGE_NAME: max_bank_join_exchange
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BANK_WORKER_AMOUNT: 2
     

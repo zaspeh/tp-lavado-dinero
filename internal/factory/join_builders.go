@@ -9,12 +9,12 @@ import (
 )
 
 func buildMaxBankJoinWorker() (workers.Worker, error) {
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
 
-	clienExchangeName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
+	clientExchangeName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -34,9 +34,15 @@ func buildMaxBankJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	config := maxbankjoin.JoinMaxBankConfig{
-		InputQueueName:      inputQueueName,
-		ClientExchangeName:  clienExchangeName,
+		ID:                  id,
+		InputExchangeName:   inputExchangeName,
+		ClientExchangeName:  clientExchangeName,
 		MomHost:             host,
 		MomPort:             port,
 		MaxBankWorkerAmount: maxBankWorkerAmount,

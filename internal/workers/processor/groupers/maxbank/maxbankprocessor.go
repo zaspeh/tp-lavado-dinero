@@ -42,6 +42,8 @@ func (w *MaxBankProcessor) Finalize(clientID string, yield func(result *protobuf
 	store := w.getStore(clientID)
 	reader := store.Reader()
 
+	totalGroups := uint64(0)
+
 	for reader.HasNext() {
 		processedRecord := reader.Get()
 		maxBankResult := &protobuf.MaxBankResult{
@@ -53,12 +55,13 @@ func (w *MaxBankProcessor) Finalize(clientID string, yield func(result *protobuf
 		if err := yield(maxBankResult); err != nil {
 			return 0, err
 		}
+		totalGroups++
 		reader.Next()
 	}
 
 	store.Clear()
 	delete(w.maxBankStores, clientID)
-	return 0, nil
+	return totalGroups, nil
 }
 
 func (w *MaxBankProcessor) Cleanup(clientID string) error {

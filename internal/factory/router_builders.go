@@ -281,6 +281,11 @@ func buildMicrotransactionRouterToJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
 	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
 	if err != nil {
 		return nil, err
@@ -327,7 +332,7 @@ func buildMicrotransactionRouterToJoinWorker() (workers.Worker, error) {
 		id:                 id,
 		workerCount:        workerCount,
 		workerExchangeName: workerExchangeName,
-		expectedEOFs:       1,
+		expectedEOFs:       expectedEOFs,
 		InputQueueName:     inQ,
 		InputMessageType:   protobuf.MessageType_MICROTRANSACTION_BATCH,
 		ExtractInputItems:  protoextractors.GetMicrotransactionBatchItems,
@@ -338,6 +343,11 @@ func buildMicrotransactionRouterToJoinWorker() (workers.Worker, error) {
 
 func buildMaxBankRouterToJoinWorker() (workers.Worker, error) {
 	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +398,7 @@ func buildMaxBankRouterToJoinWorker() (workers.Worker, error) {
 		id:                 id,
 		workerCount:        workerCount,
 		workerExchangeName: workerExchangeName,
-		expectedEOFs:       1,
+		expectedEOFs:       expectedEOFs,
 		InputQueueName:     inQ,
 		InputMessageType:   protobuf.MessageType_MAX_BANK_RESULT_BATCH,
 		ExtractInputItems:  protoextractors.GetMaxBankResultBatchItems,
@@ -404,6 +414,11 @@ func buildAvgByTypeRouterToJoinWorker() (workers.Worker, error) {
 	}
 
 	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +464,7 @@ func buildAvgByTypeRouterToJoinWorker() (workers.Worker, error) {
 		id:                 id,
 		workerCount:        workerCount,
 		workerExchangeName: workerExchangeName,
-		expectedEOFs:       1,
+		expectedEOFs:       expectedEOFs,
 		InputQueueName:     inQ,
 		InputMessageType:   protobuf.MessageType_AVGBYTYPE_RESULT_BATCH,
 		ExtractInputItems:  protoextractors.GetAvgByTypeResultBatchItems,

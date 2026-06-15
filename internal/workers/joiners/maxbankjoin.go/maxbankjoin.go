@@ -12,7 +12,7 @@ import (
 )
 
 type MaxBankJoin struct {
-	inputQueue         middleware.Middleware
+	inputExchange      *middleware.ExchangeMiddleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
 	targetEofCount     int
@@ -20,7 +20,8 @@ type MaxBankJoin struct {
 }
 
 type JoinMaxBankConfig struct {
-	InputQueueName      string
+	ID                  string
+	InputExchangeName   string
 	ClientExchangeName  string
 	MomHost             string
 	MomPort             int
@@ -33,30 +34,34 @@ func NewMaxBankJoin(config JoinMaxBankConfig) (*MaxBankJoin, error) {
 		Port:     config.MomPort,
 	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(config.InputQueueName, connSettings)
+	inputExchangeKeys := []string{
+		fmt.Sprintf("%s.%s", config.InputExchangeName, config.ID),
+	}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputExchangeKeys, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
 	resultExchange, err := middleware.CreateExchangeMiddleware(config.ClientExchangeName, []string{config.ClientExchangeName}, connSettings)
 	if err != nil {
-		inputQueue.Close()
+		inputExchange.Close()
 		return nil, err
 	}
 
 	return &MaxBankJoin{
-		inputQueue:         inputQueue,
+		inputExchange:      inputExchange,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
 		clientEOFs:         make(map[string]int),
-		targetEofCount:     config.MaxBankWorkerAmount,
+		targetEofCount:     1,
 	}, nil
 }
 
 func (j *MaxBankJoin) Run() error {
 	go j.handleSignals()
 
-	j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	j.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
 	})
 
@@ -94,7 +99,7 @@ func (j *MaxBankJoin) handleSignals() {
 
 	slog.Info("shutdown signal received")
 
-	j.inputQueue.Close()
+	j.inputExchange.Close()
 	j.resultExchange.Close()
 }
 
