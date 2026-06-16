@@ -33,6 +33,7 @@ services:
     - RAW_DATA_QUEUE_NAME=raw_transactions
     - MAX_BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
     - LOG_LEVEL=debug
+    - CONVERTER_JOIN_AMOUNT=2
     ports:
     - 8080:8080
     depends_on:

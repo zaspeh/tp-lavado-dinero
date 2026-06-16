@@ -18,14 +18,15 @@ import (
 )
 
 type GatewayConfig struct {
-	ServerHost         string
-	ServerPort         string
-	MomHost            string
-	MomPort            int
-	CurrencyQueueName  string
-	RawDataQueueName   string
-	ClientExchangeName string
-	MaxBankRouterQueue string
+	ServerHost          string
+	ServerPort          string
+	MomHost             string
+	MomPort             int
+	CurrencyQueueName   string
+	RawDataQueueName    string
+	ClientExchangeName  string
+	MaxBankRouterQueue  string
+	ConverterJoinAmount int
 }
 
 type Gateway struct {
@@ -99,6 +100,7 @@ func (gateway *Gateway) handleIncomingConnection(conn net.Conn) {
 		ClientExchangeName:      gateway.config.ClientExchangeName,
 		RawDataQueueName:        gateway.config.RawDataQueueName,
 		MaxBankRouterQueue:      gateway.config.MaxBankRouterQueue,
+		ConverterJoinAmount:     gateway.config.ConverterJoinAmount,
 	}
 
 	client, err := clientconnection.New(config)

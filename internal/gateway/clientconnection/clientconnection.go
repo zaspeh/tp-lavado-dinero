@@ -18,7 +18,7 @@ import (
 
 const (
 	// TODO CAMBIAR A ENV VAR DESPUES
-	eofAmountExpected = 8
+	eofAmountExpected = 9
 )
 
 type ClientConnectionConfig struct {
@@ -31,22 +31,25 @@ type ClientConnectionConfig struct {
 	ClientExchangeName      string
 	MaxBatchWeight          int
 	MaxBankRouterQueue      string
+	ConverterJoinAmount     int
 }
 
 type ClientConnection struct {
-	id                  string
-	protocol            *external.ExternalProtocol
-	currencyFilterQueue m.Middleware
-	rawDataQueue        m.Middleware
-	maxBankRouter       m.Middleware
-	resultExchange      *m.ExchangeMiddleware
-	EOFamountReceived   int
-	transactionCounter  int
-	accountsCounter     int
-	MaxBatchWeight      int
-	transactionBatcher  *batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
-	rawDataBatcher      *batch.Batcher[*protobuf.ToConvertTransaction, *protobuf.ToConvertTransactionBatch]
-	accountBatcher      *batch.Batcher[*protobuf.MaxBank, *protobuf.MaxBankBatch]
+	id                   string
+	protocol             *external.ExternalProtocol
+	currencyFilterQueue  m.Middleware
+	rawDataQueue         m.Middleware
+	maxBankRouter        m.Middleware
+	resultExchange       *m.ExchangeMiddleware
+	EOFamountReceived    int
+	transactionCounter   int
+	accountsCounter      int
+	MaxBatchWeight       int
+	transactionBatcher   *batch.Batcher[*protobuf.Transaction, *protobuf.TransactionBatch]
+	rawDataBatcher       *batch.Batcher[*protobuf.ToConvertTransaction, *protobuf.ToConvertTransactionBatch]
+	accountBatcher       *batch.Batcher[*protobuf.MaxBank, *protobuf.MaxBankBatch]
+	micropaymentsCount   int64
+	converterJoinAumount int
 }
 
 func New(config ClientConnectionConfig) (*ClientConnection, error) {
@@ -84,13 +87,15 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 	}
 
 	return &ClientConnection{
-		id:                  config.ID,
-		protocol:            config.Protocol,
-		currencyFilterQueue: currencyFilterQueue,
-		resultExchange:      resultExchange,
-		rawDataQueue:        rawDataQueue,
-		maxBankRouter:       maxBankRouterQueue,
-		transactionCounter:  0,
+		id:                   config.ID,
+		protocol:             config.Protocol,
+		currencyFilterQueue:  currencyFilterQueue,
+		resultExchange:       resultExchange,
+		rawDataQueue:         rawDataQueue,
+		maxBankRouter:        maxBankRouterQueue,
+		transactionCounter:   0,
+		micropaymentsCount:   0,
+		converterJoinAumount: config.ConverterJoinAmount,
 	}, nil
 }
 
@@ -394,15 +399,24 @@ func (cc *ClientConnection) handleMaxBankResult(moneyLaundering *protobuf.MoneyL
 }
 
 func (cc *ClientConnection) handleConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
-	externalMsg, err := messagehandler.ProtoToConvertedMicroPaymentResult(moneyLaundering)
+	deserializeMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ConvertedMicroPaymentResult{})
 	if err != nil {
 		nack()
 		return
 	}
 
-	if err := cc.protocol.SendConvertedMicroPaymentResult(externalMsg); err != nil {
-		nack()
-		return
+	cc.micropaymentsCount += deserializeMsg.GetCount()
+	cc.converterJoinAumount -= 1
+
+	if cc.converterJoinAumount == 0 {
+		slog.Info("Received all converted micro payment results, sending final result to client", "clientID", cc.id, "totalMicropayments", cc.micropaymentsCount)
+		finalResult := &result.ConvertedMicroPaymentResult{
+			Count: cc.micropaymentsCount,
+		}
+		if err := cc.protocol.SendConvertedMicroPaymentResult(finalResult); err != nil {
+			nack()
+			return
+		}
 	}
 	ack()
 }

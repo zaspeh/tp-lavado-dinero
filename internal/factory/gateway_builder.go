@@ -45,15 +45,21 @@ func buildGateway() (*gateway.Gateway, error) {
 		return nil, err
 	}
 
+	converterJoinAmount, err := getEnvIntStrict("CONVERTER_JOIN_AMOUNT")
+	if err != nil {
+		return nil, err
+	}
+
 	config := gateway.GatewayConfig{
-		CurrencyQueueName:  USDQueueName,
-		ClientExchangeName: outputQueueName,
-		RawDataQueueName:   rawDataQueueName,
-		MaxBankRouterQueue: maxBankRouterQueueName,
-		ServerHost:         serverHost,
-		ServerPort:         serverPort,
-		MomHost:            momHost,
-		MomPort:            momPort,
+		CurrencyQueueName:   USDQueueName,
+		ClientExchangeName:  outputQueueName,
+		RawDataQueueName:    rawDataQueueName,
+		MaxBankRouterQueue:  maxBankRouterQueueName,
+		ServerHost:          serverHost,
+		ServerPort:          serverPort,
+		MomHost:             momHost,
+		MomPort:             momPort,
+		ConverterJoinAmount: converterJoinAmount,
 	}
 
 	return gateway.New(config)

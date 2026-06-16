@@ -7,6 +7,7 @@ gateway:
     CLIENT_EXCHANGE_NAME: client_results_exchange
     MAX_BANK_ROUTER_QUEUE_NAME: bank_router_input_queue
     RAW_DATA_QUEUE_NAME: raw_transactions
+    CONVERTER_JOIN_AMOUNT: 2
   port: 8080
   
 rabbitmq:
@@ -252,27 +253,27 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 1
+    count: 2
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
-      OUTPUT_QUEUE_NAME: conversion_join_input_queue
+      OUTPUT_QUEUE_NAME: converted_amount_router_join_input
       AMOUNT_TO_FILTER: 1.00
 
   converted_amount_router_to_join:
-    count: 0
+    count: 2
     worker_type: CONVERTED_AMOUNT_ROUTER_TO_JOIN
     env:
       INPUT_QUEUE_NAME: converted_amount_router_join_input
       OUTPUT_EXCHANGE_NAME: converted_amount_output
-      OUTPUT_WORKER_AMOUNT: 1
+      OUTPUT_WORKER_AMOUNT: 2
       EXPECTED_EOF_AMOUNT: 1
 
   converter_join:
-    count: 1
+    count: 2
     worker_type: CONVERSION_JOIN
     env:
-      INPUT_QUEUE_NAME: conversion_join_input_queue
+      INPUT_EXCHANGE_NAME: converted_amount_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
   
   suspicious_path_router_to_join:

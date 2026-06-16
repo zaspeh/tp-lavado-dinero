@@ -142,7 +142,7 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +152,14 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	config := conversionjoin.ConversionJoinConfig{
-		InputQueueName:     inputQueueName,
+		ID:                 id,
+		InputExchangeName:  inputExchangeName,
 		ClientExchangeName: clientExchangeName,
 		MomHost:            host,
 		MomPort:            port,

@@ -13,14 +13,15 @@ import (
 )
 
 type ConversionJoinConfig struct {
-	InputQueueName     string
+	ID                 string
+	InputExchangeName  string
 	ClientExchangeName string
 	MomHost            string
 	MomPort            int
 }
 
 type ConversionJoin struct {
-	inputQueue         middleware.Middleware
+	inputExchange      *middleware.ExchangeMiddleware
 	resultExchange     *middleware.ExchangeMiddleware
 	clientExchangeName string
 	clientResults      map[string]int
@@ -32,19 +33,23 @@ func NewConversionJoin(config ConversionJoinConfig) (*ConversionJoin, error) {
 		Port:     config.MomPort,
 	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(config.InputQueueName, connSettings)
+	inputExchangeKeys := []string{
+		fmt.Sprintf("%s.%s", config.InputExchangeName, config.ID),
+	}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputExchangeKeys, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
 	resultExchange, err := middleware.CreateExchangeMiddleware(config.ClientExchangeName, []string{config.ClientExchangeName}, connSettings)
 	if err != nil {
-		inputQueue.Close()
+		inputExchange.Close()
 		return nil, err
 	}
 
 	return &ConversionJoin{
-		inputQueue:         inputQueue,
+		inputExchange:      inputExchange,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
 		clientResults:      make(map[string]int),
@@ -54,7 +59,7 @@ func NewConversionJoin(config ConversionJoinConfig) (*ConversionJoin, error) {
 func (j *ConversionJoin) Run() error {
 	go j.handleSignals()
 
-	err := j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	err := j.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
 	})
 
@@ -87,7 +92,7 @@ func (j *ConversionJoin) handleSignals() {
 	)
 	<-signals
 	slog.Info("shutdown signal received")
-	j.inputQueue.Close()
+	j.inputExchange.Close()
 	j.resultExchange.Close()
 }
 
