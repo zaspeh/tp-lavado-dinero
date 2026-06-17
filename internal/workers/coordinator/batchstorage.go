@@ -1,100 +1,140 @@
+// storage.go — solo persistencia, sin mezcla de responsabilidades
 package coordinator
 
 import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
-	"sync"
 )
 
 const (
-	splitSeparator  = "|"
-	registerColumns = 2
-	clientIDIndex   = 0
-	batchIDIndex    = 1
-	registerFormat  = "%s|%s\n"
+	batchSeparator = "|"
+	batchColumns   = 4
+	batchFormat    = "%s|%s|%d|%d\n"
+	eofFormat      = "%s|%s\n"
+	clientIDIndex  = 0
+	batchIDIndex   = 1
+	eofIDIndex     = 1
+	processedIndex = 2
+	survivorsIndex = 3
 )
 
+type BatchRecord struct {
+	BatchID   string
+	Processed uint64
+	Survivors uint64
+}
+
 type BatchStorage struct {
-	mu     sync.RWMutex
-	seen   map[string]map[string]bool // clientID -> batchID -> bool
-	file   *os.File
-	writer *bufio.Writer
+	batchFile   *os.File
+	batchWriter *bufio.Writer
+	eofFile     *os.File
+	eofWriter   *bufio.Writer
 }
 
 func NewBatchStorage(workerName string, workerID int) (*BatchStorage, error) {
-	// TODO: evaluar si es mejor obtener path de env vars
-	path := fmt.Sprintf("/storage/%s-%d/seen_batches.log", workerName, workerID)
-	if err := os.MkdirAll(fmt.Sprintf("/storage/%s-%d", workerName, workerID), 0755); err != nil {
+	dir := fmt.Sprintf("/storage/%s-%d", workerName, workerID)
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	batchFile, err := os.OpenFile(fmt.Sprintf("%s/batches.log", dir), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
 
-	sb := &BatchStorage{
-		seen:   make(map[string]map[string]bool),
-		file:   f,
-		writer: bufio.NewWriter(f),
-	}
-
-	// Si me cai y reinicio, cargo informacion de disco
-	if err := sb.loadFromDisk(); err != nil {
+	eofFile, err := os.OpenFile(fmt.Sprintf("%s/eofs.log", dir), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		batchFile.Close()
 		return nil, err
 	}
 
-	return sb, nil
+	return &BatchStorage{
+		batchFile:   batchFile,
+		batchWriter: bufio.NewWriter(batchFile),
+		eofFile:     eofFile,
+		eofWriter:   bufio.NewWriter(eofFile),
+	}, nil
 }
 
-func (sb *BatchStorage) loadFromDisk() error {
-	if _, err := sb.file.Seek(0, 0); err != nil {
-		return err
+// LoadBatches deberia ser llamado solo al arrancar, no hay RC
+func (s *BatchStorage) LoadBatches() (map[string]map[string]BatchRecord, error) {
+	if _, err := s.batchFile.Seek(0, 0); err != nil {
+		return nil, err
 	}
-	scanner := bufio.NewScanner(sb.file)
+
+	result := make(map[string]map[string]BatchRecord)
+	scanner := bufio.NewScanner(s.batchFile)
 	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, splitSeparator)
-		if len(parts) != registerColumns {
+		parts := strings.Split(scanner.Text(), batchSeparator)
+		if len(parts) != batchColumns {
 			continue
 		}
 		clientID, batchID := parts[clientIDIndex], parts[batchIDIndex]
-		if sb.seen[clientID] == nil {
-			sb.seen[clientID] = make(map[string]bool)
+		processed, err := strconv.ParseUint(parts[processedIndex], 10, 64)
+		if err != nil {
+			continue
 		}
-		sb.seen[clientID][batchID] = true
+		survivors, err := strconv.ParseUint(parts[survivorsIndex], 10, 64)
+		if err != nil {
+			continue
+		}
+		if result[clientID] == nil {
+			result[clientID] = make(map[string]BatchRecord)
+		}
+		result[clientID][batchID] = BatchRecord{
+			BatchID:   batchID,
+			Processed: processed,
+			Survivors: survivors,
+		}
 	}
-	return scanner.Err()
+	return result, scanner.Err()
 }
 
-func (sb *BatchStorage) HasSeen(clientID, batchID string) bool {
-	sb.mu.RLock()
-	defer sb.mu.RUnlock()
-	return sb.seen[clientID][batchID]
+// LoadEOFs reconstruye los EOFs vistos al arrancar, no hay RC
+func (s *BatchStorage) LoadEOFs() (map[string]map[string]bool, error) {
+	if _, err := s.eofFile.Seek(0, 0); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]map[string]bool)
+	scanner := bufio.NewScanner(s.eofFile)
+	for scanner.Scan() {
+		parts := strings.Split(scanner.Text(), batchSeparator)
+		if len(parts) != 2 {
+			continue
+		}
+		clientID, eofID := parts[clientIDIndex], parts[eofIDIndex]
+		if result[clientID] == nil {
+			result[clientID] = make(map[string]bool)
+		}
+		result[clientID][eofID] = true
+	}
+	return result, scanner.Err()
 }
 
-func (sb *BatchStorage) MarkSeen(clientID, batchID string) error {
-	sb.mu.Lock()
-	defer sb.mu.Unlock()
-
-	if sb.seen[clientID] == nil {
-		sb.seen[clientID] = make(map[string]bool)
-	}
-	sb.seen[clientID][batchID] = true
-
-	// TODO: short write?
-	_, err := fmt.Fprintf(sb.writer, registerFormat, clientID, batchID)
+func (s *BatchStorage) WriteBatch(clientID string, record BatchRecord) error {
+	_, err := fmt.Fprintf(s.batchWriter, batchFormat,
+		clientID, record.BatchID, record.Processed, record.Survivors)
 	if err != nil {
 		return err
 	}
-
-	// TODO: evaluar almacen de Batches y flush eventual manual.
-	return sb.writer.Flush()
+	return s.batchWriter.Flush()
 }
 
-func (sb *BatchStorage) Close() error {
-	sb.writer.Flush()
-	return sb.file.Close()
+func (s *BatchStorage) WriteEOF(clientID, eofID string) error {
+	_, err := fmt.Fprintf(s.eofWriter, eofFormat, clientID, eofID)
+	if err != nil {
+		return err
+	}
+	return s.eofWriter.Flush()
+}
+
+func (s *BatchStorage) Close() error {
+	s.batchWriter.Flush()
+	s.eofWriter.Flush()
+	s.batchFile.Close()
+	return s.eofFile.Close()
 }
