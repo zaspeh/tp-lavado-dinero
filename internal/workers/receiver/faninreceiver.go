@@ -58,7 +58,10 @@ func (r *FanInReceiver[T]) consume(msg m.Message, ack, nack func(), internalChan
 		nack()
 		return
 	}
-	event := Event[T]{ClientID: moneyLaundry.GetClientID()}
+	event := Event[T]{
+		EventID:  moneyLaundry.GetBatchID(),
+		ClientID: moneyLaundry.GetClientID(),
+	}
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_EOF_:
 		event.Type = EOFMessage

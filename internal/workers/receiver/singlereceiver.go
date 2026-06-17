@@ -34,7 +34,10 @@ func (r *SingleReceiver[T]) Receive(handler func(event Event[T]) error) error {
 			return
 		}
 
-		event := Event[T]{ClientID: moneyLaundry.GetClientID()}
+		event := Event[T]{
+			EventID:  moneyLaundry.GetBatchID(),
+			ClientID: moneyLaundry.GetClientID(),
+		}
 
 		switch moneyLaundry.GetType() {
 		case protobuf.MessageType_EOF_:
