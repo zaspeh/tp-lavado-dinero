@@ -13,4 +13,5 @@ message EOFCoordination {
   bool   eof_arrived = 7;
   uint32 eof_seen = 8;
   string eofID = 9;
+  string batchID = 10;
 }

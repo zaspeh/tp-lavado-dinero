@@ -8,8 +8,8 @@ type FlushHandler func(clientID string, survivorCount uint64, eventID string) er
 type Coordinator interface {
 	Run() error
 	Close() error
-	RecordProcessed(clientID string) error
-	RecordSurvivor(clientID string) error
+	RecordBatch(clientID, batchID string, processed, survivors uint64) error
+	HasSeenBatch(clientID, batchID string) bool
 	IsLeader() bool
 	SetFlushHandler(handler FlushHandler)
 	HandleLocalEOF(clientID string, eofCount uint64, eventID string) error

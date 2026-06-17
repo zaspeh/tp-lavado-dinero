@@ -63,11 +63,18 @@ func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 }
 
 func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, batchID string) error {
+	if e.coordinator.HasSeenBatch(clientID, batchID) {
+		slog.Debug("Skipping already processed batch", "clientID", clientID, "batchID", batchID)
+		return nil
+	}
+
+	var survivors uint64
 	for _, item := range data {
 		results, err := e.processor.Process(clientID, item)
 		if err != nil {
 			return err
 		}
+
 		for _, result := range results {
 			if err := e.sender.Add(clientID, result, batchID); err != nil {
 				return err
@@ -75,17 +82,17 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, bat
 		}
 
 		if len(results) > 0 {
-			if err := e.coordinator.RecordSurvivor(clientID); err != nil {
-				return err
-			}
-		}
-
-		if err := e.coordinator.RecordProcessed(clientID); err != nil {
-			return err
+			survivors++
 		}
 	}
 
-	return e.sender.Flush(clientID)
+	processed := uint64(len(data))
+
+	if err := e.sender.Flush(clientID); err != nil {
+		return err
+	}
+
+	return e.coordinator.RecordBatch(clientID, batchID, processed, survivors)
 }
 
 func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64, eofID string) error {

@@ -31,6 +31,7 @@ type EOFCoordination struct {
 	EofArrived     bool                   `protobuf:"varint,7,opt,name=eof_arrived,json=eofArrived,proto3" json:"eof_arrived,omitempty"`
 	EofSeen        uint32                 `protobuf:"varint,8,opt,name=eof_seen,json=eofSeen,proto3" json:"eof_seen,omitempty"`
 	EofID          string                 `protobuf:"bytes,9,opt,name=eofID,proto3" json:"eofID,omitempty"`
+	BatchID        string                 `protobuf:"bytes,10,opt,name=batchID,proto3" json:"batchID,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -121,11 +122,18 @@ func (x *EOFCoordination) GetEofID() string {
 	return ""
 }
 
+func (x *EOFCoordination) GetBatchID() string {
+	if x != nil {
+		return x.BatchID
+	}
+	return ""
+}
+
 var File_internal_common_inner_protobuf_protomessages_coordination_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDesc = "" +
 	"\n" +
-	"?internal/common/inner/protobuf/protomessages/coordination.proto\x12\bprotobuf\"\x94\x02\n" +
+	"?internal/common/inner/protobuf/protomessages/coordination.proto\x12\bprotobuf\"\xae\x02\n" +
 	"\x0fEOFCoordination\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\rR\bsenderId\x12'\n" +
@@ -135,7 +143,9 @@ const file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDe
 	"\veof_arrived\x18\a \x01(\bR\n" +
 	"eofArrived\x12\x19\n" +
 	"\beof_seen\x18\b \x01(\rR\aeofSeen\x12\x14\n" +
-	"\x05eofID\x18\t \x01(\tR\x05eofIDB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x05eofID\x18\t \x01(\tR\x05eofID\x12\x18\n" +
+	"\abatchID\x18\n" +
+	" \x01(\tR\abatchIDB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescOnce sync.Once

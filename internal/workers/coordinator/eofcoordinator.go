@@ -10,9 +10,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
-const (
-	defaultExpectedEOFs = 1
-)
+const defaultExpectedEOFs = 1
 
 type EOFCoordinatorConfig struct {
 	PeersExchangeName string
@@ -23,27 +21,12 @@ type EOFCoordinatorConfig struct {
 	FlushHandler      FlushHandler
 }
 
-type peerCount struct {
-	processed uint64
-	survivors uint64
-	eofSeen   uint32
-}
-
-type clientState struct {
-	localProcessed uint64
-	localSurvivors uint64
-	eofSeenLocal   uint32
-	expectedTotal  uint64
-	eofID          string // Me quedo con el ultimo que llegue
-	peerCount      map[int]peerCount
-	flushed        bool
-}
-
 type EOFCoordinator struct {
 	workerID     int
 	expectedEOFs uint32
 	publishKeys  []string
 	exchange     *m.ExchangeMiddleware
+	storage      *BatchStorage
 	flushHandler FlushHandler
 	mu           sync.Mutex
 	clients      map[string]*clientState
@@ -61,22 +44,67 @@ func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 		if i == config.WorkerID {
 			continue
 		}
-		key := fmt.Sprintf("%s.%d", config.PeersExchangeName, i)
-		publishKeys = append(publishKeys, key)
+		publishKeys = append(publishKeys, fmt.Sprintf("%s.%d", config.PeersExchangeName, i))
 	}
 
 	if config.ExpectedEOFs == 0 {
 		config.ExpectedEOFs = defaultExpectedEOFs
 	}
 
-	return &EOFCoordinator{
+	storage, err := NewBatchStorage(config.PeersExchangeName, config.WorkerID)
+	if err != nil {
+		exchange.Close()
+		return nil, err
+	}
+
+	coord := &EOFCoordinator{
 		workerID:     config.WorkerID,
 		expectedEOFs: uint32(config.ExpectedEOFs),
 		publishKeys:  publishKeys,
 		exchange:     exchange,
+		storage:      storage,
 		flushHandler: config.FlushHandler,
 		clients:      make(map[string]*clientState),
-	}, nil
+	}
+
+	if err := coord.restoreFromStorage(); err != nil {
+		storage.Close()
+		exchange.Close()
+		return nil, err
+	}
+
+	return coord, nil
+}
+
+// restoreFromStorage reconstruye el estado en memoria desde disco.
+// Se llama solo en init, antes de procesar cualquier mensaje.
+func (c *EOFCoordinator) restoreFromStorage() error {
+	batches, err := c.storage.LoadBatches()
+	if err != nil {
+		return err
+	}
+	eofs, err := c.storage.LoadEOFs()
+	if err != nil {
+		return err
+	}
+
+	for clientID, clientBatches := range batches {
+		state := c.getClientState(clientID)
+		for _, record := range clientBatches {
+			state.addOwnBatch(record)
+		}
+	}
+
+	for clientID, clientEOFs := range eofs {
+		state := c.getClientState(clientID)
+		for eofID := range clientEOFs {
+			// expectedTotal se re-sincroniza cuando llega el EOF por red,
+			// los EOFs propios persistidos solo marcan que ya los vimos
+			state.seenEOFs[eofID] = true
+		}
+	}
+
+	return nil
 }
 
 func (c *EOFCoordinator) SetFlushHandler(handler FlushHandler) {
@@ -90,38 +118,37 @@ func (c *EOFCoordinator) Run() error {
 	return nil
 }
 
-func (c *EOFCoordinator) RecordProcessed(clientID string) error {
+// HasSeenBatch es consultado por el engine antes de contar un batch.
+func (c *EOFCoordinator) HasSeenBatch(clientID, batchID string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
 	state := c.getClientState(clientID)
-	state.localProcessed++
-
-	if state.eofSeenLocal < c.expectedEOFs {
-		return nil
-	}
-
-	if err := c.broadcastEOFCoordination(clientID, state, false, 0); err != nil {
-		return err
-	}
-
-	return c.tryFlush(clientID, state)
+	return state.hasOwnBatch(batchID)
 }
 
-func (c *EOFCoordinator) RecordSurvivor(clientID string) error {
+// RecordBatch registra un batch propio. El payload del batch se comparte con
+// peers solo cuando la barrera de EOF ya esta activa.
+func (c *EOFCoordinator) RecordBatch(clientID, batchID string, processed, survivors uint64) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	state := c.getClientState(clientID)
-	state.localSurvivors++
-
-	if state.eofSeenLocal < c.expectedEOFs {
+	if state.hasOwnBatch(batchID) {
 		return nil
 	}
 
-	if err := c.broadcastEOFCoordination(clientID, state, false, 0); err != nil {
+	record := BatchRecord{BatchID: batchID, Processed: processed, Survivors: survivors}
+	shouldBroadcast := state.hasAllEOFs(c.expectedEOFs)
+
+	if shouldBroadcast {
+		if err := c.broadcastBatch(clientID, record); err != nil {
+			return err
+		}
+	}
+	if err := c.storage.WriteBatch(clientID, record); err != nil {
 		return err
 	}
+	state.addOwnBatch(record)
 
 	return c.tryFlush(clientID, state)
 }
@@ -132,21 +159,30 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64, e
 
 	slog.Info("Handling local EOF", "clientID", clientID, "expectedTotal", expectedTotal)
 	state := c.getClientState(clientID)
-	state.eofSeenLocal++
-	state.eofID = eofID
-	state.expectedTotal += expectedTotal
 
-	slog.Debug("Handling local EOF - current state", "clientID", clientID, "state", state)
-	if err := c.broadcastEOFCoordination(clientID, state, true, expectedTotal); err != nil {
+	if state.hasSeenEOF(eofID) {
+		slog.Debug("Ignoring duplicate local EOF", "clientID", clientID, "eofID", eofID)
+		return nil
+	}
+
+	if err := c.broadcastEOF(clientID, eofID, expectedTotal); err != nil {
 		return err
 	}
+
+	if state.wouldHaveAllEOFs(c.expectedEOFs) {
+		if err := c.broadcastOwnBatches(clientID, state); err != nil {
+			return err
+		}
+	}
+	if err := c.storage.WriteEOF(clientID, eofID); err != nil {
+		return err
+	}
+
+	state.markEOFSeen(eofID, expectedTotal)
 
 	return c.tryFlush(clientID, state)
 }
 
-// Logica para que los workers se fijen si enviar o no
-// el eofa los nodos siguientes en el flujo. a cambiar cuanda
-// exista eleccion de lider
 func (c *EOFCoordinator) IsLeader() bool {
 	return c.workerID == 0
 }
@@ -154,86 +190,116 @@ func (c *EOFCoordinator) IsLeader() bool {
 func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func()) {
 	progressMsg, err := serializer.DeserializeCoordinationMessage(msg)
 	if err != nil {
-		slog.Debug("Failed to deserialize EOF progress message", "error", err)
+		slog.Debug("Failed to deserialize coordination message", "error", err)
 		nack()
 		return
 	}
-	slog.Debug("Received EOF progress message", "message", progressMsg, "from", progressMsg.GetSenderId())
+
+	var handleErr error
 	if progressMsg.GetEofArrived() {
-		if err := c.handleRemoteEOF(progressMsg); err != nil {
-			slog.Debug("Failed to handle remote EOF message", "error", err)
-			nack()
-			return
-		}
-		ack()
-		return
+		handleErr = c.handleRemoteEOF(progressMsg)
+	} else {
+		handleErr = c.handleRemoteBatch(progressMsg)
 	}
 
-	if err := c.handlePeerCount(progressMsg); err != nil {
-		slog.Debug("Failed to handle remote EOF progress message", "error", err)
+	if handleErr != nil {
+		slog.Debug("Failed to handle coordination message", "error", handleErr)
 		nack()
 		return
 	}
-
 	ack()
 }
 
-func (c *EOFCoordinator) handleRemoteEOF(progressMsg *protobuf.EOFCoordination) error {
+func (c *EOFCoordinator) handleRemoteEOF(msg *protobuf.EOFCoordination) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	clientID := progressMsg.GetClientId()
-	state := c.getClientState(clientID)
-	state.eofSeenLocal++
-	state.expectedTotal += progressMsg.GetExpectedTotal()
-	state.eofID = progressMsg.GetEofID()
-	c.updateCount(progressMsg)
-
-	// Comunicamos estado actual a los otros nodos para que actualicen conteo
-	if err := c.broadcastEOFCoordination(clientID, state, false, 0); err != nil {
-		return err
+	clientID := msg.GetClientId()
+	eofID := msg.GetEofID()
+	if eofID == "" {
+		eofID = fmt.Sprintf("peer-%d-empty-eof", msg.GetSenderId())
 	}
+	state := c.getClientState(clientID)
+
+	if state.hasSeenEOF(eofID) {
+		slog.Debug("Ignoring duplicate remote EOF", "clientID", clientID, "eofID", eofID)
+		return nil
+	}
+
+	if state.wouldHaveAllEOFs(c.expectedEOFs) {
+		if err := c.broadcastOwnBatches(clientID, state); err != nil {
+			return err
+		}
+	}
+
+	state.markEOFSeen(eofID, msg.GetExpectedTotal())
 
 	return c.tryFlush(clientID, state)
 }
 
-func (c *EOFCoordinator) updateCount(coordinationMsg *protobuf.EOFCoordination) {
-	clientID := coordinationMsg.GetClientId()
-	state := c.getClientState(clientID)
-	state.peerCount[int(coordinationMsg.GetSenderId())] = peerCount{
-		processed: coordinationMsg.GetProcessedCount(),
-		survivors: coordinationMsg.GetSurvivorCount(),
-		eofSeen:   coordinationMsg.GetEofSeen(),
-	}
-}
-
-func (c *EOFCoordinator) handlePeerCount(coordinationMsg *protobuf.EOFCoordination) error {
+func (c *EOFCoordinator) handleRemoteBatch(msg *protobuf.EOFCoordination) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.updateCount(coordinationMsg)
-	clientID := coordinationMsg.GetClientId()
+	clientID := msg.GetClientId()
+	batchID := msg.GetBatchID()
+	peerID := int(msg.GetSenderId())
+
 	state := c.getClientState(clientID)
+
+	// Si el batch ya es nuestro, el peer procesó un duplicado de rabbit.
+	// Lo ignoramos: nuestro conteo ya es correcto.
+	if state.hasOwnBatch(batchID) {
+		return nil
+	}
+
+	record := BatchRecord{
+		BatchID:   batchID,
+		Processed: msg.GetProcessedCount(),
+		Survivors: msg.GetSurvivorCount(),
+	}
+	state.addPeerBatch(peerID, record)
+
 	return c.tryFlush(clientID, state)
 }
 
-func (c *EOFCoordinator) broadcastEOFCoordination(clientID string, state *clientState, eofArrived bool, totalToAdd uint64) error {
-	coordinationMsg := &protobuf.EOFCoordination{
+func (c *EOFCoordinator) broadcastBatch(clientID string, record BatchRecord) error {
+	msg := &protobuf.EOFCoordination{
 		ClientId:       clientID,
 		SenderId:       uint32(c.workerID),
-		ProcessedCount: state.localProcessed,
-		SurvivorCount:  state.localSurvivors,
-		ExpectedTotal:  totalToAdd,
-		EofArrived:     eofArrived,
-		EofSeen:        state.eofSeenLocal,
-		EofID:          state.eofID,
+		BatchID:        record.BatchID,
+		ProcessedCount: record.Processed,
+		SurvivorCount:  record.Survivors,
 	}
-	message, err := serializer.SerializeCoordinationMessage(coordinationMsg)
+	return c.broadcast(msg)
+}
+
+func (c *EOFCoordinator) broadcastEOF(clientID, eofID string, expectedTotal uint64) error {
+	msg := &protobuf.EOFCoordination{
+		ClientId:      clientID,
+		SenderId:      uint32(c.workerID),
+		EofArrived:    true,
+		EofID:         eofID,
+		ExpectedTotal: expectedTotal,
+	}
+	return c.broadcast(msg)
+}
+
+func (c *EOFCoordinator) broadcastOwnBatches(clientID string, state *clientState) error {
+	for _, record := range state.ownBatches {
+		if err := c.broadcastBatch(clientID, record); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *EOFCoordinator) broadcast(msg *protobuf.EOFCoordination) error {
+	message, err := serializer.SerializeCoordinationMessage(msg)
 	if err != nil {
 		return err
 	}
 	for _, key := range c.publishKeys {
-		slog.Debug("Broadcasting to key", "key", key)
 		if err := c.exchange.SendWithKey(key, message); err != nil {
 			return err
 		}
@@ -241,48 +307,34 @@ func (c *EOFCoordinator) broadcastEOFCoordination(clientID string, state *client
 	return nil
 }
 
+func (c *EOFCoordinator) getClientState(clientID string) *clientState {
+	state, ok := c.clients[clientID]
+	if !ok {
+		state = newClientState()
+		c.clients[clientID] = state
+	}
+	return state
+}
+
 func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
-	slog.Debug("Trying FLush")
-	if state.flushed {
-		slog.Debug("Already flushed", "clientID", clientID)
-		return nil
-	}
-	if state.eofSeenLocal < c.expectedEOFs {
-		slog.Debug("Seen Local < expectedEofs", "seen", state.eofSeenLocal, "expected", c.expectedEOFs)
+	processed, totalSurvivors := state.totals()
+	if !state.isReadyToFlush(c.expectedEOFs) {
+		slog.Debug("Not ready to flush", "clientID", clientID, "eofCount", state.eofCount,
+			"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", state.expectedTotal)
 		return nil
 	}
 
-	totalProcessed := state.localProcessed
-	totalSurvivors := state.localSurvivors
-
-	for _, peer := range state.peerCount {
-		totalProcessed += peer.processed
-		totalSurvivors += peer.survivors
-	}
-
-	if totalProcessed < state.expectedTotal {
-		slog.Debug("totalProcesed < expectedTotal", "processed", totalProcessed, "expected", state.expectedTotal)
-		return nil
-	}
-
-	if err := c.flushHandler(clientID, totalSurvivors, state.eofID); err != nil {
+	if err := c.flushHandler(clientID, totalSurvivors, state.lastEOFID); err != nil {
 		return err
 	}
 	state.flushed = true
 	return nil
 }
 
-func (c *EOFCoordinator) getClientState(clientID string) *clientState {
-	state, ok := c.clients[clientID]
-	if ok {
-		return state
-	}
-
-	state = &clientState{peerCount: make(map[int]peerCount)}
-	c.clients[clientID] = state
-	return state
-}
-
 func (c *EOFCoordinator) Close() error {
-	return c.exchange.Close()
+	if err := c.exchange.Close(); err != nil {
+		c.storage.Close()
+		return err
+	}
+	return c.storage.Close()
 }

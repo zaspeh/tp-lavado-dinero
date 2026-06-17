@@ -26,6 +26,14 @@ func (c *AloneCoordinator) RecordSurvivor(clientID string) error {
 	return nil
 }
 
+func (c *AloneCoordinator) RecordBatch(clientID, batchID string, processed, survivors uint64) error {
+	return nil
+}
+
+func (c *AloneCoordinator) HasSeenBatch(clientID, batchID string) bool {
+	return false
+}
+
 func (c *AloneCoordinator) HandleLocalEOF(clientID string, count uint64, eofID string) error {
 	newEofID := fmt.Sprintf("%s-%d", eofID, c.workerID)
 	return c.flushHandler(clientID, count, newEofID)
