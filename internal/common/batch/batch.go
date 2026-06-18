@@ -12,7 +12,8 @@ type Sizer[T any] func(T) int
 type Wrapper[T any, V any] func(items []T) V
 
 type Batch[T any, V any] struct {
-	id            string
+	baseID        string
+	subID         string
 	maxWeight     int
 	currentWeight int
 	items         []T

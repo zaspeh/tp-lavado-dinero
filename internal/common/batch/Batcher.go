@@ -22,25 +22,26 @@ func (s *Batcher[T, V]) SetNewBatchId(batchID string) {
 	}
 
 	// si es el mismo que ya tenia, no hago nada
-	if batchID == s.batch.id {
+	if batchID == s.batch.baseID {
 		return
 	}
 
-	s.batch.id = batchID
+	s.batch.baseID = batchID
+	s.batch.subID = batchID
 	s.batchFlushed = 0
 }
 
 func (s *Batcher[T, V]) Add(item T) error {
 	if !s.batch.TryAdd(item) {
-		if err := s.onFlush(s.batch.Flush(), s.batch.id); err != nil {
+		if err := s.onFlush(s.batch.Flush(), s.batch.subID); err != nil {
 			return err
 		}
 		if !s.batch.TryAdd(item) {
 			return fmt.Errorf("item exceeds max batch size")
 		}
 		s.batchFlushed++
-		newBatchId := fmt.Sprintf("%s-%d", s.batch.id, s.batchFlushed)
-		s.batch.id = newBatchId
+		newBatchId := fmt.Sprintf("%s-%d", s.batch.baseID, s.batchFlushed)
+		s.batch.subID = newBatchId
 	}
 	return nil
 }
@@ -49,5 +50,5 @@ func (s *Batcher[T, V]) Flush() error {
 	if s.batch.IsEmpty() {
 		return nil
 	}
-	return s.onFlush(s.batch.Flush(), s.batch.id)
+	return s.onFlush(s.batch.Flush(), s.batch.subID)
 }
