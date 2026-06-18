@@ -67,6 +67,7 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, bat
 		slog.Debug("Skipping already processed batch", "clientID", clientID, "batchID", batchID)
 		return nil
 	}
+	slog.Debug("Processing batch", "clientID", clientID, "batchID", batchID)
 
 	var survivors uint64
 	for _, item := range data {

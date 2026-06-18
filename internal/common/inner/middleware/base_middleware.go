@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -21,6 +22,7 @@ func (b *baseMiddleware) runConsumerLoop(msgs <-chan amqp.Delivery, callbackFunc
 
 	var ackError error
 	for msg := range msgs {
+		slog.Debug("received", "redelivered", msg.Redelivered, "delivery_tag", msg.DeliveryTag)
 		callbackFunc(
 			Message{Body: []byte(msg.Body)},
 			func() {

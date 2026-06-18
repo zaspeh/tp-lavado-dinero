@@ -27,7 +27,7 @@ func (s *Batcher[T, V]) SetNewBatchId(batchID string) {
 	}
 
 	s.batch.baseID = batchID
-	s.batch.subID = batchID
+	s.batch.subID = fmt.Sprintf("%s-0", batchID)
 	s.batchFlushed = 0
 }
 

@@ -58,7 +58,7 @@ services:
       HEARTBEAT_INTERVAL_SECONDS: 5
 
   microtransaction_filter:
-    count: 1
+    count: 2
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
@@ -85,7 +85,7 @@ services:
       MAX_BATCH_BYTES: 8000
     
   bank_router:
-    count: 0
+    count: 2
     worker_type: BANK_ROUTER
     env:
       INPUT_QUEUE_NAME: bank_router_input_queue
@@ -93,7 +93,7 @@ services:
       MAX_BANK_WORKER_AMOUNT: 2
 
   max_bank:
-    count: 0
+    count: 2
     worker_type: MAX_BANK
     env:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
@@ -101,7 +101,7 @@ services:
       MAX_BATCH_WEIGHT: 8000 
 
   max_bank_router_to_join:
-    count: 0
+    count: 2
     worker_type: MAX_BANK_ROUTER_TO_JOIN
     env:
       INPUT_QUEUE_NAME: max_bank_join_input
@@ -110,7 +110,7 @@ services:
       EXPECTED_EOF_AMOUNT: 2
 
   max_bank_join:
-    count: 0
+    count: 2
     worker_type: MAX_BANK_JOIN
     env:
       INPUT_EXCHANGE_NAME: max_bank_join_exchange
@@ -119,7 +119,7 @@ services:
     
 
   period_filter:
-    count: 0
+    count: 2
     worker_type: PERIOD_FILTER
     env:
       RAW_INPUT_QUEUE_NAME: raw_transactions
@@ -138,7 +138,7 @@ services:
       QUERY3_PERIOD_2_END:   "2022-09-14T23:59:59Z"
 
   payment_type_router:
-    count: 0
+    count: 2
     worker_type: PAYMENT_TYPE_ROUTER
     env:
       INPUT_QUEUE_NAME: payment_type_router_input
@@ -146,7 +146,7 @@ services:
       AVG_BY_TYPE_WORKER_AMOUNT: 1
 
   origin_destination_router:
-    count: 0
+    count: 2
     worker_type: ORIGIN_DESTINATION_ROUTER
     env:
       INPUT_QUEUE_NAME: origin_destination_router
@@ -157,7 +157,7 @@ services:
       GROUP_BY_DESTINATION_WORKER_AMOUNT: 2
   
   group_by_origin:
-    count: 0
+    count: 2
     worker_type: GROUP_BY_ORIGIN
 
     env:
@@ -167,7 +167,7 @@ services:
       MAX_BATCH_WEIGHT: 40000
 
   group_by_destination:
-    count: 0
+    count: 2
     worker_type: GROUP_BY_DESTINATION
 
     env:
@@ -177,7 +177,7 @@ services:
       MAX_BATCH_WEIGHT: 40000
   
   origin_intermediary_router:
-    count: 0
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: ORIGIN_INTERMEDIARY_ROUTER
 
@@ -188,7 +188,7 @@ services:
       INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_origin
 
   destination_intermediary_router:
-    count: 0
+    count: 2
     worker_type: INTERMEDIARY_ROUTER
     worker_exchange_name: DESTINATION_INTERMEDIARY_ROUTER
 
@@ -199,7 +199,7 @@ services:
       INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_destination
 
   aggregate_by_intermediary:
-    count: 0
+    count: 2
     worker_type: AGGREGATE_BY_INTERMEDIARY
 
     env:
@@ -211,7 +211,7 @@ services:
       MAX_BATCH_WEIGHT: 40000
 
   avg_by_type:
-    count: 0
+    count: 2
     worker_type: AVG_BY_TYPE
 
     env:
@@ -219,16 +219,16 @@ services:
       OUTPUT_QUEUE_NAME: avg_by_type_join_input
 
   avg_by_type_router_to_join:
-    count: 0
+    count: 2
     worker_type: AVG_BY_TYPE_ROUTER_TO_JOIN
     env:
       INPUT_QUEUE_NAME: avg_by_type_router_join_input
       OUTPUT_EXCHANGE_NAME: max_bank_join_input
-      OUTPUT_WORKER_AMOUNT: 1
-      EXPECTED_EOF_AMOUNT: 1
+      OUTPUT_WORKER_AMOUNT: 2
+      EXPECTED_EOF_AMOUNT: 2
 
   avg_by_type_join:
-    count: 0
+    count: 2
     worker_type: AVG_BY_TYPE_JOIN
 
     env:
@@ -237,7 +237,7 @@ services:
       EXPECTED_EOFS: 1
       
   payment_format_filter:
-    count: 0
+    count: 2
     worker_type: FORMAT_FILTER
     env:
       INPUT_QUEUE_NAME: payment_format_filter_input
@@ -245,7 +245,7 @@ services:
       VALID_PAYMENT_FORMATS: "Wire,ACH"
 
   currency_converter:
-    count: 0
+    count: 2
     worker_type: CURRENCY_CONVERTER
     env:
       INPUT_QUEUE_NAME: conversion_format_input
@@ -253,7 +253,7 @@ services:
       EXCHANGE_RATE_API_URL: https://api.frankfurter.dev/v2/rates?base=USD
 
   amount_converted_filter:
-    count: 0
+    count: 2
     worker_type: AMOUNT_CONVERTED_FILTER
     env:
       INPUT_QUEUE_NAME: filtered_currency_conversion_input
@@ -261,7 +261,7 @@ services:
       AMOUNT_TO_FILTER: 1.00
 
   converted_amount_router_to_join:
-    count: 0
+    count: 2
     worker_type: CONVERTED_AMOUNT_ROUTER_TO_JOIN
     env:
       INPUT_QUEUE_NAME: converted_amount_router_join_input
@@ -270,14 +270,14 @@ services:
       EXPECTED_EOF_AMOUNT: 1
 
   converter_join:
-    count: 0
+    count: 2
     worker_type: CONVERSION_JOIN
     env:
       INPUT_EXCHANGE_NAME: converted_amount_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
   
   suspicious_path_router_to_join:
-    count: 0
+    count: 2
     worker_type: SUSPICIOUS_PATH_ROUTER_TO_JOIN
     env:
       INPUT_QUEUE_NAME: suspicious_path_router_join_input
@@ -286,7 +286,7 @@ services:
       EXPECTED_EOF_AMOUNT: 2
 
   scatter_gather_join:
-    count: 0
+    count: 2
     worker_type: SCATTER_GATHER_JOIN
 
     env:
