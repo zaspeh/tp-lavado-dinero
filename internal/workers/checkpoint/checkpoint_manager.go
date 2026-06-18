@@ -102,36 +102,57 @@ func (cm *CheckpointManager) LoadState() error {
 	return nil
 }
 
-func (cm *CheckpointManager) HasSeenBatch(clientID, batchID string) bool {
+func (cm *CheckpointManager) BeginBatch(clientID, batchID string, ack func()) (shouldProcess bool, err error) {
 	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	batches, ok := cm.processedBatches[clientID]
-	if !ok {
-		return false
+	if cm.processedBatches[clientID] != nil && cm.processedBatches[clientID][batchID] {
+		cm.mu.Unlock()
+		slog.Debug("CheckpointManager BeginBatch: already processed, acking", "clientID", clientID, "batchID", batchID)
+		ack()
+		return false, nil
 	}
-	return batches[batchID]
+
+	cm.pendingAcks[clientID] = append(cm.pendingAcks[clientID], ack)
+	slog.Debug("CheckpointManager BeginBatch: registered ack, waiting for CommitBatch", "clientID", clientID, "batchID", batchID)
+	cm.mu.Unlock()
+
+	return true, nil
 }
 
-func (cm *CheckpointManager) RecordState(clientID string, batchID string) {
+// TODO: Situaciones de error y como reaccionar a estos.
+func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
 	cm.mu.Lock()
-	cm.batchCount[clientID]++
 	if cm.processedBatches[clientID] == nil {
 		cm.processedBatches[clientID] = make(map[string]bool)
 	}
 	cm.processedBatches[clientID][batchID] = true
-	slog.Debug("CheckpointManager RecordState", "clientID", clientID, "batchID", batchID, "batchCount", cm.batchCount[clientID])
+	cm.batchCount[clientID]++
+	slog.Debug("CheckpointManager CommitBatch", "clientID", clientID, "batchID", batchID, "batchCount", cm.batchCount[clientID])
+
+	shouldCheckpoint := cm.batchCount[clientID] >= cm.checkpointEveryBatches
 	cm.mu.Unlock()
+
+	if shouldCheckpoint {
+		slog.Debug("CheckpointManager CommitBatch: triggering checkpoint", "clientID", clientID, "batchCount", cm.batchCount[clientID])
+		return cm.persistAndAck(clientID)
+	}
+
+	return nil
 }
 
-func (cm *CheckpointManager) ShouldFlush(clientID string) bool {
+func (cm *CheckpointManager) BeforeEOF(clientID string) error {
 	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	should := cm.batchCount[clientID] >= cm.checkpointEveryBatches
-	slog.Debug("CheckpointManager ShouldFlush", "clientID", clientID, "batchCount", cm.batchCount[clientID], "shouldFlush", should)
-	return should
+	hasPending := cm.batchCount[clientID] > 0
+	cm.mu.Unlock()
+
+	if !hasPending {
+		return nil
+	}
+
+	slog.Debug("CheckpointManager BeforeEOF: persisting pending batches", "clientID", clientID)
+	return cm.persistAndAck(clientID)
 }
 
-func (cm *CheckpointManager) PersistAndAck(clientID string) error {
+func (cm *CheckpointManager) persistAndAck(clientID string) error {
 	cm.mu.Lock()
 	if cm.batchCount[clientID] == 0 {
 		cm.mu.Unlock()
@@ -173,7 +194,7 @@ func (cm *CheckpointManager) PersistAndAck(clientID string) error {
 		return err
 	}
 
-	slog.Debug("CheckpointManager PersistAndAck: checkpoint saved", "clientID", clientID, "path", path, "stateSize", len(data), "processedBatches", len(processedBatchesCopy))
+	slog.Debug("CheckpointManager persistAndAck: checkpoint saved", "clientID", clientID, "path", path, "stateSize", len(data), "processedBatches", len(processedBatchesCopy))
 
 	cm.mu.Lock()
 	cm.pendingAcks[clientID] = nil
@@ -184,20 +205,8 @@ func (cm *CheckpointManager) PersistAndAck(clientID string) error {
 		ack()
 	}
 
-	slog.Debug("CheckpointManager PersistAndAck: acks sent", "clientID", clientID, "ackCount", len(acksCopy))
+	slog.Debug("CheckpointManager persistAndAck: acks sent", "clientID", clientID, "ackCount", len(acksCopy))
 	return nil
-}
-
-func (cm *CheckpointManager) AddPendingAck(clientID string, ack func()) {
-	cm.mu.Lock()
-	cm.pendingAcks[clientID] = append(cm.pendingAcks[clientID], ack)
-	cm.mu.Unlock()
-}
-
-func (cm *CheckpointManager) HasPendingBatches(clientID string) bool {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	return cm.batchCount[clientID] > 0
 }
 
 func (cm *CheckpointManager) ClearState(clientID string) error {

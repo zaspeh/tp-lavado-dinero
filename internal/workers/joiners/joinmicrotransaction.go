@@ -150,31 +150,28 @@ func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *proto
 	batchID := moneyLaundry.GetBatchID()
 	itemCount := len(batchMsg.GetItems())
 
-	if j.checkpointManager != nil && j.checkpointManager.HasSeenBatch(clientID, batchID) {
-		slog.Debug("JoinMicrotransaction: skipping already processed batch", "clientID", clientID, "batchID", batchID)
-		ack()
-		return
-	}
-
-	slog.Debug("JoinMicrotransaction: received batch", "clientID", clientID, "batchID", batchID, "itemCount", itemCount, "totalAccumulated", len(j.results[clientID])+itemCount)
-
-	j.results[clientID] =
-		append(
-			j.results[clientID],
-			batchMsg.GetItems()...,
-		)
-
 	if j.checkpointManager != nil {
-		j.checkpointManager.AddPendingAck(clientID, ack)
-		j.checkpointManager.RecordState(clientID, batchID)
-
-		if j.checkpointManager.ShouldFlush(clientID) {
-			if err := j.checkpointManager.PersistAndAck(clientID); err != nil {
-				slog.Error("JoinMicrotransaction: failed to persist and ack", "error", err, "clientID", clientID)
-			}
+		shouldProcess, err := j.checkpointManager.BeginBatch(clientID, batchID, ack)
+		if err != nil {
+			slog.Error("JoinMicrotransaction: BeginBatch failed", "error", err, "clientID", clientID, "batchID", batchID)
+			nack()
+			return
+		}
+		if !shouldProcess {
+			return
 		}
 	} else {
 		ack()
+	}
+
+	slog.Debug("JoinMicrotransaction: processing batch", "clientID", clientID, "batchID", batchID, "itemCount", itemCount, "totalAccumulated", len(j.results[clientID])+itemCount)
+
+	j.results[clientID] = append(j.results[clientID], batchMsg.GetItems()...)
+
+	if j.checkpointManager != nil {
+		if err := j.checkpointManager.CommitBatch(clientID, batchID); err != nil {
+			slog.Error("JoinMicrotransaction: CommitBatch failed", "error", err, "clientID", clientID, "batchID", batchID)
+		}
 	}
 }
 
@@ -195,10 +192,9 @@ func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaun
 
 	slog.Info("JoinMicrotransaction: received EOF", "clientID", clientID, "resultCount", resultCount)
 
-	if j.checkpointManager != nil && j.checkpointManager.HasPendingBatches(clientID) {
-		slog.Debug("JoinMicrotransaction: forcing checkpoint before EOF results", "clientID", clientID)
-		if err := j.checkpointManager.PersistAndAck(clientID); err != nil {
-			slog.Error("JoinMicrotransaction: failed to persist before EOF", "error", err, "clientID", clientID)
+	if j.checkpointManager != nil {
+		if err := j.checkpointManager.BeforeEOF(clientID); err != nil {
+			slog.Error("JoinMicrotransaction: BeforeEOF failed", "error", err, "clientID", clientID)
 			nack()
 			return
 		}
