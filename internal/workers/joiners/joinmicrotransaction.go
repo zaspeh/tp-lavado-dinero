@@ -1,10 +1,12 @@
 package joiners
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
@@ -12,6 +14,8 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
+	coordinator "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
+	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 )
 
 type JoinMicrotransaction struct {
@@ -20,6 +24,9 @@ type JoinMicrotransaction struct {
 	clientExchangeName string
 	results            map[string][]*protobuf.Microtransaction
 	maxBatchBytes      int
+	checkpointManager  *checkpoint.CheckpointManager
+	workerName         string
+	workerID           int
 }
 
 type JoinMicrotransactionConfig struct {
@@ -29,6 +36,16 @@ type JoinMicrotransactionConfig struct {
 	MomHost            string
 	MomPort            int
 	MaxBatchBytes      int
+}
+
+type microtransactionCheckpoint struct {
+	Account   string  `json:"account"`
+	ToAccount string  `json:"to_account"`
+	Amount    float64 `json:"amount"`
+}
+
+type clientStateCheckpoint struct {
+	Results []*microtransactionCheckpoint `json:"results"`
 }
 
 func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotransaction, error) {
@@ -51,13 +68,37 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 		return nil, err
 	}
 
-	return &JoinMicrotransaction{
+	j := &JoinMicrotransaction{
 		inputExchange:      inputExchange,
 		resultExchange:     resultExchange,
 		clientExchangeName: config.ClientExchangeName,
 		results:            make(map[string][]*protobuf.Microtransaction),
 		maxBatchBytes:      config.MaxBatchBytes,
-	}, nil
+		workerName:         config.InputExchangeName,
+	}
+
+	if id, err := strconv.Atoi(config.ID); err == nil {
+		j.workerID = id
+	} else {
+		j.workerID = 0
+	}
+
+	storage, err := coordinator.NewBatchStorage(j.workerName, j.workerID)
+	if err != nil {
+		resultExchange.Close()
+		inputExchange.Close()
+		return nil, err
+	}
+
+	j.checkpointManager = checkpoint.NewCheckpointManager(j, storage)
+	if err := j.checkpointManager.LoadState(); err != nil {
+		storage.Close()
+		resultExchange.Close()
+		inputExchange.Close()
+		return nil, err
+	}
+
+	return j, nil
 }
 
 func (j *JoinMicrotransaction) Run() error {
@@ -105,13 +146,36 @@ func (j *JoinMicrotransaction) handleSignals() {
 
 func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	batchMsg := moneyLaundry.GetMicrotransactionsBatch()
+	clientID := moneyLaundry.GetClientID()
+	batchID := moneyLaundry.GetBatchID()
+	itemCount := len(batchMsg.GetItems())
 
-	j.results[moneyLaundry.GetClientID()] =
+	if j.checkpointManager != nil && j.checkpointManager.HasSeenBatch(clientID, batchID) {
+		slog.Debug("JoinMicrotransaction: skipping already processed batch", "clientID", clientID, "batchID", batchID)
+		ack()
+		return
+	}
+
+	slog.Debug("JoinMicrotransaction: received batch", "clientID", clientID, "batchID", batchID, "itemCount", itemCount, "totalAccumulated", len(j.results[clientID])+itemCount)
+
+	j.results[clientID] =
 		append(
-			j.results[moneyLaundry.GetClientID()],
+			j.results[clientID],
 			batchMsg.GetItems()...,
 		)
-	ack()
+
+	if j.checkpointManager != nil {
+		j.checkpointManager.AddPendingAck(clientID, ack)
+		j.checkpointManager.RecordState(clientID, batchID)
+
+		if j.checkpointManager.ShouldFlush(clientID) {
+			if err := j.checkpointManager.PersistAndAck(clientID); err != nil {
+				slog.Error("JoinMicrotransaction: failed to persist and ack", "error", err, "clientID", clientID)
+			}
+		}
+	} else {
+		ack()
+	}
 }
 
 func (j *JoinMicrotransaction) buildBatcher(clientID string) *batch.Batcher[*protobuf.Microtransaction, *protobuf.MicrotransactionResult] {
@@ -127,6 +191,19 @@ func (j *JoinMicrotransaction) buildBatcher(clientID string) *batch.Batcher[*pro
 func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
 	clientID := moneyLaundry.GetClientID()
 	results := j.results[clientID]
+	resultCount := len(results)
+
+	slog.Info("JoinMicrotransaction: received EOF", "clientID", clientID, "resultCount", resultCount)
+
+	if j.checkpointManager != nil && j.checkpointManager.HasPendingBatches(clientID) {
+		slog.Debug("JoinMicrotransaction: forcing checkpoint before EOF results", "clientID", clientID)
+		if err := j.checkpointManager.PersistAndAck(clientID); err != nil {
+			slog.Error("JoinMicrotransaction: failed to persist before EOF", "error", err, "clientID", clientID)
+			nack()
+			return
+		}
+	}
+
 	batcher := j.buildBatcher(clientID)
 	for _, tx := range results {
 		if err := batcher.Add(tx); err != nil {
@@ -146,6 +223,15 @@ func (j *JoinMicrotransaction) handleEOFMessage(moneyLaundry *protobuf.MoneyLaun
 	}
 
 	delete(j.results, clientID)
+
+	if j.checkpointManager != nil {
+		if err := j.checkpointManager.ClearState(clientID); err != nil {
+			slog.Warn("JoinMicrotransaction: failed to clear checkpoint", "error", err, "clientID", clientID)
+		} else {
+			slog.Debug("JoinMicrotransaction: checkpoint cleared", "clientID", clientID)
+		}
+	}
+
 	ack()
 }
 
@@ -172,4 +258,54 @@ func (j *JoinMicrotransaction) sendEOF(clientID string) error {
 
 	key := fmt.Sprintf("%s.%s", j.clientExchangeName, clientID)
 	return j.resultExchange.SendWithKey(key, msg)
+}
+
+func (j *JoinMicrotransaction) GetWorkerName() string {
+	return j.workerName
+}
+
+func (j *JoinMicrotransaction) GetWorkerID() int {
+	return j.workerID
+}
+
+func (j *JoinMicrotransaction) GetClientState(clientID string) ([]byte, error) {
+	txs, ok := j.results[clientID]
+	if !ok {
+		return json.Marshal(clientStateCheckpoint{Results: nil})
+	}
+
+	checkpoint := make([]*microtransactionCheckpoint, 0, len(txs))
+	for _, tx := range txs {
+		checkpoint = append(checkpoint, &microtransactionCheckpoint{
+			Account:   tx.GetAccount(),
+			ToAccount: tx.GetToAccount(),
+			Amount:    tx.GetAmount(),
+		})
+	}
+
+	return json.Marshal(clientStateCheckpoint{Results: checkpoint})
+}
+
+func (j *JoinMicrotransaction) LoadClientState(clientID string, data []byte) error {
+	var state clientStateCheckpoint
+	if err := json.Unmarshal(data, &state); err != nil {
+		return err
+	}
+
+	j.results[clientID] = make([]*protobuf.Microtransaction, 0, len(state.Results))
+	for _, c := range state.Results {
+		j.results[clientID] = append(j.results[clientID], &protobuf.Microtransaction{
+			Account:   c.Account,
+			ToAccount: c.ToAccount,
+			Amount:    c.Amount,
+		})
+	}
+
+	slog.Info("JoinMicrotransaction: loaded client state from checkpoint", "clientID", clientID, "resultCount", len(state.Results))
+	return nil
+}
+
+func (j *JoinMicrotransaction) ClearClientState(clientID string) error {
+	delete(j.results, clientID)
+	return nil
 }
