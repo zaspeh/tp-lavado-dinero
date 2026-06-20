@@ -3,6 +3,7 @@ package messagehandler
 import (
 	"encoding/csv"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -92,11 +93,11 @@ func ProtoToMaxBankResult(moneyLaundering *protobuf.MoneyLaundry) ([]result.MaxB
 }
 
 func ProtoToAvgByTypeResults(moneyLaundering *protobuf.MoneyLaundry) ([]result.AvgByTypeResult, error) {
-	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.AvgByTypeResultBatch{})
-	if err != nil {
-		return nil, err
+	batch := moneyLaundering.GetAvgbytypeResultBatch()
+	if batch == nil {
+		return nil, fmt.Errorf("batch is nil")
 	}
-
+	slog.Debug("ProtoToAvgByTypeResults", "clientID", moneyLaundering.GetClientID(), "batchID", moneyLaundering.GetBatchID(), "type", moneyLaundering.GetType())
 	results := batch.GetResults()
 	externalMessage := make([]result.AvgByTypeResult, 0, len(results))
 	for _, r := range results {

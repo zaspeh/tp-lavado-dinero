@@ -212,28 +212,30 @@ services:
       MAX_BATCH_WEIGHT: 40000
 
   avg_by_type:
-    count: 2
+    count: 1
     worker_type: AVG_BY_TYPE
 
     env:
       INPUT_EXCHANGE_NAME: payment_type_exchange
-      OUTPUT_QUEUE_NAME: avg_by_type_join_input
+      OUTPUT_QUEUE_NAME: avg_by_type_router_to_join_input
+      MAX_BATCH_WEIGHT: 40000
+
 
   avg_by_type_router_to_join:
-    count: 2
+    count: 1
     worker_type: AVG_BY_TYPE_ROUTER_TO_JOIN
     env:
-      INPUT_QUEUE_NAME: avg_by_type_router_join_input
-      OUTPUT_EXCHANGE_NAME: max_bank_join_input
-      OUTPUT_WORKER_AMOUNT: 2
-      EXPECTED_EOF_AMOUNT: 2
+      INPUT_QUEUE_NAME: avg_by_type_router_to_join_input
+      OUTPUT_EXCHANGE_NAME: avg_by_type_join_input
+      OUTPUT_WORKER_AMOUNT: 1
+      EXPECTED_EOF_AMOUNT: 1
 
   avg_by_type_join:
-    count: 2
+    count: 1
     worker_type: AVG_BY_TYPE_JOIN
 
     env:
-      INPUT_QUEUE_NAME: avg_by_type_join_input
+      INPUT_EXCHANGE_NAME: avg_by_type_join_input
       CLIENT_EXCHANGE_NAME: client_results_exchange
       EXPECTED_EOFS: 1
       

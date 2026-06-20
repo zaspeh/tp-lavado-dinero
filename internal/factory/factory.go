@@ -34,7 +34,7 @@ func CreateWorker(workerType string) (workers.Worker, error) {
 	case "PAYMENT_TYPE_ROUTER":
 		return buildPaymentTypeRouterWorker()
 	case "AVG_BY_TYPE":
-		return buildAvgByTypeWorker()
+		return buildAvgByTypeGrouperWorker()
 	case "AVG_BY_TYPE_JOIN":
 		return buildAvgByTypeJoinWorker()
 	case "FORMAT_FILTER":

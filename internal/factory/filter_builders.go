@@ -11,7 +11,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/filters"
 	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
 	r "github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	s "github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
@@ -293,19 +292,6 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 			Processor:           filterprocessor.NewFormatFilterProcessor(allowedFormats),
 		},
 	)
-}
-
-func buildAvgByTypeWorker() (workers.Worker, error) {
-	inputExchangeName, outputQueueName, err := createInputExchangeOutputQueue("")
-	if err != nil {
-		return nil, err
-	}
-	config := filters.AvgByTypeFilterConfig{
-		InputExchange: inputExchangeName,
-		OutputQueue:   outputQueueName,
-	}
-
-	return filters.NewAvgByTypeFilter(config)
 }
 
 func buildAmountConvertedFilterWorker() (workers.Worker, error) {

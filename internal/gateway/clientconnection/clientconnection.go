@@ -321,7 +321,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 		cc.handleMaxBankResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT:
 		cc.handleConvertedMicroPaymentResult(moneyLaundry, ack, nack)
-	case protobuf.MessageType_AVGBYTYPE_RESULT:
+	case protobuf.MessageType_AVGBYTYPE_RESULT_BATCH:
 		cc.handleAvgByTypeResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_SUSPICIOUS_ACCOUNT_BATCH:
 		cc.handleSuspiciousAccountBatch(moneyLaundry, ack, nack)
@@ -352,8 +352,10 @@ func (cc *ClientConnection) handleAvgByTypeResult(moneyLaundry *protobuf.MoneyLa
 		return
 	}
 
+	slog.Debug("Client received avgByType Result", "count", len(avgResults), "clientID", moneyLaundry.GetClientID())
 	for i := range avgResults {
 		msgResult := &avgResults[i]
+		slog.Debug("AvgByType Result item", "account", msgResult.Account, "amountPaid", msgResult.AmountPaid)
 		if err := cc.protocol.SendAvgByTypeResult(msgResult); err != nil {
 			nack()
 			return

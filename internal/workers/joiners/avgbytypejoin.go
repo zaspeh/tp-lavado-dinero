@@ -13,8 +13,8 @@ import (
 )
 
 type AvgByTypeJoin struct {
-	inputQueue     middleware.Middleware
-	resultExchange *middleware.ExchangeMiddleware
+	inputExchange    *middleware.ExchangeMiddleware
+	resultExchange  *middleware.ExchangeMiddleware
 
 	expectedEOFs int
 	receivedEOFs map[string]int
@@ -23,13 +23,14 @@ type AvgByTypeJoin struct {
 }
 
 type AvgByTypeJoinConfig struct {
-	InputQueueName     string
+	InputExchangeName  string
 	ClientExchangeName string
 
 	MomHost string
 	MomPort int
 
 	ExpectedEOFs int
+	ID         string
 }
 
 func NewAvgByTypeJoin(config AvgByTypeJoinConfig) (*AvgByTypeJoin, error) {
@@ -38,30 +39,34 @@ func NewAvgByTypeJoin(config AvgByTypeJoinConfig) (*AvgByTypeJoin, error) {
 		Port:     config.MomPort,
 	}
 
-	inputQueue, err := middleware.CreateQueueMiddleware(config.InputQueueName, connSettings)
+	inputExchangeKeys := []string{
+		fmt.Sprintf("%s.%s", config.InputExchangeName, config.ID),
+	}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputExchangeKeys, connSettings)
 	if err != nil {
 		return nil, err
 	}
 
 	resultExchange, err := middleware.CreateExchangeMiddleware(config.ClientExchangeName, []string{config.ClientExchangeName}, connSettings)
 	if err != nil {
-		inputQueue.Close()
+		inputExchange.Close()
 		return nil, err
 	}
 
 	return &AvgByTypeJoin{
-		inputQueue:         inputQueue,
-		resultExchange:     resultExchange,
+		inputExchange:     inputExchange,
+		resultExchange:    resultExchange,
 		clientExchangeName: config.ClientExchangeName,
-		expectedEOFs:       config.ExpectedEOFs,
-		receivedEOFs:       make(map[string]int),
+		expectedEOFs:      config.ExpectedEOFs,
+		receivedEOFs:      make(map[string]int),
 	}, nil
 }
 
 func (j *AvgByTypeJoin) Run() error {
 	go j.handleSignals()
 
-	j.inputQueue.StartConsuming(func(msg middleware.Message, ack, nack func()) {
+	j.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
 	})
 
@@ -77,7 +82,7 @@ func (j *AvgByTypeJoin) handleMessage(msg middleware.Message, ack, nack func()) 
 
 	switch moneyLaundry.GetType() {
 
-	case protobuf.MessageType_AVGBYTYPE_RESULT:
+	case protobuf.MessageType_AVGBYTYPE_RESULT_BATCH:
 		j.handleResult(msg, moneyLaundry.GetClientID(), ack, nack)
 
 	case protobuf.MessageType_EOF_:
@@ -150,6 +155,6 @@ func (j *AvgByTypeJoin) handleSignals() {
 
 	<-signals
 	slog.Info("shutdown signal received")
-	j.inputQueue.Close()
+	j.inputExchange.Close()
 	j.resultExchange.Close()
 }

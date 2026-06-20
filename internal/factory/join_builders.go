@@ -101,7 +101,7 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 }
 
 func buildAvgByTypeJoinWorker() (workers.Worker, error) {
-	inputQueueName, err := getEnvStrict("INPUT_QUEUE_NAME")
+	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +126,18 @@ func buildAvgByTypeJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	config := joiners.AvgByTypeJoinConfig{
-		InputQueueName:     inputQueueName,
+		InputExchangeName:  inputExchangeName,
 		ClientExchangeName: clientExchangeName,
-		MomHost:            host,
-		MomPort:            port,
-		ExpectedEOFs:       expectedEOFs,
+		MomHost:           host,
+		MomPort:           port,
+		ExpectedEOFs:      expectedEOFs,
+		ID:                id,
 	}
 
 	return joiners.NewAvgByTypeJoin(config)

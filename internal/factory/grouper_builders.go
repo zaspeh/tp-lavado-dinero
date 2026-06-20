@@ -6,6 +6,7 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/groupers/avgbytype"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/groupers/maxbank"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/groupers/origindestination"
 )
@@ -47,6 +48,19 @@ func buildGroupByDestinationWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertGroupedAccountsBatch,
 			processor:           origindestination.NewGroupByDestinationProcessor(),
 			keys:                "destination",
+		},
+	)
+}
+
+func buildAvgByTypeGrouperWorker() (workers.Worker, error) {
+	return buildStatefulWorkerInputExchangeOutputQueue(
+		InputExchangeOutputQueueStatefulConfig[*protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeResult, *protobuf.AvgByTypeResultBatch]{
+			ReceivedMessageType: protobuf.MessageType_AVGBYTYPE_TRANSACTION_BATCH,
+			Extractor:           protoextractors.GetAvgByTypeTransactionBatchItems,
+			Wrapper:             protowrappers.WrapAvgByTypeResults,
+			Sizer:               protowrappers.ProtoSizer[*protobuf.AvgByTypeResult](),
+			Inserter:            protoinserters.InsertAvgByTypeResultBatch,
+			processor:           avgbytype.NewAvgByTypeProcessor(),
 		},
 	)
 }
