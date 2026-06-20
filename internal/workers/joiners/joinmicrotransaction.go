@@ -2,11 +2,11 @@ package joiners
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
@@ -14,9 +14,12 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
-	coordinator "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 )
+
+const resultsEntityID = "results"
+
+var errUnknownEntity = errors.New("unknown entity")
 
 type JoinMicrotransaction struct {
 	inputExchange      *middleware.ExchangeMiddleware
@@ -30,12 +33,13 @@ type JoinMicrotransaction struct {
 }
 
 type JoinMicrotransactionConfig struct {
-	ID                 string
-	InputExchangeName  string
-	ClientExchangeName string
-	MomHost            string
-	MomPort            int
-	MaxBatchBytes      int
+	ID                     int
+	InputExchangeName      string
+	ClientExchangeName     string
+	MomHost                string
+	MomPort                int
+	MaxBatchBytes          int
+	CheckpointEveryBatches int
 }
 
 type microtransactionCheckpoint struct {
@@ -44,8 +48,8 @@ type microtransactionCheckpoint struct {
 	Amount    float64 `json:"amount"`
 }
 
-type clientStateCheckpoint struct {
-	Results []*microtransactionCheckpoint `json:"results"`
+type resultsEntity struct {
+	Items []*microtransactionCheckpoint `json:"items"`
 }
 
 func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotransaction, error) {
@@ -54,7 +58,7 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 		Port:     config.MomPort,
 	}
 	inputExchangeKeys := []string{
-		fmt.Sprintf("%s.%s", config.InputExchangeName, config.ID),
+		fmt.Sprintf("%s.%d", config.InputExchangeName, config.ID),
 	}
 
 	inputExchange, err := middleware.CreateExchangeMiddleware(config.InputExchangeName, inputExchangeKeys, connSettings)
@@ -75,24 +79,18 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 		results:            make(map[string][]*protobuf.Microtransaction),
 		maxBatchBytes:      config.MaxBatchBytes,
 		workerName:         config.InputExchangeName,
+		workerID:           config.ID,
 	}
 
-	if id, err := strconv.Atoi(config.ID); err == nil {
-		j.workerID = id
-	} else {
-		j.workerID = 0
+	checkpointConfig := &checkpoint.CheckpointManagerConfig{
+		WorkerName:             j.workerName,
+		WorkerID:               config.ID,
+		Processor:              j,
+		CheckpointEveryBatches: config.CheckpointEveryBatches,
 	}
 
-	storage, err := coordinator.NewBatchStorage(j.workerName, j.workerID)
-	if err != nil {
-		resultExchange.Close()
-		inputExchange.Close()
-		return nil, err
-	}
-
-	j.checkpointManager = checkpoint.NewCheckpointManager(j, storage)
+	j.checkpointManager = checkpoint.NewCheckpointManager(checkpointConfig)
 	if err := j.checkpointManager.LoadState(); err != nil {
-		storage.Close()
 		resultExchange.Close()
 		inputExchange.Close()
 		return nil, err
@@ -103,6 +101,8 @@ func NewJoinMicrotransaction(config JoinMicrotransactionConfig) (*JoinMicrotrans
 
 func (j *JoinMicrotransaction) Run() error {
 	go j.handleSignals()
+
+	slog.Debug("Start Consuming")
 
 	j.inputExchange.StartConsuming(func(msg middleware.Message, ack, nack func()) {
 		j.handleMessage(msg, ack, nack)
@@ -118,7 +118,7 @@ func (j *JoinMicrotransaction) handleMessage(msg middleware.Message, ack, nack f
 		nack()
 		return
 	}
-
+	slog.Debug("handle message")
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_MICROTRANSACTION_BATCH:
 		j.handleMicrotransactionMessage(moneyLaundry, ack, nack)
@@ -151,6 +151,7 @@ func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *proto
 	itemCount := len(batchMsg.GetItems())
 
 	if j.checkpointManager != nil {
+		slog.Debug("Starting Begin Batch", "batchID", batchID)
 		shouldProcess, err := j.checkpointManager.BeginBatch(clientID, batchID, ack)
 		if err != nil {
 			slog.Error("JoinMicrotransaction: BeginBatch failed", "error", err, "clientID", clientID, "batchID", batchID)
@@ -169,6 +170,9 @@ func (j *JoinMicrotransaction) handleMicrotransactionMessage(moneyLaundry *proto
 	j.results[clientID] = append(j.results[clientID], batchMsg.GetItems()...)
 
 	if j.checkpointManager != nil {
+		if err := j.checkpointManager.NotifyEntityChanged(clientID, resultsEntityID); err != nil {
+			slog.Error("JoinMicrotransaction: NotifyEntityChanged failed", "error", err, "clientID", clientID)
+		}
 		if err := j.checkpointManager.CommitBatch(clientID, batchID); err != nil {
 			slog.Error("JoinMicrotransaction: CommitBatch failed", "error", err, "clientID", clientID, "batchID", batchID)
 		}
@@ -256,40 +260,36 @@ func (j *JoinMicrotransaction) sendEOF(clientID string) error {
 	return j.resultExchange.SendWithKey(key, msg)
 }
 
-func (j *JoinMicrotransaction) GetWorkerName() string {
-	return j.workerName
-}
-
-func (j *JoinMicrotransaction) GetWorkerID() int {
-	return j.workerID
-}
-
-func (j *JoinMicrotransaction) GetClientState(clientID string) ([]byte, error) {
-	txs, ok := j.results[clientID]
-	if !ok {
-		return json.Marshal(clientStateCheckpoint{Results: nil})
+func (j *JoinMicrotransaction) SerializeEntity(clientID, entityID string) ([]byte, error) {
+	if entityID != resultsEntityID {
+		return nil, errUnknownEntity
 	}
 
-	checkpoint := make([]*microtransactionCheckpoint, 0, len(txs))
+	txs := j.results[clientID]
+	items := make([]*microtransactionCheckpoint, 0, len(txs))
 	for _, tx := range txs {
-		checkpoint = append(checkpoint, &microtransactionCheckpoint{
+		items = append(items, &microtransactionCheckpoint{
 			Account:   tx.GetAccount(),
 			ToAccount: tx.GetToAccount(),
 			Amount:    tx.GetAmount(),
 		})
 	}
 
-	return json.Marshal(clientStateCheckpoint{Results: checkpoint})
+	return json.Marshal(resultsEntity{Items: items})
 }
 
-func (j *JoinMicrotransaction) LoadClientState(clientID string, data []byte) error {
-	var state clientStateCheckpoint
-	if err := json.Unmarshal(data, &state); err != nil {
+func (j *JoinMicrotransaction) LoadEntity(clientID, entityID string, data []byte) error {
+	if entityID != resultsEntityID {
+		return errUnknownEntity
+	}
+
+	var entity resultsEntity
+	if err := json.Unmarshal(data, &entity); err != nil {
 		return err
 	}
 
-	j.results[clientID] = make([]*protobuf.Microtransaction, 0, len(state.Results))
-	for _, c := range state.Results {
+	j.results[clientID] = make([]*protobuf.Microtransaction, 0, len(entity.Items))
+	for _, c := range entity.Items {
 		j.results[clientID] = append(j.results[clientID], &protobuf.Microtransaction{
 			Account:   c.Account,
 			ToAccount: c.ToAccount,
@@ -297,8 +297,15 @@ func (j *JoinMicrotransaction) LoadClientState(clientID string, data []byte) err
 		})
 	}
 
-	slog.Info("JoinMicrotransaction: loaded client state from checkpoint", "clientID", clientID, "resultCount", len(state.Results))
+	slog.Info("JoinMicrotransaction: loaded entity from checkpoint", "clientID", clientID, "itemCount", len(entity.Items))
 	return nil
+}
+
+func (j *JoinMicrotransaction) ListEntities(clientID string) ([]string, error) {
+	if _, ok := j.results[clientID]; !ok {
+		return nil, nil
+	}
+	return []string{resultsEntityID}, nil
 }
 
 func (j *JoinMicrotransaction) ClearClientState(clientID string) error {

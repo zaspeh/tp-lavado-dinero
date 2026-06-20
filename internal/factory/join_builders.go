@@ -77,18 +77,24 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	id, err := getEnvStrict("ID")
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
+	checkpointEveryBatches, err := getEnvIntStrict("CHECKPOINT_EVERY_BATCHES")
 	if err != nil {
 		return nil, err
 	}
 
 	config := joiners.JoinMicrotransactionConfig{
-		ID:                 id,
-		InputExchangeName:  inputExchangeName,
-		ClientExchangeName: clientExchangeName,
-		MomHost:            host,
-		MomPort:            port,
-		MaxBatchBytes:      maxBatchBytes,
+		ID:                     id,
+		InputExchangeName:      inputExchangeName,
+		ClientExchangeName:     clientExchangeName,
+		MomHost:                host,
+		MomPort:                port,
+		MaxBatchBytes:          maxBatchBytes,
+		CheckpointEveryBatches: checkpointEveryBatches,
 	}
 
 	return joiners.NewJoinMicrotransaction(config)

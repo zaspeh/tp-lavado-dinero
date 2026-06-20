@@ -190,15 +190,18 @@ func (cc *ClientConnection) HandleTransactionBatch(msg request.TransactionBatch)
 	for _, transaction := range msg {
 		protoTransaction, err := messagehandler.RawTransactionToProtoTransaction(transaction)
 		if err != nil {
+			slog.Debug("Error handleTransactionBatch 1:", "err", err)
 			return err
 		}
 
 		if err := cc.transactionBatcher.Add(protoTransaction); err != nil {
+			slog.Debug("Error handleTransactionBatch 2:", "err", err)
 			return err
 		}
 
 		protoToConvertTransaction := messagehandler.ProtoTransactionToProtoConvTransaction(protoTransaction)
 		if err := cc.rawDataBatcher.Add(protoToConvertTransaction); err != nil {
+			slog.Debug("Error handleTransactionBatch 3:", "err", err)
 			return err
 		}
 

@@ -2,6 +2,7 @@ package batch
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -34,9 +35,11 @@ func (s *Batcher[T, V]) SetNewBatchId(batchID string) {
 func (s *Batcher[T, V]) Add(item T) error {
 	if !s.batch.TryAdd(item) {
 		if err := s.onFlush(s.batch.Flush(), s.batch.subID); err != nil {
+			slog.Debug("Error add 1:", "err", err)
 			return err
 		}
 		if !s.batch.TryAdd(item) {
+			slog.Debug("Error add 2:", "item exceeds max batch size")
 			return fmt.Errorf("item exceeds max batch size")
 		}
 		s.batchFlushed++
@@ -50,5 +53,11 @@ func (s *Batcher[T, V]) Flush() error {
 	if s.batch.IsEmpty() {
 		return nil
 	}
-	return s.onFlush(s.batch.Flush(), s.batch.subID)
+	err := s.onFlush(s.batch.Flush(), s.batch.subID)
+	if err != nil {
+		slog.Debug("Error:", "err", err)
+		return err
+	}
+
+	return nil
 }

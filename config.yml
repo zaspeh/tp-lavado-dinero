@@ -58,7 +58,7 @@ services:
       HEARTBEAT_INTERVAL_SECONDS: 5
 
   microtransaction_filter:
-    count: 2
+    count: 1
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
@@ -83,6 +83,7 @@ services:
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BATCH_TRANSACTIONS: 100
       MAX_BATCH_BYTES: 8000
+      CHECKPOINT_EVERY_BATCHES: 100
     
   bank_router:
     count: 2

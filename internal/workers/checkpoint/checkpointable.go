@@ -1,9 +1,8 @@
 package checkpoint
 
 type Checkpointable interface {
-	GetWorkerName() string
-	GetWorkerID() int
-	GetClientState(clientID string) ([]byte, error)
-	LoadClientState(clientID string, data []byte) error
+	SerializeEntity(clientID, entityID string) ([]byte, error)
+	LoadEntity(clientID, entityID string, data []byte) error
+	ListEntities(clientID string) ([]string, error)
 	ClearClientState(clientID string) error
 }

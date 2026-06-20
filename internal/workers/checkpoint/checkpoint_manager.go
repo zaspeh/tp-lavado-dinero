@@ -5,34 +5,42 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"sync"
-
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 )
+
+type checkpointFile struct {
+	Entities         map[string][]byte `json:"entities"`
+	ProcessedBatches map[string]bool   `json:"batches"`
+}
 
 type CheckpointManager struct {
 	workerName             string
 	workerID               int
-	storage                *coordinator.BatchStorage
 	processor              Checkpointable
 	checkpointEveryBatches int
 
 	pendingAcks      map[string][]func()
 	batchCount       map[string]int
 	processedBatches map[string]map[string]bool
-	mu               sync.Mutex
+	dirtyEntities    map[string]map[string]bool
 }
 
-func NewCheckpointManager(processor Checkpointable, storage *coordinator.BatchStorage) *CheckpointManager {
+type CheckpointManagerConfig struct {
+	WorkerName             string
+	WorkerID               int
+	Processor              Checkpointable
+	CheckpointEveryBatches int
+}
+
+func NewCheckpointManager(checkpointConfig *CheckpointManagerConfig) *CheckpointManager {
 	return &CheckpointManager{
-		workerName:             processor.GetWorkerName(),
-		workerID:               processor.GetWorkerID(),
-		storage:                storage,
-		processor:              processor,
-		checkpointEveryBatches: 100,
+		workerName:             checkpointConfig.WorkerName,
+		workerID:               checkpointConfig.WorkerID,
+		processor:              checkpointConfig.Processor,
+		checkpointEveryBatches: checkpointConfig.CheckpointEveryBatches,
 		pendingAcks:            make(map[string][]func()),
 		batchCount:             make(map[string]int),
 		processedBatches:       make(map[string]map[string]bool),
+		dirtyEntities:          make(map[string]map[string]bool),
 	}
 }
 
@@ -63,39 +71,30 @@ func (cm *CheckpointManager) LoadState() error {
 			continue
 		}
 
-		var stateWithBatches map[string]interface{}
-		if err := json.Unmarshal(data, &stateWithBatches); err != nil {
-			if err := cm.processor.LoadClientState(clientID, data); err != nil {
-				slog.Warn("CheckpointManager LoadState: failed to load client state", "clientID", clientID, "error", err)
+		var file checkpointFile
+		if err := json.Unmarshal(data, &file); err != nil {
+			slog.Warn("CheckpointManager LoadState: failed to parse checkpoint file", "clientID", clientID, "error", err)
+			continue
+		}
+
+		for entityID, entityData := range file.Entities {
+			if err := cm.processor.LoadEntity(clientID, entityID, entityData); err != nil {
+				slog.Warn("CheckpointManager LoadState: failed to load entity", "clientID", clientID, "entityID", entityID, "error", err)
 				return err
-			}
-		} else {
-			if stateData, ok := stateWithBatches["state"].(string); ok {
-				if err := cm.processor.LoadClientState(clientID, []byte(stateData)); err != nil {
-					slog.Warn("CheckpointManager LoadState: failed to load client state", "clientID", clientID, "error", err)
-					return err
-				}
-			}
-			if batchesData, ok := stateWithBatches["batches"].(map[string]interface{}); ok {
-				batches := make(map[string]bool)
-				for k, v := range batchesData {
-					if b, ok := v.(bool); ok {
-						batches[k] = b
-					}
-				}
-				cm.mu.Lock()
-				cm.processedBatches[clientID] = batches
-				cm.mu.Unlock()
-				slog.Debug("CheckpointManager LoadState: restored processed batches", "clientID", clientID, "batchCount", len(batches))
 			}
 		}
 
-		cm.mu.Lock()
+		batches := make(map[string]bool)
+		for k, v := range file.ProcessedBatches {
+			batches[k] = v
+		}
+		cm.processedBatches[clientID] = batches
+
 		cm.batchCount[clientID] = 0
 		cm.pendingAcks[clientID] = nil
-		cm.mu.Unlock()
+		cm.dirtyEntities[clientID] = nil
 
-		slog.Debug("CheckpointManager LoadState: restored client state from disk", "clientID", clientID, "workerName", cm.workerName, "workerID", cm.workerID)
+		slog.Debug("CheckpointManager LoadState: restored client state from disk", "clientID", clientID, "entities", len(file.Entities), "batches", len(batches))
 	}
 
 	slog.Debug("CheckpointManager LoadState finished", "workerName", cm.workerName, "workerID", cm.workerID, "clientsLoaded", len(stateFiles))
@@ -103,9 +102,7 @@ func (cm *CheckpointManager) LoadState() error {
 }
 
 func (cm *CheckpointManager) BeginBatch(clientID, batchID string, ack func()) (shouldProcess bool, err error) {
-	cm.mu.Lock()
 	if cm.processedBatches[clientID] != nil && cm.processedBatches[clientID][batchID] {
-		cm.mu.Unlock()
 		slog.Debug("CheckpointManager BeginBatch: already processed, acking", "clientID", clientID, "batchID", batchID)
 		ack()
 		return false, nil
@@ -113,14 +110,20 @@ func (cm *CheckpointManager) BeginBatch(clientID, batchID string, ack func()) (s
 
 	cm.pendingAcks[clientID] = append(cm.pendingAcks[clientID], ack)
 	slog.Debug("CheckpointManager BeginBatch: registered ack, waiting for CommitBatch", "clientID", clientID, "batchID", batchID)
-	cm.mu.Unlock()
 
 	return true, nil
 }
 
-// TODO: Situaciones de error y como reaccionar a estos.
+func (cm *CheckpointManager) NotifyEntityChanged(clientID, entityID string) error {
+	if cm.dirtyEntities[clientID] == nil {
+		cm.dirtyEntities[clientID] = make(map[string]bool)
+	}
+	cm.dirtyEntities[clientID][entityID] = true
+	slog.Debug("CheckpointManager NotifyEntityChanged", "clientID", clientID, "entityID", entityID)
+	return nil
+}
+
 func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
-	cm.mu.Lock()
 	if cm.processedBatches[clientID] == nil {
 		cm.processedBatches[clientID] = make(map[string]bool)
 	}
@@ -128,10 +131,7 @@ func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
 	cm.batchCount[clientID]++
 	slog.Debug("CheckpointManager CommitBatch", "clientID", clientID, "batchID", batchID, "batchCount", cm.batchCount[clientID])
 
-	shouldCheckpoint := cm.batchCount[clientID] >= cm.checkpointEveryBatches
-	cm.mu.Unlock()
-
-	if shouldCheckpoint {
+	if cm.batchCount[clientID] >= cm.checkpointEveryBatches {
 		slog.Debug("CheckpointManager CommitBatch: triggering checkpoint", "clientID", clientID, "batchCount", cm.batchCount[clientID])
 		return cm.persistAndAck(clientID)
 	}
@@ -140,11 +140,7 @@ func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
 }
 
 func (cm *CheckpointManager) BeforeEOF(clientID string) error {
-	cm.mu.Lock()
-	hasPending := cm.batchCount[clientID] > 0
-	cm.mu.Unlock()
-
-	if !hasPending {
+	if cm.batchCount[clientID] == 0 {
 		return nil
 	}
 
@@ -153,23 +149,31 @@ func (cm *CheckpointManager) BeforeEOF(clientID string) error {
 }
 
 func (cm *CheckpointManager) persistAndAck(clientID string) error {
-	cm.mu.Lock()
 	if cm.batchCount[clientID] == 0 {
-		cm.mu.Unlock()
 		return nil
 	}
 
-	processedBatchesCopy := make(map[string]bool)
-	for k, v := range cm.processedBatches[clientID] {
-		processedBatchesCopy[k] = v
+	entities := make(map[string][]byte)
+	for entityID := range cm.dirtyEntities[clientID] {
+		data, err := cm.processor.SerializeEntity(clientID, entityID)
+		if err != nil {
+			slog.Error("CheckpointManager persistAndAck: SerializeEntity failed", "clientID", clientID, "entityID", entityID, "error", err)
+			return err
+		}
+		entities[entityID] = data
 	}
 
-	acksCopy := make([]func(), len(cm.pendingAcks[clientID]))
-	copy(acksCopy, cm.pendingAcks[clientID])
+	batches := make(map[string]bool)
+	for k, v := range cm.processedBatches[clientID] {
+		batches[k] = v
+	}
 
-	cm.mu.Unlock()
+	file := checkpointFile{
+		Entities:         entities,
+		ProcessedBatches: batches,
+	}
 
-	state, err := cm.processor.GetClientState(clientID)
+	data, err := json.Marshal(file)
 	if err != nil {
 		return err
 	}
@@ -179,33 +183,22 @@ func (cm *CheckpointManager) persistAndAck(clientID string) error {
 	}
 
 	path := cm.statePath(clientID)
-
-	stateWithBatches := map[string]interface{}{
-		"state":   string(state),
-		"batches": processedBatchesCopy,
-	}
-
-	data, err := json.Marshal(stateWithBatches)
-	if err != nil {
-		return err
-	}
-
 	if err := cm.atomicWriteFile(path, data); err != nil {
 		return err
 	}
 
-	slog.Debug("CheckpointManager persistAndAck: checkpoint saved", "clientID", clientID, "path", path, "stateSize", len(data), "processedBatches", len(processedBatchesCopy))
+	slog.Debug("CheckpointManager persistAndAck: checkpoint saved", "clientID", clientID, "path", path, "entities", len(entities), "batches", len(batches))
 
-	cm.mu.Lock()
+	acks := cm.pendingAcks[clientID]
 	cm.pendingAcks[clientID] = nil
 	cm.batchCount[clientID] = 0
-	cm.mu.Unlock()
+	cm.dirtyEntities[clientID] = nil
 
-	for _, ack := range acksCopy {
+	for _, ack := range acks {
 		ack()
 	}
 
-	slog.Debug("CheckpointManager persistAndAck: acks sent", "clientID", clientID, "ackCount", len(acksCopy))
+	slog.Debug("CheckpointManager persistAndAck: acks sent", "clientID", clientID, "ackCount", len(acks))
 	return nil
 }
 
@@ -214,11 +207,10 @@ func (cm *CheckpointManager) ClearState(clientID string) error {
 		return err
 	}
 
-	cm.mu.Lock()
 	delete(cm.pendingAcks, clientID)
 	delete(cm.batchCount, clientID)
 	delete(cm.processedBatches, clientID)
-	cm.mu.Unlock()
+	delete(cm.dirtyEntities, clientID)
 
 	path := cm.statePath(clientID)
 	if err := os.Remove(path); err != nil {
