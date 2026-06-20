@@ -190,7 +190,7 @@ func (cm *CheckpointManager) persistAndAck(clientID string) error {
 		return err
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := cm.atomicWriteFile(path, data); err != nil {
 		return err
 	}
 
@@ -239,6 +239,39 @@ func (cm *CheckpointManager) stateDir() string {
 
 func (cm *CheckpointManager) statePath(clientID string) string {
 	return fmt.Sprintf("%s/%s.json", cm.stateDir(), clientID)
+}
+
+func (cm *CheckpointManager) atomicWriteFile(path string, data []byte) error {
+	tmpPath := path + ".tmp"
+
+	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+
+	if err := f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+
+	return nil
 }
 
 func MarshalState(v any) ([]byte, error) {
