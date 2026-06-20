@@ -1,12 +1,38 @@
 package factory
 
 import (
+	"strconv"
+
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoinserters"
+	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/aggregators/aggregatebyintermediary"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/aggregators/aggregatebyintermediary"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
 )
 
 func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
+	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
 	originInputExchangeName, err := getEnvStrict("ORIGIN_INPUT_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+	originInputExchangeKeys := []string{originInputExchangeName + "." + strconv.Itoa(id)}
+	originInputExchange, err := middleware.CreateExchangeMiddleware(originInputExchangeName, originInputExchangeKeys, mom)
 	if err != nil {
 		return nil, err
 	}
@@ -15,19 +41,21 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
+	destinationInputExchangeKeys := []string{destinationInputExchangeName + "." + strconv.Itoa(id)}
+	destinationInputExchange, err := middleware.CreateExchangeMiddleware(destinationInputExchangeName, destinationInputExchangeKeys, mom)
+	if err != nil {
+		originInputExchange.Close()
+		return nil, err
+	}
 
 	outputQueueName, err := getEnvStrict("OUTPUT_QUEUE_NAME")
 	if err != nil {
 		return nil, err
 	}
-
-	host, err := getEnvStrict("MOM_HOST")
+	outputQueue, err := middleware.CreateQueueMiddleware(outputQueueName, mom)
 	if err != nil {
-		return nil, err
-	}
-
-	port, err := getEnvIntStrict("MOM_PORT")
-	if err != nil {
+		originInputExchange.Close()
+		destinationInputExchange.Close()
 		return nil, err
 	}
 
@@ -36,20 +64,21 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	id, err := getEnvStrict("ID")
+	newCoordinator := coordinator.NewMultiEOFCoordinator(id, 2)
+
+	inputsIDs := []string{"origin", "destination"}
+
+	receiver := receiver.NewFanInReceiver([]middleware.Middleware{originInputExchange, destinationInputExchange}, inputsIDs, protobuf.MessageType_INTERMEDIARYPAIR_BATCH, aggregatebyintermediary.GetIntermediaryPairBatchItems)
+
+	sender := sender.NewSingleSender(outputQueue, protowrappers.WrapSuspiciousPaths, protowrappers.ProtoSizer[*protobuf.SuspiciousPath](), maxBatchWeight, protoinserters.InsertSuspiciousPathBatch)
+
+	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
 		return nil, err
 	}
 
-	config := aggregatebyintermediary.AggregateByIntermediaryWorkerConfig{
-		ID:                           id,
-		MomHost:                      host,
-		MomPort:                      port,
-		OriginInputExchangeName:      originInputExchangeName,
-		DestinationInputExchangeName: destinationInputExchangeName,
-		OutputQueueName:              outputQueueName,
-		MaxBatchWeight:               maxBatchWeight,
-	}
-
-	return aggregatebyintermediary.NewAggregateByIntermediaryWorker(config)
+	engine := engine.NewStatefulEngine(receiver, sender, aggregatebyintermediary.NewAggregateByIntermediaryProcessor(), newCoordinator)
+	worker := worker.NewWorker(heartbeatPublisher)
+	worker.AddEngine(engine)
+	return worker, nil
 }

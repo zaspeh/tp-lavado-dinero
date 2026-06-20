@@ -15,18 +15,21 @@ type WrapEvent[T any] struct {
 
 type FanInReceiver[T any] struct {
 	inputs            []m.Middleware
+	inputsIDs         []string
 	targetMessageType protobuf.MessageType
-	extractData       func(*protobuf.MoneyLaundry) []T
+	extractData       func(*protobuf.MoneyLaundry, string) []T
 	internalChan      chan Event[T]
 }
 
 func NewFanInReceiver[T any](
 	inputs []m.Middleware,
+	inputsIDs []string,
 	targetMessageType protobuf.MessageType,
-	extractData func(*protobuf.MoneyLaundry) []T,
+	extractData func(*protobuf.MoneyLaundry, string) []T,
 ) Receiver[T] {
 	return &FanInReceiver[T]{
 		inputs:            inputs,
+		inputsIDs:         inputsIDs,
 		targetMessageType: targetMessageType,
 		extractData:       extractData,
 	}
@@ -34,9 +37,10 @@ func NewFanInReceiver[T any](
 
 func (r *FanInReceiver[T]) Receive(handler func(event Event[T]) error) error {
 	var internalChan = make(chan WrapEvent[T])
-	for _, input := range r.inputs {
+	for i, input := range r.inputs {
+		inputID := r.inputsIDs[i]
 		go input.StartConsuming(func(msg m.Message, ack, nack func()) {
-			r.consume(msg, ack, nack, internalChan)
+			r.consume(msg, ack, nack, inputID, internalChan)
 		})
 	}
 
@@ -51,7 +55,7 @@ func (r *FanInReceiver[T]) Receive(handler func(event Event[T]) error) error {
 	return nil
 }
 
-func (r *FanInReceiver[T]) consume(msg m.Message, ack, nack func(), internalChan chan<- WrapEvent[T]) {
+func (r *FanInReceiver[T]) consume(msg m.Message, ack, nack func(), inputID string, internalChan chan<- WrapEvent[T]) {
 	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		slog.Error("Failed to deserialize wrapper", "error", err)
@@ -70,7 +74,7 @@ func (r *FanInReceiver[T]) consume(msg m.Message, ack, nack func(), internalChan
 		event.Type = CleanupMessage
 	case r.targetMessageType:
 		event.Type = DataMessage
-		event.Data = r.extractData(moneyLaundry)
+		event.Data = r.extractData(moneyLaundry, inputID)
 	default:
 		slog.Debug("Ignored unknown message type", "type", moneyLaundry.GetType())
 		ack()
