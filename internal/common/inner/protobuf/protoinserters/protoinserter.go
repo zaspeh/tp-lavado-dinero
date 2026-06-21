@@ -160,3 +160,15 @@ func InsertIntermediaryPairBatch(clientID string, batchID string, batch *protobu
 		batchID,
 	)
 }
+
+func InsertSuspiciousAccountBatch(clientID string, batchID string, batch *protobuf.SuspiciousAccountBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_SuspiciousaccountBatch{
+		SuspiciousaccountBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_SUSPICIOUS_ACCOUNT_BATCH,
+		innerMessage,
+		batchID,
+	)
+}

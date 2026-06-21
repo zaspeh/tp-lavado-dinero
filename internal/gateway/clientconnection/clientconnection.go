@@ -424,10 +424,11 @@ func (cc *ClientConnection) handleConvertedMicroPaymentResult(moneyLaundering *p
 }
 
 func (cc *ClientConnection) handleSuspiciousAccountBatch(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
-
+	slog.Debug("Handling SuspiciousAccount Batch", "clientID", moneyLaundering.GetClientID(), "batchID", moneyLaundering.GetBatchID())
 	externalMsg, err := messagehandler.ProtoToSuspiciousAccounts(moneyLaundering)
 
 	if err != nil {
+		slog.Debug("Error while hanlding 1", err)
 		nack()
 		return
 	}
@@ -435,6 +436,7 @@ func (cc *ClientConnection) handleSuspiciousAccountBatch(moneyLaundering *protob
 	if err := cc.protocol.SendSuspiciousAccountsResult(
 		externalMsg,
 	); err != nil {
+		slog.Debug("Error while hanlding 2", err)
 		nack()
 		return
 	}

@@ -14,9 +14,9 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/conversionjoin.go"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/scattergatherjoin"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/joiners/maxbankjoin"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/joiners/microtransactionjoin"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/joiners/scattergatherjoin"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/sender"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/worker"
@@ -215,52 +215,54 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 
 func buildScatterGatherJoinWorker() (workers.Worker, error) {
 
-	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
+	joinConfig, err := getJoinConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	clientExchangeName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
+	inputExchangeKeys := []string{
+		fmt.Sprintf("%s.%s", joinConfig.InputExchangeName, strconv.Itoa(joinConfig.ID)),
+	}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(joinConfig.InputExchangeName, inputExchangeKeys, joinConfig.ConnSettings)
 	if err != nil {
 		return nil, err
 	}
 
-	host, err := getEnvStrict("MOM_HOST")
+	resultExchange, err := middleware.CreateExchangeMiddleware(joinConfig.ClientExchangeName, []string{joinConfig.ClientExchangeName}, joinConfig.ConnSettings)
+	if err != nil {
+		inputExchange.Close()
+		return nil, err
+	}
+
+	newCoordinator := coordinator.NewAloneCoordinator(joinConfig.ID)
+
+	receiver := receiver.NewSingleReceiver(inputExchange, protobuf.MessageType_SUSPICIOUS_PATH_BATCH, protoextractors.GetSuspiciousPathBatchItems)
+
+	sender := sender.NewDynamicKeySender(
+		resultExchange,
+		func(clientID string) string {
+			return fmt.Sprintf(
+				"%s.%s",
+				joinConfig.ClientExchangeName,
+				clientID,
+			)
+		},
+		protowrappers.WrapToSuspiciousAccountBatch,
+		protowrappers.ProtoSizer[*protobuf.Account](),
+		joinConfig.MaxBatchWeight,
+		protoinserters.InsertSuspiciousAccountBatch,
+	)
+
+	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
 		return nil, err
 	}
 
-	port, err := getEnvIntStrict("MOM_PORT")
-	if err != nil {
-		return nil, err
-	}
-
-	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
-	if err != nil {
-		return nil, err
-	}
-
-	aggregateByIntermediaryWorkerAmount, err := getEnvIntStrict("AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := getEnvStrict("ID")
-	if err != nil {
-		return nil, err
-	}
-
-	config := scattergatherjoin.ScatterGatherJoinConfig{
-		ID:                                  id,
-		InputExchangeName:                   inputExchangeName,
-		ClientExchangeName:                  clientExchangeName,
-		MomHost:                             host,
-		MomPort:                             port,
-		MaxBatchWeight:                      maxBatchWeight,
-		AggregateByIntermediaryWorkerAmount: aggregateByIntermediaryWorkerAmount,
-	}
-
-	return scattergatherjoin.NewScatterGatherJoinWorker(config)
+	engine := engine.NewStatefulEngine(receiver, sender, scattergatherjoin.NewScatterGatherJoinProcessor(), newCoordinator)
+	worker := worker.NewWorker(heartbeatPublisher)
+	worker.AddEngine(engine)
+	return worker, nil
 }
 
 func getJoinConfig() (*JoinConfig, error) {

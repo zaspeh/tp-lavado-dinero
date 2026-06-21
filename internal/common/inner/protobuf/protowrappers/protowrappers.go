@@ -169,3 +169,9 @@ func WrapIntermediaryPair(items []*protobuf.IntermediaryPair) *protobuf.Intermed
 		Items: items,
 	}
 }
+
+func WrapToSuspiciousAccountBatch(accounts []*protobuf.Account) *protobuf.SuspiciousAccountBatch {
+	return &protobuf.SuspiciousAccountBatch{
+		Accounts: accounts,
+	}
+}

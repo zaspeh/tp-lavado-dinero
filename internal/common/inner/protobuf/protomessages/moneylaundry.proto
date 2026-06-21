@@ -17,6 +17,7 @@ import "internal/common/inner/protobuf/protomessages/heartbeat.proto";
 import "internal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto";
 import "internal/common/inner/protobuf/protomessages/avgbytyperesult.proto";
 import "internal/common/inner/protobuf/protomessages/suspiciouspath.proto";
+import "internal/common/inner/protobuf/protomessages/suspiciousaccount.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -86,6 +87,7 @@ message MoneyLaundry {
         GroupedAccountsBatch grouped_accounts_batch = 18;
         AvgByTypeResultBatch avgbytype_result_batch = 19;
         SuspiciousPathBatch suspiciouspath_batch = 20;
+        SuspiciousAccountBatch suspiciousaccount_batch = 21;
     }
-    string batchID = 21;
+    string batchID = 22;
 }

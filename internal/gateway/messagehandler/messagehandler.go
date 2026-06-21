@@ -112,7 +112,7 @@ func ProtoToAvgByTypeResults(moneyLaundering *protobuf.MoneyLaundry) ([]result.A
 func ProtoToConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry) (*result.ConvertedMicroPaymentResult, error) {
 	deserializeMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ConvertedMicroPaymentResult{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("batch is nil")
 	}
 
 	return &result.ConvertedMicroPaymentResult{
@@ -123,9 +123,9 @@ func ProtoToConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry) 
 func ProtoToSuspiciousAccounts(moneyLaundering *protobuf.MoneyLaundry,
 ) (*result.SuspiciousAccountsResult, error) {
 
-	batch, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.SuspiciousAccountBatch{})
-	if err != nil {
-		return nil, err
+	batch := moneyLaundering.GetSuspiciousaccountBatch()
+	if batch == nil {
+		return nil, fmt.Errorf("batch is nil")
 	}
 
 	accounts := make([]result.SuspiciousAccount, 0, len(batch.GetAccounts()))
