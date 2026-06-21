@@ -49,3 +49,7 @@ message ConvertedAmountBatch {
 message ConvertedMicroPaymentResult {
     int64 count = 1;
 }
+
+message ConvertedMicroPaymentResultBatch {
+    repeated ConvertedMicroPaymentResult results = 1;
+}

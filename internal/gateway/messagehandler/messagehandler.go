@@ -186,3 +186,23 @@ func RawAccountToProtoMaxBank(account request.Account) (*protobuf.MaxBank, error
 		},
 	}, nil
 }
+
+func ProtoToConvertedMicroPaymentResultBatch(moneyLaundering *protobuf.MoneyLaundry) (*result.ConvertedMicroPaymentResult, error) {
+	batch := moneyLaundering.GetConvertedmicropaymentresultBatch()
+
+	if batch == nil {
+		return nil, fmt.Errorf("batch is nil")
+	}
+
+	receivedResults := batch.GetResults()
+
+	count := 0
+	for _, singleResult := range receivedResults {
+
+		count += int(singleResult.Count)
+	}
+
+	return &result.ConvertedMicroPaymentResult{
+		Count: int64(count),
+	}, nil
+}

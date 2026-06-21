@@ -175,3 +175,9 @@ func WrapToSuspiciousAccountBatch(accounts []*protobuf.Account) *protobuf.Suspic
 		Accounts: accounts,
 	}
 }
+
+func WrapToConvertedMicropaymentResultBatch(results []*protobuf.ConvertedMicroPaymentResult) *protobuf.ConvertedMicroPaymentResultBatch {
+	return &protobuf.ConvertedMicroPaymentResultBatch{
+		Results: results,
+	}
+}

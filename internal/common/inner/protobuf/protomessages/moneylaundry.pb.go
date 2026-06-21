@@ -59,7 +59,8 @@ const (
 	MessageType_SCATTERGATHER_BATCH                    MessageType = 32
 	MessageType_INTERMEDIARYPAIR_BATCH                 MessageType = 33
 	MessageType_MAX_BANK_RESULT_BATCH                  MessageType = 34
-	MessageType_HEARTBEAT                              MessageType = 35
+	MessageType_CONVERTED_MICRO_PAYMENT_RESULT_BATCH   MessageType = 35
+	MessageType_HEARTBEAT                              MessageType = 36
 )
 
 // Enum value maps for MessageType.
@@ -100,7 +101,8 @@ var (
 		32: "SCATTERGATHER_BATCH",
 		33: "INTERMEDIARYPAIR_BATCH",
 		34: "MAX_BANK_RESULT_BATCH",
-		35: "HEARTBEAT",
+		35: "CONVERTED_MICRO_PAYMENT_RESULT_BATCH",
+		36: "HEARTBEAT",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                                   0,
@@ -138,7 +140,8 @@ var (
 		"SCATTERGATHER_BATCH":                    32,
 		"INTERMEDIARYPAIR_BATCH":                 33,
 		"MAX_BANK_RESULT_BATCH":                  34,
-		"HEARTBEAT":                              35,
+		"CONVERTED_MICRO_PAYMENT_RESULT_BATCH":   35,
+		"HEARTBEAT":                              36,
 	}
 )
 
@@ -197,8 +200,9 @@ type MoneyLaundry struct {
 	//	*MoneyLaundry_AvgbytypeResultBatch
 	//	*MoneyLaundry_SuspiciouspathBatch
 	//	*MoneyLaundry_SuspiciousaccountBatch
+	//	*MoneyLaundry_ConvertedmicropaymentresultBatch
 	InnerMessage  isMoneyLaundry_InnerMessage `protobuf_oneof:"inner_message"`
-	BatchID       string                      `protobuf:"bytes,22,opt,name=batchID,proto3" json:"batchID,omitempty"`
+	BatchID       string                      `protobuf:"bytes,23,opt,name=batchID,proto3" json:"batchID,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -423,6 +427,15 @@ func (x *MoneyLaundry) GetSuspiciousaccountBatch() *SuspiciousAccountBatch {
 	return nil
 }
 
+func (x *MoneyLaundry) GetConvertedmicropaymentresultBatch() *ConvertedMicroPaymentResultBatch {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_ConvertedmicropaymentresultBatch); ok {
+			return x.ConvertedmicropaymentresultBatch
+		}
+	}
+	return nil
+}
+
 func (x *MoneyLaundry) GetBatchID() string {
 	if x != nil {
 		return x.BatchID
@@ -506,6 +519,10 @@ type MoneyLaundry_SuspiciousaccountBatch struct {
 	SuspiciousaccountBatch *SuspiciousAccountBatch `protobuf:"bytes,21,opt,name=suspiciousaccount_batch,json=suspiciousaccountBatch,proto3,oneof"`
 }
 
+type MoneyLaundry_ConvertedmicropaymentresultBatch struct {
+	ConvertedmicropaymentresultBatch *ConvertedMicroPaymentResultBatch `protobuf:"bytes,22,opt,name=convertedmicropaymentresult_batch,json=convertedmicropaymentresultBatch,proto3,oneof"`
+}
+
 func (*MoneyLaundry_Transactions) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ToConvertBatch) isMoneyLaundry_InnerMessage() {}
@@ -542,11 +559,13 @@ func (*MoneyLaundry_SuspiciouspathBatch) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_SuspiciousaccountBatch) isMoneyLaundry_InnerMessage() {}
 
+func (*MoneyLaundry_ConvertedmicropaymentresultBatch) isMoneyLaundry_InnerMessage() {}
+
 var File_internal_common_inner_protobuf_protomessages_moneylaundry_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"?internal/common/inner/protobuf/protomessages/moneylaundry.proto\x12\bprotobuf\x1a>internal/common/inner/protobuf/protomessages/transaction.proto\x1a=internal/common/inner/protobuf/protomessages/conversion.proto\x1a6internal/common/inner/protobuf/protomessages/eof.proto\x1a:internal/common/inner/protobuf/protomessages/maxbank.proto\x1aCinternal/common/inner/protobuf/protomessages/microtransaction.proto\x1a?internal/common/inner/protobuf/protomessages/periodfilter.proto\x1aGinternal/common/inner/protobuf/protomessages/avgbytypetransaction.proto\x1a@internal/common/inner/protobuf/protomessages/scattergather.proto\x1aCinternal/common/inner/protobuf/protomessages/intermediarypair.proto\x1a<internal/common/inner/protobuf/protomessages/heartbeat.proto\x1aGinternal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto\x1aBinternal/common/inner/protobuf/protomessages/avgbytyperesult.proto\x1aAinternal/common/inner/protobuf/protomessages/suspiciouspath.proto\x1aDinternal/common/inner/protobuf/protomessages/suspiciousaccount.proto\"\x92\r\n" +
+	"?internal/common/inner/protobuf/protomessages/moneylaundry.proto\x12\bprotobuf\x1a>internal/common/inner/protobuf/protomessages/transaction.proto\x1a=internal/common/inner/protobuf/protomessages/conversion.proto\x1a6internal/common/inner/protobuf/protomessages/eof.proto\x1a:internal/common/inner/protobuf/protomessages/maxbank.proto\x1aCinternal/common/inner/protobuf/protomessages/microtransaction.proto\x1a?internal/common/inner/protobuf/protomessages/periodfilter.proto\x1aGinternal/common/inner/protobuf/protomessages/avgbytypetransaction.proto\x1a@internal/common/inner/protobuf/protomessages/scattergather.proto\x1aCinternal/common/inner/protobuf/protomessages/intermediarypair.proto\x1a<internal/common/inner/protobuf/protomessages/heartbeat.proto\x1aGinternal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto\x1aBinternal/common/inner/protobuf/protomessages/avgbytyperesult.proto\x1aAinternal/common/inner/protobuf/protomessages/suspiciouspath.proto\x1aDinternal/common/inner/protobuf/protomessages/suspiciousaccount.proto\"\x8d\x0e\n" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
@@ -570,9 +589,10 @@ const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDe
 	"\x16grouped_accounts_batch\x18\x12 \x01(\v2\x1e.protobuf.GroupedAccountsBatchH\x00R\x14groupedAccountsBatch\x12V\n" +
 	"\x16avgbytype_result_batch\x18\x13 \x01(\v2\x1e.protobuf.AvgByTypeResultBatchH\x00R\x14avgbytypeResultBatch\x12R\n" +
 	"\x14suspiciouspath_batch\x18\x14 \x01(\v2\x1d.protobuf.SuspiciousPathBatchH\x00R\x13suspiciouspathBatch\x12[\n" +
-	"\x17suspiciousaccount_batch\x18\x15 \x01(\v2 .protobuf.SuspiciousAccountBatchH\x00R\x16suspiciousaccountBatch\x12\x18\n" +
-	"\abatchID\x18\x16 \x01(\tR\abatchIDB\x0f\n" +
-	"\rinner_message*\xa9\a\n" +
+	"\x17suspiciousaccount_batch\x18\x15 \x01(\v2 .protobuf.SuspiciousAccountBatchH\x00R\x16suspiciousaccountBatch\x12y\n" +
+	"!convertedmicropaymentresult_batch\x18\x16 \x01(\v2*.protobuf.ConvertedMicroPaymentResultBatchH\x00R convertedmicropaymentresultBatch\x12\x18\n" +
+	"\abatchID\x18\x17 \x01(\tR\abatchIDB\x0f\n" +
+	"\rinner_message*\xd3\a\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -609,8 +629,9 @@ const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDe
 	"\x16AVGBYTYPE_RESULT_BATCH\x10\x1f\x12\x17\n" +
 	"\x13SCATTERGATHER_BATCH\x10 \x12\x1a\n" +
 	"\x16INTERMEDIARYPAIR_BATCH\x10!\x12\x19\n" +
-	"\x15MAX_BANK_RESULT_BATCH\x10\"\x12\r\n" +
-	"\tHEARTBEAT\x10#B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x15MAX_BANK_RESULT_BATCH\x10\"\x12(\n" +
+	"$CONVERTED_MICRO_PAYMENT_RESULT_BATCH\x10#\x12\r\n" +
+	"\tHEARTBEAT\x10$B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDescOnce sync.Once
@@ -647,6 +668,7 @@ var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_goTypes
 	(*AvgByTypeResultBatch)(nil),              // 17: protobuf.AvgByTypeResultBatch
 	(*SuspiciousPathBatch)(nil),               // 18: protobuf.SuspiciousPathBatch
 	(*SuspiciousAccountBatch)(nil),            // 19: protobuf.SuspiciousAccountBatch
+	(*ConvertedMicroPaymentResultBatch)(nil),  // 20: protobuf.ConvertedMicroPaymentResultBatch
 }
 var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_depIdxs = []int32{
 	0,  // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
@@ -668,11 +690,12 @@ var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_depIdxs
 	17, // 16: protobuf.MoneyLaundry.avgbytype_result_batch:type_name -> protobuf.AvgByTypeResultBatch
 	18, // 17: protobuf.MoneyLaundry.suspiciouspath_batch:type_name -> protobuf.SuspiciousPathBatch
 	19, // 18: protobuf.MoneyLaundry.suspiciousaccount_batch:type_name -> protobuf.SuspiciousAccountBatch
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	20, // 19: protobuf.MoneyLaundry.convertedmicropaymentresult_batch:type_name -> protobuf.ConvertedMicroPaymentResultBatch
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init() }
@@ -713,6 +736,7 @@ func file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init()
 		(*MoneyLaundry_AvgbytypeResultBatch)(nil),
 		(*MoneyLaundry_SuspiciouspathBatch)(nil),
 		(*MoneyLaundry_SuspiciousaccountBatch)(nil),
+		(*MoneyLaundry_ConvertedmicropaymentresultBatch)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

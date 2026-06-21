@@ -12,7 +12,6 @@ import (
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/gateway/messagehandler"
 )
 
@@ -319,7 +318,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 		cc.handleMicrotransactionResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_MAX_BANK_RESULT_BATCH:
 		cc.handleMaxBankResult(moneyLaundry, ack, nack)
-	case protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT:
+	case protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT_BATCH:
 		cc.handleConvertedMicroPaymentResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_AVGBYTYPE_RESULT_BATCH:
 		cc.handleAvgByTypeResult(moneyLaundry, ack, nack)
@@ -401,13 +400,14 @@ func (cc *ClientConnection) handleMaxBankResult(moneyLaundering *protobuf.MoneyL
 }
 
 func (cc *ClientConnection) handleConvertedMicroPaymentResult(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
-	deserializeMsg, err := serializer.DeserializeTransaction(moneyLaundering.GetPayload(), &protobuf.ConvertedMicroPaymentResult{})
+	deserializeMsg, err := messagehandler.ProtoToConvertedMicroPaymentResultBatch(moneyLaundering)
 	if err != nil {
 		nack()
 		return
 	}
+	slog.Debug("Received partial micropayment results", "partial count", deserializeMsg.Count)
 
-	cc.micropaymentsCount += deserializeMsg.GetCount()
+	cc.micropaymentsCount += deserializeMsg.Count
 	cc.converterJoinAumount -= 1
 
 	if cc.converterJoinAumount == 0 {

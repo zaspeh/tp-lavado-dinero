@@ -59,8 +59,9 @@ enum MessageType {
     SCATTERGATHER_BATCH = 32;
     INTERMEDIARYPAIR_BATCH = 33;
     MAX_BANK_RESULT_BATCH = 34;
+    CONVERTED_MICRO_PAYMENT_RESULT_BATCH = 35;
 
-    HEARTBEAT = 35;
+    HEARTBEAT = 36;
 }
 
 message MoneyLaundry {
@@ -88,6 +89,7 @@ message MoneyLaundry {
         AvgByTypeResultBatch avgbytype_result_batch = 19;
         SuspiciousPathBatch suspiciouspath_batch = 20;
         SuspiciousAccountBatch suspiciousaccount_batch = 21;
+        ConvertedMicroPaymentResultBatch convertedmicropaymentresult_batch = 22;
     }
-    string batchID = 22;
+    string batchID = 23;
 }

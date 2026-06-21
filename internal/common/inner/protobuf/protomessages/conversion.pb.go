@@ -482,6 +482,50 @@ func (x *ConvertedMicroPaymentResult) GetCount() int64 {
 	return 0
 }
 
+type ConvertedMicroPaymentResultBatch struct {
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Results       []*ConvertedMicroPaymentResult `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConvertedMicroPaymentResultBatch) Reset() {
+	*x = ConvertedMicroPaymentResultBatch{}
+	mi := &file_internal_common_inner_protobuf_protomessages_conversion_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConvertedMicroPaymentResultBatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConvertedMicroPaymentResultBatch) ProtoMessage() {}
+
+func (x *ConvertedMicroPaymentResultBatch) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_protomessages_conversion_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConvertedMicroPaymentResultBatch.ProtoReflect.Descriptor instead.
+func (*ConvertedMicroPaymentResultBatch) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ConvertedMicroPaymentResultBatch) GetResults() []*ConvertedMicroPaymentResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
 var File_internal_common_inner_protobuf_protomessages_conversion_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDesc = "" +
@@ -515,7 +559,9 @@ const file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDesc
 	"\x14ConvertedAmountBatch\x12/\n" +
 	"\x05items\x18\x01 \x03(\v2\x19.protobuf.ConvertedAmountR\x05items\"3\n" +
 	"\x1bConvertedMicroPaymentResult\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x03R\x05countB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x05count\x18\x01 \x01(\x03R\x05count\"c\n" +
+	" ConvertedMicroPaymentResultBatch\x12?\n" +
+	"\aresults\x18\x01 \x03(\v2%.protobuf.ConvertedMicroPaymentResultR\aresultsB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDescOnce sync.Once
@@ -529,7 +575,7 @@ func file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDescG
 	return file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_protomessages_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_internal_common_inner_protobuf_protomessages_conversion_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_internal_common_inner_protobuf_protomessages_conversion_proto_goTypes = []any{
 	(*ToConvertTransaction)(nil),              // 0: protobuf.ToConvertTransaction
 	(*ToConvertTransactionBatch)(nil),         // 1: protobuf.ToConvertTransactionBatch
@@ -540,21 +586,23 @@ var file_internal_common_inner_protobuf_protomessages_conversion_proto_goTypes =
 	(*ConvertedAmount)(nil),                   // 6: protobuf.ConvertedAmount
 	(*ConvertedAmountBatch)(nil),              // 7: protobuf.ConvertedAmountBatch
 	(*ConvertedMicroPaymentResult)(nil),       // 8: protobuf.ConvertedMicroPaymentResult
-	(*timestamppb.Timestamp)(nil),             // 9: google.protobuf.Timestamp
+	(*ConvertedMicroPaymentResultBatch)(nil),  // 9: protobuf.ConvertedMicroPaymentResultBatch
+	(*timestamppb.Timestamp)(nil),             // 10: google.protobuf.Timestamp
 }
 var file_internal_common_inner_protobuf_protomessages_conversion_proto_depIdxs = []int32{
-	9, // 0: protobuf.ToConvertTransaction.timestamp:type_name -> google.protobuf.Timestamp
-	0, // 1: protobuf.ToConvertTransactionBatch.items:type_name -> protobuf.ToConvertTransaction
-	9, // 2: protobuf.ToConvertPeriodFiltered.timestamp:type_name -> google.protobuf.Timestamp
-	2, // 3: protobuf.ToConvertPeriodFilteredBatch.items:type_name -> protobuf.ToConvertPeriodFiltered
-	9, // 4: protobuf.ToConvertTypeFilteredPayment.timestamp:type_name -> google.protobuf.Timestamp
-	4, // 5: protobuf.ToConvertTypeFilteredPaymentBatch.items:type_name -> protobuf.ToConvertTypeFilteredPayment
-	6, // 6: protobuf.ConvertedAmountBatch.items:type_name -> protobuf.ConvertedAmount
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	10, // 0: protobuf.ToConvertTransaction.timestamp:type_name -> google.protobuf.Timestamp
+	0,  // 1: protobuf.ToConvertTransactionBatch.items:type_name -> protobuf.ToConvertTransaction
+	10, // 2: protobuf.ToConvertPeriodFiltered.timestamp:type_name -> google.protobuf.Timestamp
+	2,  // 3: protobuf.ToConvertPeriodFilteredBatch.items:type_name -> protobuf.ToConvertPeriodFiltered
+	10, // 4: protobuf.ToConvertTypeFilteredPayment.timestamp:type_name -> google.protobuf.Timestamp
+	4,  // 5: protobuf.ToConvertTypeFilteredPaymentBatch.items:type_name -> protobuf.ToConvertTypeFilteredPayment
+	6,  // 6: protobuf.ConvertedAmountBatch.items:type_name -> protobuf.ConvertedAmount
+	8,  // 7: protobuf.ConvertedMicroPaymentResultBatch.results:type_name -> protobuf.ConvertedMicroPaymentResult
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_protomessages_conversion_proto_init() }
@@ -568,7 +616,7 @@ func file_internal_common_inner_protobuf_protomessages_conversion_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDesc), len(file_internal_common_inner_protobuf_protomessages_conversion_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

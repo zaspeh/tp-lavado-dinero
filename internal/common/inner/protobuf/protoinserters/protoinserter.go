@@ -172,3 +172,15 @@ func InsertSuspiciousAccountBatch(clientID string, batchID string, batch *protob
 		batchID,
 	)
 }
+
+func InsertConvertedMicropaymentResultBatch(clientID string, batchID string, batch *protobuf.ConvertedMicroPaymentResultBatch) (middleware.Message, error) {
+	innerMessage := &protobuf.MoneyLaundry_ConvertedmicropaymentresultBatch{
+		ConvertedmicropaymentresultBatch: batch,
+	}
+	return protobuf.SerializeProtoMessageONTRIAL(
+		clientID,
+		protobuf.MessageType_CONVERTED_MICRO_PAYMENT_RESULT_BATCH,
+		innerMessage,
+		batchID,
+	)
+}

@@ -13,7 +13,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/joiners/conversionjoin.go"
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/joiners/conversionjoin"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/joiners/maxbankjoin"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/joiners/microtransactionjoin"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/joiners/scattergatherjoin"
@@ -177,40 +177,54 @@ func buildAvgByTypeJoinWorker() (workers.Worker, error) {
 }
 
 func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
-	host, err := getEnvStrict("MOM_HOST")
+	joinConfig, err := getJoinConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	port, err := getEnvIntStrict("MOM_PORT")
+	inputExchangeKeys := []string{
+		fmt.Sprintf("%s.%s", joinConfig.InputExchangeName, strconv.Itoa(joinConfig.ID)),
+	}
+
+	inputExchange, err := middleware.CreateExchangeMiddleware(joinConfig.InputExchangeName, inputExchangeKeys, joinConfig.ConnSettings)
 	if err != nil {
 		return nil, err
 	}
 
-	inputExchangeName, err := getEnvStrict("INPUT_EXCHANGE_NAME")
+	resultExchange, err := middleware.CreateExchangeMiddleware(joinConfig.ClientExchangeName, []string{joinConfig.ClientExchangeName}, joinConfig.ConnSettings)
+	if err != nil {
+		inputExchange.Close()
+		return nil, err
+	}
+
+	newCoordinator := coordinator.NewAloneCoordinator(joinConfig.ID)
+
+	receiver := receiver.NewSingleReceiver(inputExchange, protobuf.MessageType_CONVERTED_AMOUNT_BATCH, protoextractors.GetConvertedAmountBatchItems)
+
+	sender := sender.NewDynamicKeySender(
+		resultExchange,
+		func(clientID string) string {
+			return fmt.Sprintf(
+				"%s.%s",
+				joinConfig.ClientExchangeName,
+				clientID,
+			)
+		},
+		protowrappers.WrapToConvertedMicropaymentResultBatch,
+		protowrappers.ProtoSizer[*protobuf.ConvertedMicroPaymentResult](),
+		joinConfig.MaxBatchWeight,
+		protoinserters.InsertConvertedMicropaymentResultBatch,
+	)
+
+	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
 		return nil, err
 	}
 
-	clientExchangeName, err := getEnvStrict("CLIENT_EXCHANGE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := getEnvStrict("ID")
-	if err != nil {
-		return nil, err
-	}
-
-	config := conversionjoin.ConversionJoinConfig{
-		ID:                 id,
-		InputExchangeName:  inputExchangeName,
-		ClientExchangeName: clientExchangeName,
-		MomHost:            host,
-		MomPort:            port,
-	}
-
-	return conversionjoin.NewConversionJoin(config)
+	engine := engine.NewStatefulEngine(receiver, sender, conversionjoin.NewConversionJoinProcessor(), newCoordinator)
+	worker := worker.NewWorker(heartbeatPublisher)
+	worker.AddEngine(engine)
+	return worker, nil
 }
 
 func buildScatterGatherJoinWorker() (workers.Worker, error) {
