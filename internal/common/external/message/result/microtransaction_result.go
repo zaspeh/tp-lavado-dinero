@@ -1,9 +1,9 @@
 package result
 
-import protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
-
 type MicrotransactionResult struct {
-	Transactions []*protobuf.Microtransaction
+	Account   string
+	ToAccount string
+	Amount    float64
 }
 
 func (m MicrotransactionResult) Handle(handler ResultHandler) error {

@@ -12,8 +12,6 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/message/result"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/serializer"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/external/socket"
-	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -125,31 +123,23 @@ func (p *ExternalProtocol) SendAccountBatch(accounts []request.Account) error {
 	return p.socket.WriteAll(buf)
 }
 
-func (p *ExternalProtocol) SendMicrotransactionResult(result *result.MicrotransactionResult) error {
+func (p *ExternalProtocol) SendMicrotransactionResult(result []result.MicrotransactionResult) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if err := p.sendMsgType(microtransactionResult); err != nil {
-		return err
+	for _, res := range result {
+		slog.Debug("Sending Microtransaction Result")
+		if err := p.sendMsgType(microtransactionResult); err != nil {
+			return err
+		}
+		record := fmt.Sprintf("%s,%s,%f", res.Account, res.ToAccount, res.Amount)
+		serializeLength := serializer.SerializeUint16(uint16(len(record)))
+		serializeString := serializer.SerializeString(record)
+
+		if err := p.socket.WriteAll(append(serializeLength, serializeString...)); err != nil {
+			return err
+		}
 	}
-
-	protoResult := &protobuf.MicrotransactionResult{
-		Transactions: result.Transactions,
-	}
-
-	data, err := proto.Marshal(protoResult)
-	if err != nil {
-		return err
-	}
-
-	length := serializer.SerializeUint32(
-		uint32(len(data)),
-	)
-
-	if err := p.socket.WriteAll(length); err != nil {
-		return err
-	}
-
-	return p.socket.WriteAll(data)
+	return nil
 }
 
 func (p *ExternalProtocol) SendMaxBankResult(results []result.MaxBankResult) error {
@@ -372,26 +362,32 @@ func (p *ExternalProtocol) receiveAvgByTypeResult() (result.Result, error) {
 }
 
 func (p *ExternalProtocol) receiveMicrotransactionResult() (result.Result, error) {
-	lengthBytes, err := p.socket.ReadAll(serializer.Uint32Size)
+	stringLengthBytes, err := p.socket.ReadAll(serializer.Uint16Size)
 	if err != nil {
 		return nil, err
 	}
 
-	length := serializer.DeserializeUint32(lengthBytes)
-
-	data, err := p.socket.ReadAll(int(length))
+	length := serializer.DeserializeUint16(stringLengthBytes)
+	stringBytes, err := p.socket.ReadAll(int(length))
 	if err != nil {
 		return nil, err
 	}
 
-	protoResult := &protobuf.MicrotransactionResult{}
-
-	if err := proto.Unmarshal(data, protoResult); err != nil {
-		return nil, err
+	record := serializer.DeserializeString(stringBytes)
+	fields := strings.Split(record, ",")
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("invalid microtransaction result record: expected 3 fields, got %d", len(fields))
 	}
 
-	return &result.MicrotransactionResult{
-		Transactions: protoResult.Transactions,
+	amount, err := strconv.ParseFloat(fields[2], 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid amount: %w", err)
+	}
+
+	return result.MicrotransactionResult{
+		Account:   fields[0],
+		ToAccount: fields[1],
+		Amount:    amount,
 	}, nil
 }
 

@@ -315,7 +315,7 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_EOF_:
 		cc.handleEOFFromWorker(ack, nack)
-	case protobuf.MessageType_MICROTRANSACTION_RESULT:
+	case protobuf.MessageType_MICROTRANSACTION_BATCH:
 		cc.handleMicrotransactionResult(moneyLaundry, ack, nack)
 	case protobuf.MessageType_MAX_BANK_RESULT_BATCH:
 		cc.handleMaxBankResult(moneyLaundry, ack, nack)
@@ -366,22 +366,16 @@ func (cc *ClientConnection) handleAvgByTypeResult(moneyLaundry *protobuf.MoneyLa
 }
 
 func (cc *ClientConnection) handleMicrotransactionResult(moneyLaundry *protobuf.MoneyLaundry, ack, nack func()) {
-	microtransactionResult, err := serializer.DeserializeTransaction(
-		moneyLaundry.GetPayload(),
-		&protobuf.MicrotransactionResult{},
-	)
+	externalMsg, err := messagehandler.ProtoToMicrotransactionsResult(moneyLaundry)
 
 	if err != nil {
 		nack()
 		return
 	}
 
-	// TODO: usar message handler para convertir de proto a external
-	msgResult := &result.MicrotransactionResult{
-		Transactions: microtransactionResult.Transactions,
-	}
-
-	if err := cc.protocol.SendMicrotransactionResult(msgResult); err != nil {
+	if err := cc.protocol.SendMicrotransactionResult(
+		externalMsg,
+	); err != nil {
 		nack()
 		return
 	}

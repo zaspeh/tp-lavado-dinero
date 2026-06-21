@@ -144,6 +144,21 @@ func ProtoToSuspiciousAccounts(moneyLaundering *protobuf.MoneyLaundry,
 
 }
 
+func ProtoToMicrotransactionsResult(moneyLaundering *protobuf.MoneyLaundry,
+) ([]result.MicrotransactionResult, error) {
+	batch := moneyLaundering.GetMicrotransactionsBatch()
+	results := batch.GetItems()
+	externalMessage := make([]result.MicrotransactionResult, 0, len(results))
+	for _, r := range batch.GetItems() {
+		externalMessage = append(externalMessage, result.MicrotransactionResult{
+			Account:   r.GetAccount(),
+			ToAccount: r.GetToAccount(),
+			Amount:    r.GetAmount(),
+		})
+	}
+	return externalMessage, nil
+}
+
 func RawAccountToProtoMaxBank(account request.Account) (*protobuf.MaxBank, error) {
 	reader := csv.NewReader(strings.NewReader(account.Record))
 	fields, err := reader.Read()

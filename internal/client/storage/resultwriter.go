@@ -163,22 +163,14 @@ func (rw *ResultCSVWriter) HandleEOF(msg result.EOF) error {
 }
 
 func (rw *ResultCSVWriter) HandleMicrotransactionResult(msg result.MicrotransactionResult) error {
-	for _, t := range msg.Transactions {
-		parsedString := strconv.FormatFloat(t.GetAmount(), 'f', 2, 64)
-
-		record := []string{
-			t.GetAccount(),
-			t.GetToAccount(),
-			parsedString,
-		}
-
-		if err := rw.q1Writer.Write(record); err != nil {
-			return err
-		}
+	parsedAmount := strconv.FormatFloat(msg.Amount, 'f', 2, 64)
+	record := []string{msg.Account, msg.ToAccount, parsedAmount}
+	err := rw.q1Writer.Write(record)
+	if err != nil {
+		return err
 	}
 
 	rw.q1Writer.Flush()
-
 	return rw.q1Writer.Error()
 }
 
