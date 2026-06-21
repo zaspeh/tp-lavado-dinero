@@ -6,6 +6,13 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 )
 
+type PublishFunc func(clientID string, msg m.Message) error
+
+type senderExchange interface {
+	m.Middleware
+	SendWithKey(string, m.Message) error
+}
+
 type SingleSender[T any, V any] struct {
 	output     m.Middleware
 	wrapper    batch.Wrapper[T, V]
@@ -13,12 +20,13 @@ type SingleSender[T any, V any] struct {
 	batchers   map[string]*batch.Batcher[T, V]
 	serializer SerializerFunc[V]
 	maxWeight  int
+	publish    PublishFunc
 }
 
 func NewSingleSender[T any, V any](output m.Middleware, wrapper batch.Wrapper[T, V],
 	sizer batch.Sizer[T], maxWeight int, serializer SerializerFunc[V],
 ) *SingleSender[T, V] {
-	return &SingleSender[T, V]{
+	sender := &SingleSender[T, V]{
 		output:     output,
 		wrapper:    wrapper,
 		sizer:      sizer,
@@ -26,6 +34,27 @@ func NewSingleSender[T any, V any](output m.Middleware, wrapper batch.Wrapper[T,
 		serializer: serializer,
 		batchers:   make(map[string]*batch.Batcher[T, V]),
 	}
+
+	sender.publish = func(_ string, msg m.Message) error {
+		return output.Send(msg)
+	}
+
+	return sender
+}
+
+func NewDynamicKeySender[T any, V any](output senderExchange, keyResolver func(clientID string) string, wrapper batch.Wrapper[T, V],
+	sizer batch.Sizer[T], maxWeight int, serializer SerializerFunc[V],
+) *SingleSender[T, V] {
+	sender := NewSingleSender(output, wrapper, sizer, maxWeight, serializer)
+
+	sender.publish = func(clientID string, msg m.Message) error {
+		return output.SendWithKey(
+			keyResolver(clientID),
+			msg,
+		)
+	}
+
+	return sender
 }
 
 func (s *SingleSender[T, V]) Add(clientID string, item T, batchID string) error {
@@ -67,7 +96,7 @@ func (s *SingleSender[T, V]) SendEOF(clientID string, survivorCount uint64, eofI
 	if err != nil {
 		return err
 	}
-	return s.output.Send(msg)
+	return s.publish(clientID, msg)
 }
 
 func (s *SingleSender[T, V]) Close() error {
@@ -82,5 +111,5 @@ func (s *SingleSender[T, V]) flushBatch(clientID string, batch V, batchID string
 	if err != nil {
 		return err
 	}
-	return s.output.Send(msg)
+	return s.publish(clientID, msg)
 }

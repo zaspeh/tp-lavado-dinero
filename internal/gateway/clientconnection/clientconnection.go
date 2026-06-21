@@ -390,6 +390,9 @@ func (cc *ClientConnection) handleMicrotransactionResult(moneyLaundry *protobuf.
 }
 
 func (cc *ClientConnection) handleMaxBankResult(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
+
+	slog.Debug("Client received MaxBank Result", "clientID", moneyLaundering.GetClientID())
+
 	externalMsg, err := messagehandler.ProtoToMaxBankResult(moneyLaundering)
 	if err != nil {
 		nack()

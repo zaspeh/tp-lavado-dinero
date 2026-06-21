@@ -3,6 +3,7 @@ package external
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -155,6 +156,7 @@ func (p *ExternalProtocol) SendMaxBankResult(results []result.MaxBankResult) err
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for _, res := range results {
+		slog.Debug("Sending max Bank Result")
 		if err := p.sendMsgType(maxBankResult); err != nil {
 			return err
 		}

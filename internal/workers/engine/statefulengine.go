@@ -51,6 +51,7 @@ func (e *StatefulEngine[T, V]) Shutdown() {
 func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
 	switch event.Type {
 	case r.DataMessage:
+		slog.Debug("Data Message Received")
 		return e.handleDataMessage(event.ClientID, event.Data)
 	case r.EOFMessage:
 		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
