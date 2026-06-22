@@ -7,11 +7,16 @@ option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
 message EOFCoordination {
   string client_id = 1;
   uint32 sender_id = 2;
-  uint64 processed_count = 3;
-  uint64 survivor_count = 4;
-  uint64 expected_total = 6;
-  bool   eof_arrived = 7;
-  uint32 eof_seen = 8;
-  string eofID = 9;
-  string batchID = 10;
+  uint64 expected_total = 3;
+  bool   eof_arrived = 4;
+  uint32 eof_seen = 5;
+  string eofID = 6;
+  repeated BatchInformation information = 7;
 }
+
+message BatchInformation {
+  string batchID = 1;
+  uint64 processed_count = 2;
+  uint64 survivor_count = 3;
+}
+

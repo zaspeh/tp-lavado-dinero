@@ -39,7 +39,6 @@ func (s *Batcher[T, V]) Add(item T) error {
 			return err
 		}
 		if !s.batch.TryAdd(item) {
-			slog.Debug("Error add 2:", "item exceeds max batch size")
 			return fmt.Errorf("item exceeds max batch size")
 		}
 		s.batchFlushed++

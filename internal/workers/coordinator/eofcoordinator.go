@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
+	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 )
 
@@ -141,10 +143,12 @@ func (c *EOFCoordinator) RecordBatch(clientID, batchID string, processed, surviv
 	shouldBroadcast := state.hasAllEOFs(c.expectedEOFs)
 
 	if shouldBroadcast {
-		if err := c.broadcastBatch(clientID, record); err != nil {
+		toSend := c.transformBatchToProto(record)
+		if err := c.broadcastBatch([]*protobuf.BatchInformation{toSend}, clientID); err != nil {
 			return err
 		}
 	}
+
 	if err := c.storage.WriteBatch(clientID, record); err != nil {
 		return err
 	}
@@ -242,34 +246,32 @@ func (c *EOFCoordinator) handleRemoteBatch(msg *protobuf.EOFCoordination) error 
 	defer c.mu.Unlock()
 
 	clientID := msg.GetClientId()
-	batchID := msg.GetBatchID()
 	peerID := int(msg.GetSenderId())
 
 	state := c.getClientState(clientID)
 
-	// Si el batch ya es nuestro, el peer procesó un duplicado de rabbit.
-	// Lo ignoramos: nuestro conteo ya es correcto.
-	if state.hasOwnBatch(batchID) {
-		return nil
-	}
+	for _, batchInformation := range msg.GetInformation() {
+		// Si el batch ya es nuestro, el peer procesó un duplicado de rabbit.
+		// Lo ignoramos: nuestro conteo ya es correcto.
+		if state.hasOwnBatch(batchInformation.GetBatchID()) {
+			continue
+		}
 
-	record := BatchRecord{
-		BatchID:   batchID,
-		Processed: msg.GetProcessedCount(),
-		Survivors: msg.GetSurvivorCount(),
+		record := BatchRecord{
+			BatchID:   batchInformation.GetBatchID(),
+			Processed: batchInformation.GetProcessedCount(),
+			Survivors: batchInformation.GetSurvivorCount(),
+		}
+		state.addPeerBatch(peerID, record)
 	}
-	state.addPeerBatch(peerID, record)
-
 	return c.tryFlush(clientID, state)
 }
 
-func (c *EOFCoordinator) broadcastBatch(clientID string, record BatchRecord) error {
+func (c *EOFCoordinator) broadcastBatch(record []*protobuf.BatchInformation, clientID string) error {
 	msg := &protobuf.EOFCoordination{
-		ClientId:       clientID,
-		SenderId:       uint32(c.workerID),
-		BatchID:        record.BatchID,
-		ProcessedCount: record.Processed,
-		SurvivorCount:  record.Survivors,
+		ClientId:    clientID,
+		SenderId:    uint32(c.workerID),
+		Information: record,
 	}
 	return c.broadcast(msg)
 }
@@ -286,12 +288,21 @@ func (c *EOFCoordinator) broadcastEOF(clientID, eofID string, expectedTotal uint
 }
 
 func (c *EOFCoordinator) broadcastOwnBatches(clientID string, state *clientState) error {
+	// # TODO: max weight
+	batchOfInformation := batch.New(0, protowrappers.ProtoSizer[*protobuf.BatchInformation](), protowrappers.FalseWrap)
+	onflush := func(items []*protobuf.BatchInformation, batchID string) error {
+		return c.broadcastBatch(items, clientID)
+	}
+
+	batcher := batch.NewBatcher(batchOfInformation, onflush)
 	for _, record := range state.ownBatches {
-		if err := c.broadcastBatch(clientID, record); err != nil {
+		toSend := c.transformBatchToProto(record)
+		if err := batcher.Add(toSend); err != nil {
 			return err
 		}
 	}
-	return nil
+
+	return batcher.Flush()
 }
 
 func (c *EOFCoordinator) broadcast(msg *protobuf.EOFCoordination) error {
@@ -337,4 +348,12 @@ func (c *EOFCoordinator) Close() error {
 		return err
 	}
 	return c.storage.Close()
+}
+
+func (c *EOFCoordinator) transformBatchToProto(batch BatchRecord) *protobuf.BatchInformation {
+	return &protobuf.BatchInformation{
+		BatchID:        batch.BatchID,
+		ProcessedCount: batch.Processed,
+		SurvivorCount:  batch.Survivors,
+	}
 }

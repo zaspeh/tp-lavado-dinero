@@ -22,18 +22,16 @@ const (
 )
 
 type EOFCoordination struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	ClientId       string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
-	SenderId       uint32                 `protobuf:"varint,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
-	ProcessedCount uint64                 `protobuf:"varint,3,opt,name=processed_count,json=processedCount,proto3" json:"processed_count,omitempty"`
-	SurvivorCount  uint64                 `protobuf:"varint,4,opt,name=survivor_count,json=survivorCount,proto3" json:"survivor_count,omitempty"`
-	ExpectedTotal  uint64                 `protobuf:"varint,6,opt,name=expected_total,json=expectedTotal,proto3" json:"expected_total,omitempty"`
-	EofArrived     bool                   `protobuf:"varint,7,opt,name=eof_arrived,json=eofArrived,proto3" json:"eof_arrived,omitempty"`
-	EofSeen        uint32                 `protobuf:"varint,8,opt,name=eof_seen,json=eofSeen,proto3" json:"eof_seen,omitempty"`
-	EofID          string                 `protobuf:"bytes,9,opt,name=eofID,proto3" json:"eofID,omitempty"`
-	BatchID        string                 `protobuf:"bytes,10,opt,name=batchID,proto3" json:"batchID,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClientId      string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	SenderId      uint32                 `protobuf:"varint,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	ExpectedTotal uint64                 `protobuf:"varint,3,opt,name=expected_total,json=expectedTotal,proto3" json:"expected_total,omitempty"`
+	EofArrived    bool                   `protobuf:"varint,4,opt,name=eof_arrived,json=eofArrived,proto3" json:"eof_arrived,omitempty"`
+	EofSeen       uint32                 `protobuf:"varint,5,opt,name=eof_seen,json=eofSeen,proto3" json:"eof_seen,omitempty"`
+	EofID         string                 `protobuf:"bytes,6,opt,name=eofID,proto3" json:"eofID,omitempty"`
+	Information   []*BatchInformation    `protobuf:"bytes,7,rep,name=information,proto3" json:"information,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EOFCoordination) Reset() {
@@ -80,20 +78,6 @@ func (x *EOFCoordination) GetSenderId() uint32 {
 	return 0
 }
 
-func (x *EOFCoordination) GetProcessedCount() uint64 {
-	if x != nil {
-		return x.ProcessedCount
-	}
-	return 0
-}
-
-func (x *EOFCoordination) GetSurvivorCount() uint64 {
-	if x != nil {
-		return x.SurvivorCount
-	}
-	return 0
-}
-
 func (x *EOFCoordination) GetExpectedTotal() uint64 {
 	if x != nil {
 		return x.ExpectedTotal
@@ -122,30 +106,91 @@ func (x *EOFCoordination) GetEofID() string {
 	return ""
 }
 
-func (x *EOFCoordination) GetBatchID() string {
+func (x *EOFCoordination) GetInformation() []*BatchInformation {
+	if x != nil {
+		return x.Information
+	}
+	return nil
+}
+
+type BatchInformation struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BatchID        string                 `protobuf:"bytes,1,opt,name=batchID,proto3" json:"batchID,omitempty"`
+	ProcessedCount uint64                 `protobuf:"varint,2,opt,name=processed_count,json=processedCount,proto3" json:"processed_count,omitempty"`
+	SurvivorCount  uint64                 `protobuf:"varint,3,opt,name=survivor_count,json=survivorCount,proto3" json:"survivor_count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *BatchInformation) Reset() {
+	*x = BatchInformation{}
+	mi := &file_internal_common_inner_protobuf_protomessages_coordination_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchInformation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchInformation) ProtoMessage() {}
+
+func (x *BatchInformation) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_common_inner_protobuf_protomessages_coordination_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchInformation.ProtoReflect.Descriptor instead.
+func (*BatchInformation) Descriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *BatchInformation) GetBatchID() string {
 	if x != nil {
 		return x.BatchID
 	}
 	return ""
 }
 
+func (x *BatchInformation) GetProcessedCount() uint64 {
+	if x != nil {
+		return x.ProcessedCount
+	}
+	return 0
+}
+
+func (x *BatchInformation) GetSurvivorCount() uint64 {
+	if x != nil {
+		return x.SurvivorCount
+	}
+	return 0
+}
+
 var File_internal_common_inner_protobuf_protomessages_coordination_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDesc = "" +
 	"\n" +
-	"?internal/common/inner/protobuf/protomessages/coordination.proto\x12\bprotobuf\"\xae\x02\n" +
+	"?internal/common/inner/protobuf/protomessages/coordination.proto\x12\bprotobuf\"\x82\x02\n" +
 	"\x0fEOFCoordination\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x1b\n" +
-	"\tsender_id\x18\x02 \x01(\rR\bsenderId\x12'\n" +
-	"\x0fprocessed_count\x18\x03 \x01(\x04R\x0eprocessedCount\x12%\n" +
-	"\x0esurvivor_count\x18\x04 \x01(\x04R\rsurvivorCount\x12%\n" +
-	"\x0eexpected_total\x18\x06 \x01(\x04R\rexpectedTotal\x12\x1f\n" +
-	"\veof_arrived\x18\a \x01(\bR\n" +
+	"\tsender_id\x18\x02 \x01(\rR\bsenderId\x12%\n" +
+	"\x0eexpected_total\x18\x03 \x01(\x04R\rexpectedTotal\x12\x1f\n" +
+	"\veof_arrived\x18\x04 \x01(\bR\n" +
 	"eofArrived\x12\x19\n" +
-	"\beof_seen\x18\b \x01(\rR\aeofSeen\x12\x14\n" +
-	"\x05eofID\x18\t \x01(\tR\x05eofID\x12\x18\n" +
-	"\abatchID\x18\n" +
-	" \x01(\tR\abatchIDB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\beof_seen\x18\x05 \x01(\rR\aeofSeen\x12\x14\n" +
+	"\x05eofID\x18\x06 \x01(\tR\x05eofID\x12<\n" +
+	"\vinformation\x18\a \x03(\v2\x1a.protobuf.BatchInformationR\vinformation\"|\n" +
+	"\x10BatchInformation\x12\x18\n" +
+	"\abatchID\x18\x01 \x01(\tR\abatchID\x12'\n" +
+	"\x0fprocessed_count\x18\x02 \x01(\x04R\x0eprocessedCount\x12%\n" +
+	"\x0esurvivor_count\x18\x03 \x01(\x04R\rsurvivorCountB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescOnce sync.Once
@@ -159,16 +204,18 @@ func file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDes
 	return file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescData
 }
 
-var file_internal_common_inner_protobuf_protomessages_coordination_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_internal_common_inner_protobuf_protomessages_coordination_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_internal_common_inner_protobuf_protomessages_coordination_proto_goTypes = []any{
-	(*EOFCoordination)(nil), // 0: protobuf.EOFCoordination
+	(*EOFCoordination)(nil),  // 0: protobuf.EOFCoordination
+	(*BatchInformation)(nil), // 1: protobuf.BatchInformation
 }
 var file_internal_common_inner_protobuf_protomessages_coordination_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: protobuf.EOFCoordination.information:type_name -> protobuf.BatchInformation
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_protomessages_coordination_proto_init() }
@@ -182,7 +229,7 @@ func file_internal_common_inner_protobuf_protomessages_coordination_proto_init()
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDesc), len(file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -42,7 +42,7 @@ func (w *MaxBankProcessor) Finalize(clientID string, yield func(result *protobuf
 	store := w.getStore(clientID)
 	reader := store.Reader()
 
-	totalGroups := uint64(0)
+	var totalGroups uint64
 
 	for reader.HasNext() {
 		processedRecord := reader.Get()

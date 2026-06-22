@@ -181,3 +181,7 @@ func WrapToConvertedMicropaymentResultBatch(results []*protobuf.ConvertedMicroPa
 		Results: results,
 	}
 }
+
+func FalseWrap[T proto.Message](List []T) []T {
+	return List
+}
