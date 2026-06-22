@@ -46,6 +46,7 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 		"-e", fmt.Sprintf("WORKER_COUNT=%d", definition.Count),
 		"-e", fmt.Sprintf("WORKER_EXCHANGE_NAME=%s", definition.WorkerExchangeName),
 		"-e", fmt.Sprintf("LOG_LEVEL=%s", definition.LogLevel),
+		"-e", fmt.Sprintf("MAX_BATCH_WEIGHT=%d", definition.MaxBatchSize),
 	}
 
 	for key, value := range definition.Env {

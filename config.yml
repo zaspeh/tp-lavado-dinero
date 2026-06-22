@@ -1,6 +1,7 @@
 # Infraestructura Core
 
 global_log_level: info
+global_worker_batch_size: 1000000
 gateway:
   env:
     OUTPUT_QUEUE_NAME: currency_filter_input_queue
@@ -83,7 +84,6 @@ services:
       INPUT_EXCHANGE_NAME: microtransaction_join_exchange
       CLIENT_EXCHANGE_NAME: client_results_exchange
       CHECKPOINT_EVERY_BATCHES: 100
-      MAX_BATCH_WEIGHT: 40000
     
   bank_router:
     count: 2
@@ -99,7 +99,6 @@ services:
     env:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
       OUTPUT_QUEUE_NAME: max_bank_join_input
-      MAX_BATCH_WEIGHT: 8000 
       CHECKPOINT_EVERY_BATCHES: 100
 
   max_bank_router_to_join:
@@ -118,7 +117,6 @@ services:
       INPUT_EXCHANGE_NAME: max_bank_join_exchange
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BANK_WORKER_AMOUNT: 2
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
     
 
@@ -157,7 +155,6 @@ services:
     env:
       INPUT_EXCHANGE_NAME: payment_type_exchange
       OUTPUT_QUEUE_NAME: avg_by_type_router_to_join_input
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
 
   avg_by_type_router_to_join:
@@ -177,7 +174,6 @@ services:
       INPUT_EXCHANGE_NAME: avg_by_type_join_input
       CLIENT_EXCHANGE_NAME: client_results_exchange
       EXPECTED_EOFS: 1
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
 
 # Q4 exclusivo------------------------------------------------
@@ -200,7 +196,6 @@ services:
       INPUT_EXCHANGE_NAME: group_by_origin_destination
       OUTPUT_QUEUE_NAME: grouped_origin_accounts
 
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
 
   group_by_destination:
@@ -211,7 +206,6 @@ services:
       INPUT_EXCHANGE_NAME: group_by_origin_destination
       OUTPUT_QUEUE_NAME: grouped_destination_accounts
 
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
   
   origin_intermediary_router:
@@ -247,7 +241,6 @@ services:
 
       OUTPUT_QUEUE_NAME: suspicious_path_router_join_input
 
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
 
   suspicious_path_router_to_join:
@@ -268,7 +261,6 @@ services:
       INPUT_EXCHANGE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
 
 # Q5 exclusivo------------------------------------------------
@@ -311,5 +303,4 @@ services:
     env:
       INPUT_EXCHANGE_NAME: converted_amount_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100

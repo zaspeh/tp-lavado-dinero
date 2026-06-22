@@ -14,13 +14,15 @@ type WorkerDefinition struct {
 	Count              int
 	Env                map[string]string
 	LogLevel           string
+	MaxBatchSize       int
 }
 
 type configFile struct {
-	GlobalLogLevel  string                   `yaml:"global_log_level"`
-	RabbitMQ        rabbitConfig             `yaml:"rabbitmq"`
-	FaultHypervisor faultHypervisorConfig    `yaml:"fault_hypervisor"`
-	Services        map[string]serviceConfig `yaml:"services"`
+	GlobalLogLevel        string                   `yaml:"global_log_level"`
+	RabbitMQ              rabbitConfig             `yaml:"rabbitmq"`
+	FaultHypervisor       faultHypervisorConfig    `yaml:"fault_hypervisor"`
+	Services              map[string]serviceConfig `yaml:"services"`
+	GlobalWorkerBatchSize int                      `yaml:"global_worker_batch_size"`
 }
 
 type rabbitConfig struct {
@@ -80,6 +82,7 @@ func LoadWorkersFromConfig(path string) ([]WorkerDefinition, error) {
 			Env:                service.Env,
 			WorkerExchangeName: exchange,
 			LogLevel:           cfg.GlobalLogLevel,
+			MaxBatchSize:       cfg.GlobalWorkerBatchSize,
 		})
 	}
 
