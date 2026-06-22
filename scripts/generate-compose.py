@@ -154,7 +154,7 @@ def build_fault_hypervisor(cfg):
     return {
         'build': {
             'context': '.',
-            'dockerfile': 'internal/fault_hypervisor/Dockerfile'
+            'dockerfile': 'cmd/fault_hypervisor/Dockerfile'
         },
         'container_name': 'fault_hypervisor',
         'privileged': True,

@@ -11,9 +11,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY internal ./internal
-COPY internal/fault_hypervisor ./internal/fault_hypervisor
+COPY cmd/fault_hypervisor ./cmd/fault_hypervisor
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /build/bin/fault_hypervisor ./internal/fault_hypervisor
+RUN CGO_ENABLED=0 GOOS=linux go build -o /build/bin/fault_hypervisor ./cmd/fault_hypervisor
 
 # ETAPA DE EJECUCION
 FROM docker:28-dind

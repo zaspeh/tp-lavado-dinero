@@ -68,7 +68,7 @@ services:
   fault_hypervisor:
     build:
       context: .
-      dockerfile: internal/fault_hypervisor/Dockerfile
+      dockerfile: cmd/fault_hypervisor/Dockerfile
     container_name: fault_hypervisor
     privileged: true
     environment:
