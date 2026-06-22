@@ -21,15 +21,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type CoordinationMessageType int32
+
+const (
+	CoordinationMessageType_eof_arrived       CoordinationMessageType = 0
+	CoordinationMessageType_batch_information CoordinationMessageType = 1
+	CoordinationMessageType_wakeup            CoordinationMessageType = 2
+)
+
+// Enum value maps for CoordinationMessageType.
+var (
+	CoordinationMessageType_name = map[int32]string{
+		0: "eof_arrived",
+		1: "batch_information",
+		2: "wakeup",
+	}
+	CoordinationMessageType_value = map[string]int32{
+		"eof_arrived":       0,
+		"batch_information": 1,
+		"wakeup":            2,
+	}
+)
+
+func (x CoordinationMessageType) Enum() *CoordinationMessageType {
+	p := new(CoordinationMessageType)
+	*p = x
+	return p
+}
+
+func (x CoordinationMessageType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CoordinationMessageType) Descriptor() protoreflect.EnumDescriptor {
+	return file_internal_common_inner_protobuf_protomessages_coordination_proto_enumTypes[0].Descriptor()
+}
+
+func (CoordinationMessageType) Type() protoreflect.EnumType {
+	return &file_internal_common_inner_protobuf_protomessages_coordination_proto_enumTypes[0]
+}
+
+func (x CoordinationMessageType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CoordinationMessageType.Descriptor instead.
+func (CoordinationMessageType) EnumDescriptor() ([]byte, []int) {
+	return file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescGZIP(), []int{0}
+}
+
 type EOFCoordination struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClientId      string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
-	SenderId      uint32                 `protobuf:"varint,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
-	ExpectedTotal uint64                 `protobuf:"varint,3,opt,name=expected_total,json=expectedTotal,proto3" json:"expected_total,omitempty"`
-	EofArrived    bool                   `protobuf:"varint,4,opt,name=eof_arrived,json=eofArrived,proto3" json:"eof_arrived,omitempty"`
-	EofSeen       uint32                 `protobuf:"varint,5,opt,name=eof_seen,json=eofSeen,proto3" json:"eof_seen,omitempty"`
-	EofID         string                 `protobuf:"bytes,6,opt,name=eofID,proto3" json:"eofID,omitempty"`
-	Information   []*BatchInformation    `protobuf:"bytes,7,rep,name=information,proto3" json:"information,omitempty"`
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Type          CoordinationMessageType `protobuf:"varint,1,opt,name=type,proto3,enum=protobuf.CoordinationMessageType" json:"type,omitempty"`
+	ClientId      string                  `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	SenderId      uint32                  `protobuf:"varint,3,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	ExpectedTotal uint64                  `protobuf:"varint,4,opt,name=expected_total,json=expectedTotal,proto3" json:"expected_total,omitempty"`
+	EofSeen       uint32                  `protobuf:"varint,5,opt,name=eof_seen,json=eofSeen,proto3" json:"eof_seen,omitempty"`
+	EofID         string                  `protobuf:"bytes,6,opt,name=eofID,proto3" json:"eofID,omitempty"`
+	Information   []*BatchInformation     `protobuf:"bytes,7,rep,name=information,proto3" json:"information,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -64,6 +113,13 @@ func (*EOFCoordination) Descriptor() ([]byte, []int) {
 	return file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescGZIP(), []int{0}
 }
 
+func (x *EOFCoordination) GetType() CoordinationMessageType {
+	if x != nil {
+		return x.Type
+	}
+	return CoordinationMessageType_eof_arrived
+}
+
 func (x *EOFCoordination) GetClientId() string {
 	if x != nil {
 		return x.ClientId
@@ -83,13 +139,6 @@ func (x *EOFCoordination) GetExpectedTotal() uint64 {
 		return x.ExpectedTotal
 	}
 	return 0
-}
-
-func (x *EOFCoordination) GetEofArrived() bool {
-	if x != nil {
-		return x.EofArrived
-	}
-	return false
 }
 
 func (x *EOFCoordination) GetEofSeen() uint32 {
@@ -177,20 +226,24 @@ var File_internal_common_inner_protobuf_protomessages_coordination_proto protore
 
 const file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDesc = "" +
 	"\n" +
-	"?internal/common/inner/protobuf/protomessages/coordination.proto\x12\bprotobuf\"\x82\x02\n" +
-	"\x0fEOFCoordination\x12\x1b\n" +
-	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x1b\n" +
-	"\tsender_id\x18\x02 \x01(\rR\bsenderId\x12%\n" +
-	"\x0eexpected_total\x18\x03 \x01(\x04R\rexpectedTotal\x12\x1f\n" +
-	"\veof_arrived\x18\x04 \x01(\bR\n" +
-	"eofArrived\x12\x19\n" +
+	"?internal/common/inner/protobuf/protomessages/coordination.proto\x12\bprotobuf\"\x98\x02\n" +
+	"\x0fEOFCoordination\x125\n" +
+	"\x04type\x18\x01 \x01(\x0e2!.protobuf.CoordinationMessageTypeR\x04type\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12\x1b\n" +
+	"\tsender_id\x18\x03 \x01(\rR\bsenderId\x12%\n" +
+	"\x0eexpected_total\x18\x04 \x01(\x04R\rexpectedTotal\x12\x19\n" +
 	"\beof_seen\x18\x05 \x01(\rR\aeofSeen\x12\x14\n" +
 	"\x05eofID\x18\x06 \x01(\tR\x05eofID\x12<\n" +
 	"\vinformation\x18\a \x03(\v2\x1a.protobuf.BatchInformationR\vinformation\"|\n" +
 	"\x10BatchInformation\x12\x18\n" +
 	"\abatchID\x18\x01 \x01(\tR\abatchID\x12'\n" +
 	"\x0fprocessed_count\x18\x02 \x01(\x04R\x0eprocessedCount\x12%\n" +
-	"\x0esurvivor_count\x18\x03 \x01(\x04R\rsurvivorCountB1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\x0esurvivor_count\x18\x03 \x01(\x04R\rsurvivorCount*M\n" +
+	"\x17CoordinationMessageType\x12\x0f\n" +
+	"\veof_arrived\x10\x00\x12\x15\n" +
+	"\x11batch_information\x10\x01\x12\n" +
+	"\n" +
+	"\x06wakeup\x10\x02B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescOnce sync.Once
@@ -204,18 +257,21 @@ func file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDes
 	return file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDescData
 }
 
+var file_internal_common_inner_protobuf_protomessages_coordination_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_internal_common_inner_protobuf_protomessages_coordination_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_internal_common_inner_protobuf_protomessages_coordination_proto_goTypes = []any{
-	(*EOFCoordination)(nil),  // 0: protobuf.EOFCoordination
-	(*BatchInformation)(nil), // 1: protobuf.BatchInformation
+	(CoordinationMessageType)(0), // 0: protobuf.CoordinationMessageType
+	(*EOFCoordination)(nil),      // 1: protobuf.EOFCoordination
+	(*BatchInformation)(nil),     // 2: protobuf.BatchInformation
 }
 var file_internal_common_inner_protobuf_protomessages_coordination_proto_depIdxs = []int32{
-	1, // 0: protobuf.EOFCoordination.information:type_name -> protobuf.BatchInformation
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 0: protobuf.EOFCoordination.type:type_name -> protobuf.CoordinationMessageType
+	2, // 1: protobuf.EOFCoordination.information:type_name -> protobuf.BatchInformation
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_protomessages_coordination_proto_init() }
@@ -228,13 +284,14 @@ func file_internal_common_inner_protobuf_protomessages_coordination_proto_init()
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDesc), len(file_internal_common_inner_protobuf_protomessages_coordination_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_internal_common_inner_protobuf_protomessages_coordination_proto_goTypes,
 		DependencyIndexes: file_internal_common_inner_protobuf_protomessages_coordination_proto_depIdxs,
+		EnumInfos:         file_internal_common_inner_protobuf_protomessages_coordination_proto_enumTypes,
 		MessageInfos:      file_internal_common_inner_protobuf_protomessages_coordination_proto_msgTypes,
 	}.Build()
 	File_internal_common_inner_protobuf_protomessages_coordination_proto = out.File

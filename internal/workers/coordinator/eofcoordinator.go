@@ -25,6 +25,7 @@ type EOFCoordinatorConfig struct {
 
 type EOFCoordinator struct {
 	workerID     int
+	workerName   string
 	expectedEOFs uint32
 	publishKeys  []string
 	exchange     *m.ExchangeMiddleware
@@ -61,6 +62,7 @@ func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 
 	coord := &EOFCoordinator{
 		workerID:     config.WorkerID,
+		workerName:   config.PeersExchangeName,
 		expectedEOFs: uint32(config.ExpectedEOFs),
 		publishKeys:  publishKeys,
 		exchange:     exchange,
@@ -114,6 +116,11 @@ func (c *EOFCoordinator) SetFlushHandler(handler FlushHandler) {
 }
 
 func (c *EOFCoordinator) Run() error {
+	err := c.wakeUpNotification()
+	if err != nil {
+		return err
+	}
+
 	c.exchange.StartConsuming(func(msg m.Message, ack, nack func()) {
 		c.handleCoordinationMessage(msg, ack, nack)
 	})
@@ -191,6 +198,15 @@ func (c *EOFCoordinator) IsLeader() bool {
 	return c.workerID == 0
 }
 
+func (c *EOFCoordinator) wakeUpNotification() error {
+	slog.Info("Sending wake up notification")
+	msg := &protobuf.EOFCoordination{
+		Type:     protobuf.CoordinationMessageType_wakeup,
+		SenderId: uint32(c.workerID),
+	}
+	return c.broadcast(msg)
+}
+
 func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func()) {
 	progressMsg, err := serializer.DeserializeCoordinationMessage(msg)
 	if err != nil {
@@ -200,9 +216,12 @@ func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func
 	}
 
 	var handleErr error
-	if progressMsg.GetEofArrived() {
+	switch progressMsg.GetType() {
+	case protobuf.CoordinationMessageType_wakeup:
+		handleErr = c.handleWakeUp(progressMsg)
+	case protobuf.CoordinationMessageType_eof_arrived:
 		handleErr = c.handleRemoteEOF(progressMsg)
-	} else {
+	case protobuf.CoordinationMessageType_batch_information:
 		handleErr = c.handleRemoteBatch(progressMsg)
 	}
 
@@ -214,15 +233,64 @@ func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func
 	ack()
 }
 
+func (c *EOFCoordinator) handleWakeUp(msg *protobuf.EOFCoordination) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	slog.Info("Handling wake up message from", "senderID", msg.GetSenderId())
+	key := fmt.Sprintf("%s.%d", c.workerName, msg.GetSenderId())
+
+	for clientID, state := range c.clients {
+
+		// En caso de ue el nodo aun no tenga todos los EOFs,
+		// no se inicio protocolo de broadcast, no damos informacion
+		if !state.hasAllEOFs(c.expectedEOFs) {
+			continue
+		}
+
+		batchOfInformation := batch.New(0, protowrappers.ProtoSizer[*protobuf.BatchInformation](), protowrappers.FalseWrap)
+		onflush := func(items []*protobuf.BatchInformation, batchID string) error {
+			return c.responseToWakeUp(items, clientID, key)
+		}
+
+		batcher := batch.NewBatcher(batchOfInformation, onflush)
+		for _, record := range state.ownBatches {
+			toSend := c.transformBatchToProto(record)
+			if err := batcher.Add(toSend); err != nil {
+				return err
+			}
+		}
+		return batcher.Flush()
+	}
+
+	return nil
+}
+
+func (c *EOFCoordinator) responseToWakeUp(items []*protobuf.BatchInformation, clientID, key string) error {
+	protoMsg := &protobuf.EOFCoordination{
+		Type:        protobuf.CoordinationMessageType_batch_information,
+		ClientId:    clientID,
+		SenderId:    uint32(c.workerID),
+		Information: items,
+	}
+
+	message, err := serializer.SerializeCoordinationMessage(protoMsg)
+	if err != nil {
+		return err
+	}
+
+	if err := c.exchange.SendWithKey(key, message); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *EOFCoordinator) handleRemoteEOF(msg *protobuf.EOFCoordination) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	clientID := msg.GetClientId()
 	eofID := msg.GetEofID()
-	if eofID == "" {
-		eofID = fmt.Sprintf("peer-%d-empty-eof", msg.GetSenderId())
-	}
 	state := c.getClientState(clientID)
 
 	if state.hasSeenEOF(eofID) {
@@ -269,6 +337,7 @@ func (c *EOFCoordinator) handleRemoteBatch(msg *protobuf.EOFCoordination) error 
 
 func (c *EOFCoordinator) broadcastBatch(record []*protobuf.BatchInformation, clientID string) error {
 	msg := &protobuf.EOFCoordination{
+		Type:        protobuf.CoordinationMessageType_batch_information,
 		ClientId:    clientID,
 		SenderId:    uint32(c.workerID),
 		Information: record,
@@ -278,9 +347,9 @@ func (c *EOFCoordinator) broadcastBatch(record []*protobuf.BatchInformation, cli
 
 func (c *EOFCoordinator) broadcastEOF(clientID, eofID string, expectedTotal uint64) error {
 	msg := &protobuf.EOFCoordination{
+		Type:          protobuf.CoordinationMessageType_eof_arrived,
 		ClientId:      clientID,
 		SenderId:      uint32(c.workerID),
-		EofArrived:    true,
 		EofID:         eofID,
 		ExpectedTotal: expectedTotal,
 	}
