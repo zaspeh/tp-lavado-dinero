@@ -46,7 +46,7 @@ services:
     max_batch_weight: 1000000
     
   currency_filter:
-    count: 1
+    count: 2
     worker_type: CURRENCY_FILTER
     env:
       INPUT_QUEUE_NAME: currency_filter_input_queue
@@ -59,7 +59,7 @@ services:
       HEARTBEAT_INTERVAL_SECONDS: 5
 
   microtransaction_filter:
-    count: 1
+    count: 2
     worker_type: AMOUNT_FILTER
     env:
       INPUT_QUEUE_NAME: microtransaction_filter_input_queue
@@ -67,17 +67,17 @@ services:
       AMOUNT_TO_FILTER: 50
 
   microtransaction_router_to_join:
-    count: 1
+    count: 2
     worker_type: MICROTRANSACTION_ROUTER_TO_JOIN
 
     env:
       INPUT_QUEUE_NAME: microtransaction_router_to_join_input_queue
       OUTPUT_EXCHANGE_NAME: microtransaction_join_exchange
-      OUTPUT_WORKER_AMOUNT: 1
+      OUTPUT_WORKER_AMOUNT: 2
       EXPECTED_EOF_AMOUNT: 1
 
   microtransaction_join:
-    count: 1
+    count: 2
     worker_type: MICROTRANSACTION_JOIN
     env:
       INPUT_EXCHANGE_NAME: microtransaction_join_exchange
