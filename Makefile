@@ -30,7 +30,7 @@ small_test:
 	@python3 $(TEST_SCRIPT) --expected-dir expected_outputs/expected_hi_small
 
 chaos:
-	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL))
+	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) $(if $(TARGET),--target $(TARGET))
 
 real_chaos:
-	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) --kill
+	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) $(if $(TARGET),--target $(TARGET)) --kill

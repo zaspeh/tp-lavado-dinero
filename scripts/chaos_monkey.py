@@ -4,6 +4,43 @@ import re
 import subprocess
 import time
 
+STATEFUL_TYPES = {
+   "microtransaction_join",
+   "max_bank",
+   "max_bank_join",
+   "avg_by_type",
+   "avg_by_type_join",
+   "group_by_origin",
+   "group_by_destination",
+   "aggregate_by_intermediary",
+   "scatter_gather_join",
+   "converter_join",
+}
+
+STATELESS_TYPES = {
+    "currency_filter",
+    "microtransaction_filter",
+    "microtransaction_router_to_join",
+    "bank_router",
+    "max_bank_router_to_join",
+    "period_filter",
+    "payment_type_router",
+    "avg_by_type_router_to_join",
+    "origin_destination_router",
+    "origin_intermediary_router",
+    "destination_intermediary_router",
+    "suspicious_path_router_to_join",
+    "payment_format_filter",
+    "currency_converter",
+    "amount_converted_filter",
+    "converted_amount_router_to_join",
+}
+
+TARGET_GROUPS = {
+    "stateful": STATEFUL_TYPES,
+    "stateless": STATELESS_TYPES,
+}
+
 def run(command):
     result = subprocess.run(
         command,
@@ -48,6 +85,27 @@ def get_containers(hypervisor_container):
         name
         for name in output.splitlines()
         if not is_excluded(name)
+    ]
+
+def target_types(target):
+    if target is None:
+        return None
+
+    if target in TARGET_GROUPS:
+        return TARGET_GROUPS[target]
+
+    return {target}
+
+def filter_containers(containers, target):
+    allowed_types = target_types(target)
+
+    if allowed_types is None:
+        return containers
+
+    return [
+        name
+        for name in containers
+        if worker_type(name) in allowed_types
     ]
 
 def group_by_type(containers):
@@ -100,11 +158,21 @@ def main():
         help="Contenedor que corre Docker-in-Docker.",
     )
 
+    parser.add_argument(
+        "--target",
+        help=(
+            "Objetivo a matar. Puede ser 'stateful', 'stateless' "
+            "o un tipo concreto de worker."
+        ),
+    )
+
     args = parser.parse_args()
 
     while True:
         try:
             containers = get_containers(args.hypervisor_container)
+            containers = filter_containers(containers, args.target)
+
             groups = group_by_type(containers)
             victim = choose_victim(groups)
 
@@ -123,4 +191,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
