@@ -33,12 +33,13 @@ func BuildFaultHypervisor() (*hypervisor.FaultHypervisor, error) {
 	}
 
 	runtimeConfig := runtimepkg.RuntimeConfig{
-		NetworkName:       loadedConfig.NetworkName,
-		WorkerImage:       loadedConfig.WorkerImage,
-		WorkerDockerfile:  loadedConfig.WorkerDockerfile,
-		BuildContext:      loadedConfig.BuildContext,
-		MomPort:           loadedConfig.MomPort,
-		HeartbeatInterval: loadedConfig.HeartbeatIntervalSeconds,
+		NetworkName:        loadedConfig.NetworkName,
+		WorkerImage:        loadedConfig.WorkerImage,
+		WorkerDockerfile:   loadedConfig.WorkerDockerfile,
+		BuildContext:       loadedConfig.BuildContext,
+		MomPort:            loadedConfig.MomPort,
+		HeartbeatInterval:  loadedConfig.HeartbeatIntervalSeconds,
+		HeartbeatQueueName: loadedConfig.HeartbeatQueueName,
 	}
 
 	config := hypervisor.FaultHypervisorConfig{

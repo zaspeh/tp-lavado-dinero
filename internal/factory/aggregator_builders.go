@@ -72,12 +72,19 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 
 	sender := sender.NewSingleSender(outputQueue, protowrappers.WrapSuspiciousPaths, protowrappers.ProtoSizer[*protobuf.SuspiciousPath](), maxBatchWeight, protoinserters.InsertSuspiciousPathBatch)
 
+	processor := aggregatebyintermediary.NewAggregateByIntermediaryProcessor()
+
+	cm, err := getCheckpointManager(processor)
+	if err != nil {
+		return nil, err
+	}
+
 	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, aggregatebyintermediary.NewAggregateByIntermediaryProcessor(), newCoordinator)
+	engine := engine.NewStatefulEngine(receiver, sender, processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil

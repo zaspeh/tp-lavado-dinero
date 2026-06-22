@@ -55,6 +55,13 @@ func buildMaxBankJoinWorker() (workers.Worker, error) {
 
 	receiver := receiver.NewSingleReceiver(inputExchange, protobuf.MessageType_MAX_BANK_RESULT_BATCH, protoextractors.GetMaxBankResultBatchItems)
 
+	processor := maxbankjoin.NewMaxBankJoinProcessor()
+
+	cm, err := getCheckpointManager(processor)
+	if err != nil {
+		return nil, err
+	}
+
 	sender := sender.NewDynamicKeySender(
 		resultExchange,
 		func(clientID string) string {
@@ -75,7 +82,7 @@ func buildMaxBankJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, maxbankjoin.NewMaxBankJoinProcessor(), newCoordinator)
+	engine := engine.NewStatefulEngine(receiver, sender, processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil
@@ -107,6 +114,13 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 
 	receiver := receiver.NewSingleReceiver(inputExchange, protobuf.MessageType_MICROTRANSACTION_BATCH, protoextractors.GetMicrotransactionBatchItems)
 
+	processor := microtransactionjoin.NewMicrotransactionJoinProcessor()
+
+	cm, err := getCheckpointManager(processor)
+	if err != nil {
+		return nil, err
+	}
+
 	sender := sender.NewDynamicKeySender(
 		resultExchange,
 		func(clientID string) string {
@@ -127,7 +141,7 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, microtransactionjoin.NewMicrotransactionJoinProcessor(), newCoordinator)
+	engine := engine.NewStatefulEngine(receiver, sender, processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil
@@ -201,6 +215,13 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 
 	receiver := receiver.NewSingleReceiver(inputExchange, protobuf.MessageType_CONVERTED_AMOUNT_BATCH, protoextractors.GetConvertedAmountBatchItems)
 
+	processor := conversionjoin.NewConversionJoinProcessor()
+
+	cm, err := getCheckpointManager(processor)
+	if err != nil {
+		return nil, err
+	}
+
 	sender := sender.NewDynamicKeySender(
 		resultExchange,
 		func(clientID string) string {
@@ -221,7 +242,7 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, conversionjoin.NewConversionJoinProcessor(), newCoordinator)
+	engine := engine.NewStatefulEngine(receiver, sender, processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil
@@ -253,6 +274,13 @@ func buildScatterGatherJoinWorker() (workers.Worker, error) {
 
 	receiver := receiver.NewSingleReceiver(inputExchange, protobuf.MessageType_SUSPICIOUS_PATH_BATCH, protoextractors.GetSuspiciousPathBatchItems)
 
+	processor := scattergatherjoin.NewScatterGatherJoinProcessor()
+
+	cm, err := getCheckpointManager(processor)
+	if err != nil {
+		return nil, err
+	}
+
 	sender := sender.NewDynamicKeySender(
 		resultExchange,
 		func(clientID string) string {
@@ -273,7 +301,7 @@ func buildScatterGatherJoinWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, scattergatherjoin.NewScatterGatherJoinProcessor(), newCoordinator)
+	engine := engine.NewStatefulEngine(receiver, sender, processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil

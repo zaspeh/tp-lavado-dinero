@@ -9,6 +9,7 @@ import (
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
+	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/heartbeat"
 	filterprocessor "github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/filters"
@@ -290,4 +291,38 @@ func buildHeartbeatPublisher() (*heartbeat.HeartbeatPublisher, error) {
 	}
 
 	return heartbeat.NewHeartbeatPublisher(heartbeatQueue, containerName, intervalSeconds), nil
+}
+
+func getCheckpointManager(cp checkpoint.Checkpointable) (*checkpoint.CheckpointManager, error) {
+	checkpointEveryBatches, err := getEnvIntStrict("CHECKPOINT_EVERY_BATCHES")
+	if err != nil {
+		return nil, err
+	}
+
+	workerName, err := getEnvStrict("WORKER_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	workerID, err := getEnvIntStrict("ID")
+	if err != nil {
+		return nil, err
+	}
+
+	if checkpointEveryBatches <= 0 {
+		return nil, nil
+	}
+
+	cm := checkpoint.NewCheckpointManager(&checkpoint.CheckpointManagerConfig{
+		WorkerName:             workerName,
+		WorkerID:               workerID,
+		Processor:              cp,
+		CheckpointEveryBatches: checkpointEveryBatches,
+	})
+
+	// if err := cm.LoadState(); err != nil {
+	// 	return nil, err
+	// }
+
+	return cm, nil
 }

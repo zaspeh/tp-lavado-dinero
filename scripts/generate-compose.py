@@ -163,7 +163,7 @@ def build_fault_hypervisor(cfg):
             'test': ['CMD', 'test', '-f', '/tmp/ready'],
             'interval': '5s',
             'timeout': '3s',
-            'retries': 20,
+            'retries': 40,
             'start_period': '10s'
         },
         'volumes': [

@@ -34,6 +34,7 @@ type RuntimeConfig struct {
 	BuildContext             string `yaml:"build_context"`
 	MomPort                  int    `yaml:"mom_port"`
 	HeartbeatIntervalSeconds int    `yaml:"heartbeat_interval_seconds"`
+	HeartbeatQueueName       string `yaml:"heartbeat_queue_name"`
 }
 
 type faultHypervisorConfig struct {
@@ -105,6 +106,7 @@ func LoadRuntimeConfig(path string) (RuntimeConfig, error) {
 		BuildContext:             cfg.FaultHypervisor.Runtime.BuildContext,
 		MomPort:                  cfg.FaultHypervisor.Runtime.MomPort,
 		HeartbeatIntervalSeconds: cfg.FaultHypervisor.Runtime.HeartbeatIntervalSeconds,
+		HeartbeatQueueName:       cfg.FaultHypervisor.Runtime.HeartbeatQueueName,
 	}, nil
 }
 

@@ -26,7 +26,7 @@ fault_hypervisor:
 
   runtime:
     network_name: money_laundering_network
-
+  
     worker_image: tp-worker
 
     worker_dockerfile: /workspace/cmd/worker/Dockerfile
@@ -35,6 +35,7 @@ fault_hypervisor:
     mom_port: 5672
 
     heartbeat_interval_seconds: 5
+    heartbeat_queue_name: heartbeat_queue
 
 # Nodos de la aplicación
 services:
@@ -81,8 +82,6 @@ services:
     env:
       INPUT_EXCHANGE_NAME: microtransaction_join_exchange
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      MAX_BATCH_TRANSACTIONS: 100
-      MAX_BATCH_BYTES: 8000
       CHECKPOINT_EVERY_BATCHES: 100
       MAX_BATCH_WEIGHT: 40000
     
@@ -101,6 +100,7 @@ services:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
       OUTPUT_QUEUE_NAME: max_bank_join_input
       MAX_BATCH_WEIGHT: 8000 
+      CHECKPOINT_EVERY_BATCHES: 100
 
   max_bank_router_to_join:
     count: 2
@@ -119,6 +119,7 @@ services:
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BANK_WORKER_AMOUNT: 2
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
     
 
   period_filter:
@@ -168,6 +169,7 @@ services:
       OUTPUT_QUEUE_NAME: grouped_origin_accounts
 
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
 
   group_by_destination:
     count: 2
@@ -178,6 +180,7 @@ services:
       OUTPUT_QUEUE_NAME: grouped_destination_accounts
 
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
   
   origin_intermediary_router:
     count: 2
@@ -189,6 +192,7 @@ services:
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: origin_intermediary_aggregation
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
       INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_origin
+      CHECKPOINT_EVERY_BATCHES: 100
 
   destination_intermediary_router:
     count: 2
@@ -212,15 +216,17 @@ services:
       OUTPUT_QUEUE_NAME: suspicious_path_router_join_input
 
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
 
   avg_by_type:
-    count: 2
+    count: 1
     worker_type: AVG_BY_TYPE
 
     env:
       INPUT_EXCHANGE_NAME: payment_type_exchange
       OUTPUT_QUEUE_NAME: avg_by_type_router_to_join_input
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
 
 
   avg_by_type_router_to_join:
@@ -230,7 +236,7 @@ services:
       INPUT_QUEUE_NAME: avg_by_type_router_to_join_input
       OUTPUT_EXCHANGE_NAME: avg_by_type_join_input
       OUTPUT_WORKER_AMOUNT: 2
-      EXPECTED_EOF_AMOUNT: 2
+      EXPECTED_EOF_AMOUNT: 1
 
   avg_by_type_join:
     count: 2
@@ -241,6 +247,7 @@ services:
       CLIENT_EXCHANGE_NAME: client_results_exchange
       EXPECTED_EOFS: 1
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
       
   payment_format_filter:
     count: 2
@@ -282,6 +289,7 @@ services:
       INPUT_EXCHANGE_NAME: converted_amount_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
   
   suspicious_path_router_to_join:
     count: 2
@@ -291,6 +299,7 @@ services:
       OUTPUT_EXCHANGE_NAME: suspicious_paths_output
       OUTPUT_WORKER_AMOUNT: 2
       EXPECTED_EOF_AMOUNT: 2
+      CHECKPOINT_EVERY_BATCHES: 100
 
   scatter_gather_join:
     count: 2
@@ -301,3 +310,4 @@ services:
       CLIENT_EXCHANGE_NAME: client_results_exchange
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
       MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100

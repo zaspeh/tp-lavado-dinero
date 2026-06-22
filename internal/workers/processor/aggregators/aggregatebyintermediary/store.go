@@ -104,3 +104,10 @@ func (s *IntermediaryStore) Clear() {
 	s.relations = make(map[model.Account]*IntermediaryRelations)
 	s.pairs = make(map[model.OriginDestinationPair]int)
 }
+
+// func (s *IntermediaryStore) AddPairWithCount(pair model.OriginDestinationPair, count int) {
+// 	s.mu.Lock()
+// 	defer s.mu.Unlock()
+
+// 	s.pairs[pair] = count
+// }

@@ -93,7 +93,7 @@ func (s *RoutedSender[T, B]) SendEOF(clientID string, survivorCount uint64, eofI
 
 func (s *RoutedSender[T, B]) Close() error {
 	for clientID := range s.batchers {
-		delete(s.batchers, clientID)
+		s.Cleanup(clientID)
 	}
 	return s.exchange.Close()
 }

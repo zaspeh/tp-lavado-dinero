@@ -32,7 +32,7 @@ services:
     - CLIENT_EXCHANGE_NAME=client_results_exchange
     - RAW_DATA_QUEUE_NAME=raw_transactions
     - MAX_BANK_ROUTER_QUEUE_NAME=bank_router_input_queue
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     - CONVERTER_JOIN_AMOUNT=2
     ports:
     - 8080:8080
@@ -54,7 +54,7 @@ services:
     - INPUT_FILE_ACCOUNTS=/datasets/client_0_accounts.csv
     - OUTPUT_DIR=/outputs
     - MAX_BATCH_WEIGHT=1000000
-    - LOG_LEVEL=info
+    - LOG_LEVEL=debug
     volumes:
     - ./datasets:/datasets
     - ./outputs/client_0:/outputs
@@ -85,7 +85,7 @@ services:
       - /tmp/ready
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 40
       start_period: 10s
     volumes:
     - ./Compose.yml:/app/Compose.yml:ro

@@ -49,3 +49,11 @@ func (s *MaxBankStore) Clear() {
 	clear(s.maxTransactions)
 	clear(s.bankNames)
 }
+
+func (s *MaxBankStore) SetMaxTransaction(bankID int32, account string, amount float64, amountStr string) {
+	s.maxTransactions[bankID] = Record{
+		Account:      account,
+		AmountValue:  amount,
+		AmountString: amountStr,
+	}
+}

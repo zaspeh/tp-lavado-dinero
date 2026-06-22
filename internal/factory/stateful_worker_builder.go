@@ -4,6 +4,7 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
+	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
@@ -58,12 +59,17 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		cfg.Inserter,
 	)
 
+	cm, err := getCheckpointManager(cfg.processor.(checkpoint.Checkpointable))
+	if err != nil {
+		return nil, err
+	}
+
 	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, cfg.processor, newCoordinator)
+	engine := engine.NewStatefulEngine(receiver, sender, cfg.processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil
