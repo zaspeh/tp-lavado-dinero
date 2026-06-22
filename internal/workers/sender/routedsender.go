@@ -14,6 +14,7 @@ type RoutedItem[T any] struct {
 }
 
 type RoutedSender[T any, B any] struct {
+	namespace  string
 	exchange   *m.ExchangeMiddleware
 	wrapper    batch.Wrapper[T, B]
 	sizer      batch.Sizer[T]
@@ -28,8 +29,10 @@ func NewRoutedSender[T any, B any](
 	sizer batch.Sizer[T],
 	maxWeight int,
 	serializer SerializerFunc[B],
+	namespace string,
 ) *RoutedSender[T, B] {
 	return &RoutedSender[T, B]{
+		namespace:  namespace,
 		exchange:   exchange,
 		wrapper:    wrapper,
 		sizer:      sizer,
@@ -52,6 +55,8 @@ func (s *RoutedSender[T, B]) Add(clientID string, item RoutedItem[T], batchID st
 		batcher = batch.NewBatcher(newBatch, onFlush)
 		s.batchers[batcherKey] = batcher
 	}
+
+	batchID = namespacedID(batchID, s.namespace)
 	batcher.SetNewBatchId(batchID)
 	return batcher.Add(item.Item)
 }
@@ -78,6 +83,7 @@ func (s *RoutedSender[T, B]) Cleanup(clientID string) error {
 }
 
 func (s *RoutedSender[T, B]) SendEOF(clientID string, survivorCount uint64, eofID string) error {
+	// eofID = namespacedID(eofID, s.namespace)
 	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{
 			TotalTransactions: survivorCount,

@@ -70,7 +70,8 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 
 	receiver := receiver.NewFanInReceiver([]middleware.Middleware{originInputExchange, destinationInputExchange}, inputsIDs, protobuf.MessageType_INTERMEDIARYPAIR_BATCH, aggregatebyintermediary.GetIntermediaryPairBatchItems)
 
-	sender := sender.NewSingleSender(outputQueue, protowrappers.WrapSuspiciousPaths, protowrappers.ProtoSizer[*protobuf.SuspiciousPath](), maxBatchWeight, protoinserters.InsertSuspiciousPathBatch)
+	// TODO: Usar el excahnge name del coordinator
+	sender := sender.NewSingleSender(outputQueue, protowrappers.WrapSuspiciousPaths, protowrappers.ProtoSizer[*protobuf.SuspiciousPath](), maxBatchWeight, protoinserters.InsertSuspiciousPathBatch, outputQueueName)
 
 	processor := aggregatebyintermediary.NewAggregateByIntermediaryProcessor()
 

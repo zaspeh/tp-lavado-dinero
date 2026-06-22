@@ -141,6 +141,7 @@ services:
       QUERY3_PERIOD_2_START: "2022-09-06T00:00:00Z"
       QUERY3_PERIOD_2_END:   "2022-09-14T23:59:59Z"
 
+# Q3 exclusivo------------------------------------------------
   payment_type_router:
     count: 2
     worker_type: PAYMENT_TYPE_ROUTER
@@ -149,6 +150,37 @@ services:
       PAYMENT_TYPE_EXCHANGE_NAME: payment_type_exchange
       AVG_BY_TYPE_WORKER_AMOUNT: 1
 
+  avg_by_type:
+    count: 1
+    worker_type: AVG_BY_TYPE
+
+    env:
+      INPUT_EXCHANGE_NAME: payment_type_exchange
+      OUTPUT_QUEUE_NAME: avg_by_type_router_to_join_input
+      MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
+
+  avg_by_type_router_to_join:
+    count: 2
+    worker_type: AVG_BY_TYPE_ROUTER_TO_JOIN
+    env:
+      INPUT_QUEUE_NAME: avg_by_type_router_to_join_input
+      OUTPUT_EXCHANGE_NAME: avg_by_type_join_input
+      OUTPUT_WORKER_AMOUNT: 2
+      EXPECTED_EOF_AMOUNT: 1
+
+  avg_by_type_join:
+    count: 2
+    worker_type: AVG_BY_TYPE_JOIN
+
+    env:
+      INPUT_EXCHANGE_NAME: avg_by_type_join_input
+      CLIENT_EXCHANGE_NAME: client_results_exchange
+      EXPECTED_EOFS: 1
+      MAX_BATCH_WEIGHT: 40000
+      CHECKPOINT_EVERY_BATCHES: 100
+
+# Q4 exclusivo------------------------------------------------
   origin_destination_router:
     count: 2
     worker_type: ORIGIN_DESTINATION_ROUTER
@@ -218,37 +250,28 @@ services:
       MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
 
-  avg_by_type:
-    count: 1
-    worker_type: AVG_BY_TYPE
-
-    env:
-      INPUT_EXCHANGE_NAME: payment_type_exchange
-      OUTPUT_QUEUE_NAME: avg_by_type_router_to_join_input
-      MAX_BATCH_WEIGHT: 40000
-      CHECKPOINT_EVERY_BATCHES: 100
-
-
-  avg_by_type_router_to_join:
+  suspicious_path_router_to_join:
     count: 2
-    worker_type: AVG_BY_TYPE_ROUTER_TO_JOIN
+    worker_type: SUSPICIOUS_PATH_ROUTER_TO_JOIN
     env:
-      INPUT_QUEUE_NAME: avg_by_type_router_to_join_input
-      OUTPUT_EXCHANGE_NAME: avg_by_type_join_input
+      INPUT_QUEUE_NAME: suspicious_path_router_join_input
+      OUTPUT_EXCHANGE_NAME: suspicious_paths_output
       OUTPUT_WORKER_AMOUNT: 2
-      EXPECTED_EOF_AMOUNT: 1
+      EXPECTED_EOF_AMOUNT: 2
+      CHECKPOINT_EVERY_BATCHES: 100
 
-  avg_by_type_join:
+  scatter_gather_join:
     count: 2
-    worker_type: AVG_BY_TYPE_JOIN
+    worker_type: SCATTER_GATHER_JOIN
 
     env:
-      INPUT_EXCHANGE_NAME: avg_by_type_join_input
+      INPUT_EXCHANGE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      EXPECTED_EOFS: 1
+      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
       MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100
-      
+
+# Q5 exclusivo------------------------------------------------
   payment_format_filter:
     count: 2
     worker_type: FORMAT_FILTER
@@ -288,26 +311,5 @@ services:
     env:
       INPUT_EXCHANGE_NAME: converted_amount_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      MAX_BATCH_WEIGHT: 40000
-      CHECKPOINT_EVERY_BATCHES: 100
-  
-  suspicious_path_router_to_join:
-    count: 2
-    worker_type: SUSPICIOUS_PATH_ROUTER_TO_JOIN
-    env:
-      INPUT_QUEUE_NAME: suspicious_path_router_join_input
-      OUTPUT_EXCHANGE_NAME: suspicious_paths_output
-      OUTPUT_WORKER_AMOUNT: 2
-      EXPECTED_EOF_AMOUNT: 2
-      CHECKPOINT_EVERY_BATCHES: 100
-
-  scatter_gather_join:
-    count: 2
-    worker_type: SCATTER_GATHER_JOIN
-
-    env:
-      INPUT_EXCHANGE_NAME: suspicious_paths_output
-      CLIENT_EXCHANGE_NAME: client_results_exchange
-      AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
       MAX_BATCH_WEIGHT: 40000
       CHECKPOINT_EVERY_BATCHES: 100

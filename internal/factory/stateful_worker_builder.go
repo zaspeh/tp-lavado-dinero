@@ -38,6 +38,11 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		return nil, err
 	}
 
+	_, _, namespace, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	inputExchange, outputQueue, err := createInputExchangeOutputQueue(cfg.keys)
 	if err != nil {
 		return nil, err
@@ -57,6 +62,7 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		cfg.Sizer,
 		maxBatchWeight,
 		cfg.Inserter,
+		namespace,
 	)
 
 	cm, err := getCheckpointManager(cfg.processor.(checkpoint.Checkpointable))

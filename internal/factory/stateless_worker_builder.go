@@ -84,6 +84,11 @@ func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutput
 		return nil, err
 	}
 
+	_, _, namespace, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	coordinator, err := getCoordinator()
 	if err != nil {
 		inputQueue.Close()
@@ -97,6 +102,7 @@ func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutput
 		cfg.Sizer,
 		0,
 		cfg.Inserter,
+		namespace,
 	)
 
 	singleReceiver := r.NewSingleReceiver(

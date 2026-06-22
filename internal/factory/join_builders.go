@@ -75,6 +75,7 @@ func buildMaxBankJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.MaxBankResult](),
 		joinConfig.MaxBatchWeight,
 		protoinserters.InsertMaxBankResultBatch,
+		joinConfig.InputExchangeName, // TODO: cuando se use coordinador, usar ese exchange.
 	)
 
 	heartbeatPublisher, err := buildHeartbeatPublisher()
@@ -134,6 +135,7 @@ func buildMicrotransactionJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.Microtransaction](),
 		joinConfig.MaxBatchWeight,
 		protoinserters.InsertMicrotransactionBatch,
+		joinConfig.InputExchangeName, // TODO: cuando se use coordinador, usar ese exchange.
 	)
 
 	heartbeatPublisher, err := buildHeartbeatPublisher()
@@ -192,6 +194,7 @@ func buildAvgByTypeJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.AvgByTypeResult](),
 		joinConfig.MaxBatchWeight,
 		protoinserters.InsertAvgByTypeResultBatch,
+		joinConfig.InputExchangeName, // TODO: cuando se use coordinador, usar ese exchange.
 	)
 
 	heartbeatPublisher, err := buildHeartbeatPublisher()
@@ -250,6 +253,7 @@ func buildConvertedMicroPaymentJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.ConvertedMicroPaymentResult](),
 		joinConfig.MaxBatchWeight,
 		protoinserters.InsertConvertedMicropaymentResultBatch,
+		joinConfig.InputExchangeName, // TODO: cuando se use coordinador, usar ese exchange.
 	)
 
 	heartbeatPublisher, err := buildHeartbeatPublisher()
@@ -309,6 +313,7 @@ func buildScatterGatherJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.Account](),
 		joinConfig.MaxBatchWeight,
 		protoinserters.InsertSuspiciousAccountBatch,
+		joinConfig.InputExchangeName, // TODO: cuando se use coordinador, usar ese exchange.
 	)
 
 	heartbeatPublisher, err := buildHeartbeatPublisher()

@@ -54,6 +54,11 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	_, _, namespace, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	receiver := r.NewSingleReceiver(
 		queues[0],
 		protobuf.MessageType_TRANSACTION_BATCH,
@@ -67,6 +72,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
 		0,
 		protoinserters.InsertMicrotransactionBatch,
+		namespace,
 	)
 
 	senderMaxBankRouter := s.NewSingleSender(
@@ -75,6 +81,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
 		0,
 		protoinserters.InsertMaxBankBatch,
+		namespace,
 	)
 
 	senderPaymentTypePeriod := s.NewSingleSender(
@@ -83,6 +90,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
 		0,
 		protoinserters.InsertPeriodFilterBatch,
+		namespace,
 	)
 
 	senderScatterGatherPeriod := s.NewSingleSender(
@@ -91,6 +99,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
 		0,
 		protoinserters.InsertPeriodFilterBatch,
+		namespace,
 	)
 
 	multisender := s.NewMultiSender(senderMicroTransaction, senderMaxBankRouter, senderPaymentTypePeriod, senderScatterGatherPeriod)
@@ -205,7 +214,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 	query3Processor := filterprocessor.NewAvgByTypePeriodFilterProcessor(query3Period1, query3Period2)
 	query4Processor := filterprocessor.NewScatterGatherPeriodFilterProcessor(scatterGatherPeriod)
 
-	rawEngine := buildSingleReceiverSingleSenderEngine(
+	rawEngine, err := buildSingleReceiverSingleSenderEngine(
 		singleReceiverSingleSenderEngineConfig[*protobuf.ToConvertTransaction, *protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertPeriodFilteredBatch]{
 			InputQueue:          rawInputQueue,
 			OutputQueue:         paymentTypeFilterQueue,
@@ -219,7 +228,12 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		},
 	)
 
-	query3Engine := buildSingleReceiverSingleSenderEngine(
+	if err != nil {
+		closeQueues(queues)
+		return nil, err
+	}
+
+	query3Engine, err := buildSingleReceiverSingleSenderEngine(
 		singleReceiverSingleSenderEngineConfig[*protobuf.PeriodFilter, *protobuf.AvgByTypeTransaction, *protobuf.AvgByTypeTransactionBatch]{
 			InputQueue:          paymentTypePeriodInputQueue,
 			OutputQueue:         paymentTypeRouterQueue,
@@ -233,7 +247,13 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		},
 	)
 
-	query4Engine := buildSingleReceiverSingleSenderEngine(
+	if err != nil {
+		rawEngine.Shutdown()
+		closeQueues(queues)
+		return nil, err
+	}
+
+	query4Engine, err := buildSingleReceiverSingleSenderEngine(
 		singleReceiverSingleSenderEngineConfig[*protobuf.PeriodFilter, *protobuf.ScatterGather, *protobuf.ScatterGatherBatch]{
 			InputQueue:          scatterGatherPeriodInputQueue,
 			OutputQueue:         originDestinationRouterQueue,
@@ -246,6 +266,13 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 			Coordinator:         query4Coordinator,
 		},
 	)
+
+	if err != nil {
+		rawEngine.Shutdown()
+		query3Engine.Shutdown()
+		closeQueues(queues)
+		return nil, err
+	}
 
 	heartbeat, err := buildHeartbeatPublisher()
 	if err != nil {

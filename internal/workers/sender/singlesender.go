@@ -1,6 +1,8 @@
 package sender
 
 import (
+	"fmt"
+
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
@@ -14,6 +16,7 @@ type senderExchange interface {
 }
 
 type SingleSender[T any, V any] struct {
+	namespace  string
 	output     m.Middleware
 	wrapper    batch.Wrapper[T, V]
 	sizer      batch.Sizer[T]
@@ -24,9 +27,10 @@ type SingleSender[T any, V any] struct {
 }
 
 func NewSingleSender[T any, V any](output m.Middleware, wrapper batch.Wrapper[T, V],
-	sizer batch.Sizer[T], maxWeight int, serializer SerializerFunc[V],
+	sizer batch.Sizer[T], maxWeight int, serializer SerializerFunc[V], namespace string,
 ) *SingleSender[T, V] {
 	sender := &SingleSender[T, V]{
+		namespace:  namespace,
 		output:     output,
 		wrapper:    wrapper,
 		sizer:      sizer,
@@ -43,9 +47,9 @@ func NewSingleSender[T any, V any](output m.Middleware, wrapper batch.Wrapper[T,
 }
 
 func NewDynamicKeySender[T any, V any](output senderExchange, keyResolver func(clientID string) string, wrapper batch.Wrapper[T, V],
-	sizer batch.Sizer[T], maxWeight int, serializer SerializerFunc[V],
+	sizer batch.Sizer[T], maxWeight int, serializer SerializerFunc[V], namespace string,
 ) *SingleSender[T, V] {
-	sender := NewSingleSender(output, wrapper, sizer, maxWeight, serializer)
+	sender := NewSingleSender(output, wrapper, sizer, maxWeight, serializer, namespace)
 
 	sender.publish = func(clientID string, msg m.Message) error {
 		return output.SendWithKey(
@@ -69,6 +73,8 @@ func (s *SingleSender[T, V]) Add(clientID string, item T, batchID string) error 
 		batcher = batch.NewBatcher(newBatch, onFlush)
 		s.batchers[clientID] = batcher
 	}
+
+	batchID = namespacedID(batchID, s.namespace)
 	batcher.SetNewBatchId(batchID)
 	return batcher.Add(item)
 }
@@ -86,6 +92,7 @@ func (s *SingleSender[T, V]) Cleanup(clientID string) error {
 }
 
 func (s *SingleSender[T, V]) SendEOF(clientID string, survivorCount uint64, eofID string) error {
+	// eofID = namespacedID(eofID, s.namespace)
 	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{
 			TotalTransactions: survivorCount,
@@ -97,6 +104,10 @@ func (s *SingleSender[T, V]) SendEOF(clientID string, survivorCount uint64, eofI
 		return err
 	}
 	return s.publish(clientID, msg)
+}
+
+func namespacedID(id, namespace string) string {
+	return fmt.Sprintf("%s-%s", id, namespace)
 }
 
 func (s *SingleSender[T, V]) Close() error {

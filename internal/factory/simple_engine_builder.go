@@ -25,7 +25,12 @@ type singleReceiverSingleSenderEngineConfig[T, V, R any] struct {
 
 func buildSingleReceiverSingleSenderEngine[T, V, R any](
 	cfg singleReceiverSingleSenderEngineConfig[T, V, R],
-) engine.Engine {
+) (engine.Engine, error) {
+	_, _, namespace, err := getCoordinationInformationFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	singleReceiver := receiver.NewSingleReceiver(
 		cfg.InputQueue,
 		cfg.ReceivedMessageType,
@@ -38,6 +43,7 @@ func buildSingleReceiverSingleSenderEngine[T, V, R any](
 		cfg.Sizer,
 		0,
 		cfg.Inserter,
+		namespace,
 	)
 
 	return engine.NewStatelessEngine(
@@ -45,5 +51,5 @@ func buildSingleReceiverSingleSenderEngine[T, V, R any](
 		singleSender,
 		cfg.Processor,
 		cfg.Coordinator,
-	)
+	), nil
 }

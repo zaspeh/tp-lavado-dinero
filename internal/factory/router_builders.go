@@ -59,6 +59,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.MaxBank](),
 		0,
 		protoinserters.InsertMaxBankBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -128,6 +129,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.ScatterGather](),
 		0,
 		protoinserters.InsertScatterGatherBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -171,6 +173,12 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		paymentTypeExchange.Close()
 		return nil, err
 	}
+	workerExchangeName, err := getEnvStrict("WORKER_EXCHANGE_NAME")
+	if err != nil {
+		inputQueue.Close()
+		paymentTypeExchange.Close()
+		return nil, err
+	}
 
 	routedSender := sender.NewRoutedSender(
 		paymentTypeExchange,
@@ -178,6 +186,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.AvgByTypeTransaction](),
 		0,
 		protoinserters.InsertAvgByTypeTransactionBatch,
+		workerExchangeName,
 	)
 
 	receiver := r.NewSingleReceiver(
@@ -255,6 +264,7 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.IntermediaryPair](),
 		0,
 		protoinserters.InsertIntermediaryPairBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -322,6 +332,7 @@ func buildMicrotransactionRouterToJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.Microtransaction](),
 		0,
 		protoinserters.InsertMicrotransactionBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -388,6 +399,7 @@ func buildMaxBankRouterToJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.MaxBankResult](),
 		0,
 		protoinserters.InsertMaxBankResultBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -454,6 +466,7 @@ func buildAvgByTypeRouterToJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.AvgByTypeResult](),
 		0,
 		protoinserters.InsertAvgByTypeResultBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -520,6 +533,7 @@ func buildSuspiciousPathRouterToJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.SuspiciousPath](),
 		0,
 		protoinserters.InsertSuspiciousPathBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
@@ -586,6 +600,7 @@ func buildConvertedAmountRouterToJoinWorker() (workers.Worker, error) {
 		protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
 		0,
 		protoinserters.InsertConvertedAmountBatch,
+		workerExchangeName,
 	)
 
 	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
