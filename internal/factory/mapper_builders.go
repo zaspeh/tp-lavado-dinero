@@ -15,6 +15,11 @@ func buildCurrencyConverterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
+
 	converter, err := currencyconverter.NewCurrencyConverter(apiURL)
 	if err != nil {
 		return nil, err
@@ -28,6 +33,7 @@ func buildCurrencyConverterWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertConvertedAmountBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
 			Processor:           currencyconverter.NewCurrencyConverterProcessor(converter),
+			MaxBatchWeight:      maxBatchWeight,
 		},
 	)
 }
