@@ -101,10 +101,9 @@ func (c *EOFCoordinator) restoreFromStorage() error {
 
 	for clientID, clientEOFs := range eofs {
 		state := c.getClientState(clientID)
-		for eofID := range clientEOFs {
-			// expectedTotal se re-sincroniza cuando llega el EOF por red,
-			// los EOFs propios persistidos solo marcan que ya los vimos
-			state.seenEOFs[eofID] = true
+		for eofID, expectedTotal := range clientEOFs {
+			// El valor se completa cuando un peer reenvía el EOF al despertar.
+			state.markEOFSeen(eofID, expectedTotal)
 		}
 	}
 
@@ -185,7 +184,7 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64, e
 			return err
 		}
 	}
-	if err := c.storage.WriteEOF(clientID, eofID); err != nil {
+	if err := c.storage.WriteEOF(clientID, eofID, expectedTotal); err != nil {
 		return err
 	}
 
@@ -241,6 +240,11 @@ func (c *EOFCoordinator) handleWakeUp(msg *protobuf.EOFCoordination) error {
 	key := fmt.Sprintf("%s.%d", c.workerName, msg.GetSenderId())
 
 	for clientID, state := range c.clients {
+		for eofID, expectedTotal := range state.seenEOFs {
+			if err := c.sendEOF(key, clientID, eofID, expectedTotal); err != nil {
+				return err
+			}
+		}
 
 		// En caso de ue el nodo aun no tenga todos los EOFs,
 		// no se inicio protocolo de broadcast, no damos informacion
@@ -260,7 +264,10 @@ func (c *EOFCoordinator) handleWakeUp(msg *protobuf.EOFCoordination) error {
 				return err
 			}
 		}
-		return batcher.Flush()
+
+		if err := batcher.Flush(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -354,6 +361,21 @@ func (c *EOFCoordinator) broadcastEOF(clientID, eofID string, expectedTotal uint
 		ExpectedTotal: expectedTotal,
 	}
 	return c.broadcast(msg)
+}
+
+func (c *EOFCoordinator) sendEOF(key, clientID, eofID string, expectedTotal uint64) error {
+	msg := &protobuf.EOFCoordination{
+		Type:          protobuf.CoordinationMessageType_eof_arrived,
+		ClientId:      clientID,
+		SenderId:      uint32(c.workerID),
+		EofID:         eofID,
+		ExpectedTotal: expectedTotal,
+	}
+	message, err := serializer.SerializeCoordinationMessage(msg)
+	if err != nil {
+		return err
+	}
+	return c.exchange.SendWithKey(key, message)
 }
 
 func (c *EOFCoordinator) broadcastOwnBatches(clientID string, state *clientState) error {

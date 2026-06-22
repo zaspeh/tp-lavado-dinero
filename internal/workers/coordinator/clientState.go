@@ -5,7 +5,7 @@ type clientState struct {
 	peerBatches map[int]map[string]BatchRecord // batches del resto de los peers, no locales
 
 	// Estados eof
-	seenEOFs      map[string]bool
+	seenEOFs      map[string]uint64
 	eofCount      uint32
 	expectedTotal uint64
 	lastEOFID     string
@@ -17,7 +17,7 @@ func newClientState() *clientState {
 	return &clientState{
 		ownBatches:  make(map[string]BatchRecord),
 		peerBatches: make(map[int]map[string]BatchRecord),
-		seenEOFs:    make(map[string]bool),
+		seenEOFs:    make(map[string]uint64),
 	}
 }
 
@@ -38,14 +38,15 @@ func (cs *clientState) addPeerBatch(peerID int, record BatchRecord) {
 }
 
 func (cs *clientState) hasSeenEOF(eofID string) bool {
-	return cs.seenEOFs[eofID]
+	_, ok := cs.seenEOFs[eofID]
+	return ok
 }
 
 func (cs *clientState) markEOFSeen(eofID string, expectedTotal uint64) {
-	cs.seenEOFs[eofID] = true
+	cs.seenEOFs[eofID] = expectedTotal
+	cs.expectedTotal += expectedTotal
 	cs.eofCount++
 	cs.lastEOFID = eofID
-	cs.expectedTotal += expectedTotal
 }
 
 // totals calcula processed y survivors sobre la unión de batchIDs.

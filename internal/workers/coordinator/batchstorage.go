@@ -10,15 +10,16 @@ import (
 )
 
 const (
-	batchSeparator = "|"
-	batchColumns   = 4
-	batchFormat    = "%s|%s|%d|%d\n"
-	eofFormat      = "%s|%s\n"
-	clientIDIndex  = 0
-	batchIDIndex   = 1
-	eofIDIndex     = 1
-	processedIndex = 2
-	survivorsIndex = 3
+	batchSeparator     = "|"
+	batchColumns       = 4
+	batchFormat        = "%s|%s|%d|%d\n"
+	eofFormat          = "%s|%s|%d\n"
+	clientIDIndex      = 0
+	batchIDIndex       = 1
+	eofIDIndex         = 1
+	processedIndex     = 2
+	survivorsIndex     = 3
+	expectedTotalIndex = 2
 )
 
 type BatchRecord struct {
@@ -94,23 +95,27 @@ func (s *BatchStorage) LoadBatches() (map[string]map[string]BatchRecord, error) 
 }
 
 // LoadEOFs reconstruye los EOFs vistos al arrancar, no hay RC
-func (s *BatchStorage) LoadEOFs() (map[string]map[string]bool, error) {
+func (s *BatchStorage) LoadEOFs() (map[string]map[string]uint64, error) {
 	if _, err := s.eofFile.Seek(0, 0); err != nil {
 		return nil, err
 	}
 
-	result := make(map[string]map[string]bool)
+	result := make(map[string]map[string]uint64)
 	scanner := bufio.NewScanner(s.eofFile)
 	for scanner.Scan() {
 		parts := strings.Split(scanner.Text(), batchSeparator)
-		if len(parts) != 2 {
+		if len(parts) != 3 {
 			continue
 		}
 		clientID, eofID := parts[clientIDIndex], parts[eofIDIndex]
-		if result[clientID] == nil {
-			result[clientID] = make(map[string]bool)
+		expectedTotal, err := strconv.ParseUint(parts[expectedTotalIndex], 10, 64)
+		if err != nil {
+			continue
 		}
-		result[clientID][eofID] = true
+		if result[clientID] == nil {
+			result[clientID] = make(map[string]uint64)
+		}
+		result[clientID][eofID] = expectedTotal
 	}
 	return result, scanner.Err()
 }
@@ -124,8 +129,8 @@ func (s *BatchStorage) WriteBatch(clientID string, record BatchRecord) error {
 	return s.batchWriter.Flush()
 }
 
-func (s *BatchStorage) WriteEOF(clientID, eofID string) error {
-	_, err := fmt.Fprintf(s.eofWriter, eofFormat, clientID, eofID)
+func (s *BatchStorage) WriteEOF(clientID, eofID string, expectedTotal uint64) error {
+	_, err := fmt.Fprintf(s.eofWriter, eofFormat, clientID, eofID, expectedTotal)
 	if err != nil {
 		return err
 	}
