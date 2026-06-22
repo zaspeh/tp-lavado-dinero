@@ -286,336 +286,91 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 }
 
 func buildMicrotransactionRouterToJoinWorker() (workers.Worker, error) {
-	mom, err := getMomConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make([]string, outputWorkerAmount)
-	for i := 0; i < outputWorkerAmount; i++ {
-		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
-	}
-
-	microtransactionJoinExchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
-	if err != nil {
-		return nil, err
-	}
-
-	routedSender := sender.NewRoutedSender(
-		microtransactionJoinExchange,
-		protowrappers.WrapToMicrotransactionBatch,
-		protowrappers.ProtoSizer[*protobuf.Microtransaction](),
-		0,
-		protoinserters.InsertMicrotransactionBatch,
-		workerExchangeName,
-	)
-
-	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+	return buildRoutedToJoinWorker(routedWorkerConfig[
 		*protobuf.Microtransaction,
-		sender.RoutedItem[*protobuf.Microtransaction],
+		*protobuf.MicrotransactionBatch,
 	]{
-		Mom:                mom,
-		id:                 id,
-		workerCount:        workerCount,
-		workerExchangeName: workerExchangeName,
-		expectedEOFs:       expectedEOFs,
-		InputQueueName:     inQ,
-		InputMessageType:   protobuf.MessageType_MICROTRANSACTION_BATCH,
-		ExtractInputItems:  protoextractors.GetMicrotransactionBatchItems,
-		Processor:          procesorrouters.NewMicrotransactionJoinRouter(keys),
-		Sender:             routedSender,
+		InputMessageType: protobuf.MessageType_MICROTRANSACTION_BATCH,
+		ExtractInput:     protoextractors.GetMicrotransactionBatchItems,
+		MakeProcessor:    microtxRouterFactory,
+		Wrapper:          protowrappers.WrapToMicrotransactionBatch,
+		Sizer:            protowrappers.ProtoSizer[*protobuf.Microtransaction](),
+		Inserter:         protoinserters.InsertMicrotransactionBatch,
 	})
+}
+
+func microtxRouterFactory(keys []string) RoutedProcessor[*protobuf.Microtransaction] {
+	return procesorrouters.NewMicrotransactionJoinRouter(keys)
 }
 
 func buildMaxBankRouterToJoinWorker() (workers.Worker, error) {
-	mom, err := getMomConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make([]string, outputWorkerAmount)
-	for i := 0; i < outputWorkerAmount; i++ {
-		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
-	}
-
-	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
-	if err != nil {
-		return nil, err
-	}
-
-	routedSender := sender.NewRoutedSender(
-		exchange,
-		protowrappers.WrapMaxBankResults,
-		protowrappers.ProtoSizer[*protobuf.MaxBankResult](),
-		0,
-		protoinserters.InsertMaxBankResultBatch,
-		workerExchangeName,
-	)
-
-	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+	return buildRoutedToJoinWorker(routedWorkerConfig[
 		*protobuf.MaxBankResult,
-		sender.RoutedItem[*protobuf.MaxBankResult],
+		*protobuf.MaxBankResultBatch,
 	]{
-		Mom:                mom,
-		id:                 id,
-		workerCount:        workerCount,
-		workerExchangeName: workerExchangeName,
-		expectedEOFs:       expectedEOFs,
-		InputQueueName:     inQ,
-		InputMessageType:   protobuf.MessageType_MAX_BANK_RESULT_BATCH,
-		ExtractInputItems:  protoextractors.GetMaxBankResultBatchItems,
-		Processor:          procesorrouters.NewMaxBankToJoinRouter(keys),
-		Sender:             routedSender,
+		InputMessageType: protobuf.MessageType_MAX_BANK_RESULT_BATCH,
+		ExtractInput:     protoextractors.GetMaxBankResultBatchItems,
+		MakeProcessor:    maxBankRouterFactory,
+		Wrapper:          protowrappers.WrapMaxBankResults,
+		Sizer:            protowrappers.ProtoSizer[*protobuf.MaxBankResult](),
+		Inserter:         protoinserters.InsertMaxBankResultBatch,
 	})
+}
+
+func maxBankRouterFactory(keys []string) RoutedProcessor[*protobuf.MaxBankResult] {
+	return procesorrouters.NewMaxBankToJoinRouter(keys)
 }
 
 func buildAvgByTypeRouterToJoinWorker() (workers.Worker, error) {
-	mom, err := getMomConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make([]string, outputWorkerAmount)
-	for i := 0; i < outputWorkerAmount; i++ {
-		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
-	}
-
-	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
-	if err != nil {
-		return nil, err
-	}
-
-	routedSender := sender.NewRoutedSender(
-		exchange,
-		protowrappers.WrapAvgByTypeResults,
-		protowrappers.ProtoSizer[*protobuf.AvgByTypeResult](),
-		0,
-		protoinserters.InsertAvgByTypeResultBatch,
-		workerExchangeName,
-	)
-
-	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+	return buildRoutedToJoinWorker(routedWorkerConfig[
 		*protobuf.AvgByTypeResult,
-		sender.RoutedItem[*protobuf.AvgByTypeResult],
+		*protobuf.AvgByTypeResultBatch,
 	]{
-		Mom:                mom,
-		id:                 id,
-		workerCount:        workerCount,
-		workerExchangeName: workerExchangeName,
-		expectedEOFs:       expectedEOFs,
-		InputQueueName:     inQ,
-		InputMessageType:   protobuf.MessageType_AVGBYTYPE_RESULT_BATCH,
-		ExtractInputItems:  protoextractors.GetAvgByTypeResultBatchItems,
-		Processor:          procesorrouters.NewAvgByTypeJoinRouter(keys),
-		Sender:             routedSender,
+		InputMessageType: protobuf.MessageType_AVGBYTYPE_RESULT_BATCH,
+		ExtractInput:     protoextractors.GetAvgByTypeResultBatchItems,
+		MakeProcessor:    avgByTypeRouterFactory,
+		Wrapper:          protowrappers.WrapAvgByTypeResults,
+		Sizer:            protowrappers.ProtoSizer[*protobuf.AvgByTypeResult](),
+		Inserter:         protoinserters.InsertAvgByTypeResultBatch,
 	})
+}
+
+func avgByTypeRouterFactory(keys []string) RoutedProcessor[*protobuf.AvgByTypeResult] {
+	return procesorrouters.NewAvgByTypeJoinRouter(keys)
 }
 
 func buildSuspiciousPathRouterToJoinWorker() (workers.Worker, error) {
-	mom, err := getMomConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make([]string, outputWorkerAmount)
-	for i := 0; i < outputWorkerAmount; i++ {
-		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
-	}
-
-	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
-	if err != nil {
-		return nil, err
-	}
-
-	routedSender := sender.NewRoutedSender(
-		exchange,
-		protowrappers.WrapSuspiciousPaths,
-		protowrappers.ProtoSizer[*protobuf.SuspiciousPath](),
-		0,
-		protoinserters.InsertSuspiciousPathBatch,
-		workerExchangeName,
-	)
-
-	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+	return buildRoutedToJoinWorker(routedWorkerConfig[
 		*protobuf.SuspiciousPath,
-		sender.RoutedItem[*protobuf.SuspiciousPath],
+		*protobuf.SuspiciousPathBatch,
 	]{
-		Mom:                mom,
-		id:                 id,
-		workerCount:        workerCount,
-		workerExchangeName: workerExchangeName,
-		expectedEOFs:       expectedEOFs,
-		InputQueueName:     inQ,
-		InputMessageType:   protobuf.MessageType_SUSPICIOUS_PATH_BATCH,
-		ExtractInputItems:  protoextractors.GetSuspiciousPathBatchItems,
-		Processor:          procesorrouters.NewSuspiciousPathToJoinRouter(keys),
-		Sender:             routedSender,
+		InputMessageType: protobuf.MessageType_SUSPICIOUS_PATH_BATCH,
+		ExtractInput:     protoextractors.GetSuspiciousPathBatchItems,
+		MakeProcessor:    suspiciousPathRouterFactory,
+		Wrapper:          protowrappers.WrapSuspiciousPaths,
+		Sizer:            protowrappers.ProtoSizer[*protobuf.SuspiciousPath](),
+		Inserter:         protoinserters.InsertSuspiciousPathBatch,
 	})
 }
 
+func suspiciousPathRouterFactory(keys []string) RoutedProcessor[*protobuf.SuspiciousPath] {
+	return procesorrouters.NewSuspiciousPathToJoinRouter(keys)
+}
+
 func buildConvertedAmountRouterToJoinWorker() (workers.Worker, error) {
-	mom, err := getMomConfigFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	inQ, err := getEnvStrict("INPUT_QUEUE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	expectedEOFs, err := getEnvIntStrict("EXPECTED_EOF_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	exchangeName, err := getEnvStrict("OUTPUT_EXCHANGE_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	outputWorkerAmount, err := getEnvIntStrict("OUTPUT_WORKER_AMOUNT")
-	if err != nil {
-		return nil, err
-	}
-
-	id, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make([]string, outputWorkerAmount)
-	for i := 0; i < outputWorkerAmount; i++ {
-		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
-	}
-
-	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
-	if err != nil {
-		return nil, err
-	}
-
-	routedSender := sender.NewRoutedSender(
-		exchange,
-		protowrappers.WrapConvertedAmounts,
-		protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
-		0,
-		protoinserters.InsertConvertedAmountBatch,
-		workerExchangeName,
-	)
-
-	return buildStatelessWorkerWithSender(statelessWorkerWithSenderConfig[
+	return buildRoutedToJoinWorker(routedWorkerConfig[
 		*protobuf.ConvertedAmount,
-		sender.RoutedItem[*protobuf.ConvertedAmount],
+		*protobuf.ConvertedAmountBatch,
 	]{
-		Mom:                mom,
-		id:                 id,
-		workerCount:        workerCount,
-		workerExchangeName: workerExchangeName,
-		expectedEOFs:       expectedEOFs,
-		InputQueueName:     inQ,
-		InputMessageType:   protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
-		ExtractInputItems:  protoextractors.GetConvertedAmountBatchItems,
-		Processor:          procesorrouters.NewConvertedAmountJoinRouter(keys),
-		Sender:             routedSender,
+		InputMessageType: protobuf.MessageType_CONVERTED_AMOUNT_BATCH,
+		ExtractInput:     protoextractors.GetConvertedAmountBatchItems,
+		MakeProcessor:    convertedAmountRouterFactory,
+		Wrapper:          protowrappers.WrapConvertedAmounts,
+		Sizer:            protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
+		Inserter:         protoinserters.InsertConvertedAmountBatch,
 	})
+}
+
+func convertedAmountRouterFactory(keys []string) RoutedProcessor[*protobuf.ConvertedAmount] {
+	return procesorrouters.NewConvertedAmountJoinRouter(keys)
 }
