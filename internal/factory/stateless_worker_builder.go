@@ -76,6 +76,7 @@ type InputQueueOutputQueueStatelessConfig[T, V, R any] struct {
 	Sizer               batch.Sizer[V]
 	Inserter            sender.SerializerFunc[R]
 	Processor           processor.Processor[T, V]
+	MaxBatchWeight      int
 }
 
 func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutputQueueStatelessConfig[T, V, R]) (workers.Worker, error) {
@@ -100,7 +101,7 @@ func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutput
 		outputQueue,
 		cfg.Wrapper,
 		cfg.Sizer,
-		0,
+		cfg.MaxBatchWeight,
 		cfg.Inserter,
 		namespace,
 	)

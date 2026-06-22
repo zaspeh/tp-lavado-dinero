@@ -41,6 +41,12 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		closeQueues(queues)
+		return nil, err
+	}
+
 	coordinator, err := getCoordinator()
 	if err != nil {
 		closeQueues(queues)
@@ -70,7 +76,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		queues[1],
 		protowrappers.WrapTransactionToMicroTransactionBatch,
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertMicrotransactionBatch,
 		namespace,
 	)
@@ -79,7 +85,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		queues[2],
 		protowrappers.WrapTransactionToMaxBankBatch,
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertMaxBankBatch,
 		namespace,
 	)
@@ -88,7 +94,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		queues[3],
 		protowrappers.WrapTransactionToPeriodFilterBatch,
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertPeriodFilterBatch,
 		namespace,
 	)
@@ -97,7 +103,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		queues[4],
 		protowrappers.WrapTransactionToPeriodFilterBatch,
 		protowrappers.ProtoSizer[*protobuf.Transaction](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertPeriodFilterBatch,
 		namespace,
 	)
@@ -133,6 +139,11 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		"PAYMENT_TYPE_FILTER_QUEUE_NAME",
 		"PAYMENT_TYPE_ROUTER_QUEUE_NAME",
 		"ORIGIN_DESTINATION_ROUTER_QUEUE_NAME",
+	}
+
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
 	}
 
 	queues, err := createQueues(queueAliases, connSettings)
@@ -225,6 +236,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertToConvertPeriodFilteredBatch,
 			Processor:           rawProcessor,
 			Coordinator:         rawCoordinator,
+			MaxBatchWeight:      maxBatchWeight,
 		},
 	)
 
@@ -244,6 +256,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertAvgByTypeTransactionBatch,
 			Processor:           query3Processor,
 			Coordinator:         query3Coordinator,
+			MaxBatchWeight:      maxBatchWeight,
 		},
 	)
 
@@ -264,6 +277,7 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertScatterGatherBatch,
 			Processor:           query4Processor,
 			Coordinator:         query4Coordinator,
+			MaxBatchWeight:      maxBatchWeight,
 		},
 	)
 
@@ -309,6 +323,10 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
 	return buildStatelessWorkerInputQueueOutputQueue(
 		InputQueueOutputQueueStatelessConfig[*protobuf.ToConvertPeriodFiltered, *protobuf.ToConvertTypeFilteredPayment, *protobuf.ToConvertTypeFilteredPaymentBatch]{
 			ReceivedMessageType: protobuf.MessageType_TO_CONVERT_PERIOD_FILTERED_BATCH,
@@ -317,12 +335,17 @@ func buildFormatFilterWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertToConvertTypeFilteredPaymentBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.ToConvertTypeFilteredPayment](),
 			Processor:           filterprocessor.NewFormatFilterProcessor(allowedFormats),
+			MaxBatchWeight:      maxBatchWeight,
 		},
 	)
 }
 
 func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
+	if err != nil {
+		return nil, err
+	}
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
 	if err != nil {
 		return nil, err
 	}
@@ -335,12 +358,17 @@ func buildAmountConvertedFilterWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertConvertedAmountBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.ConvertedAmount](),
 			Processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.ConvertedAmount](amountToFilter),
+			MaxBatchWeight:      maxBatchWeight,
 		},
 	)
 }
 
 func buildAmountFilterWorker() (workers.Worker, error) {
 	amountToFilter, err := getEnvFloatStrict("AMOUNT_TO_FILTER")
+	if err != nil {
+		return nil, err
+	}
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +381,7 @@ func buildAmountFilterWorker() (workers.Worker, error) {
 			Inserter:            protoinserters.InsertMicrotransactionBatch,
 			Sizer:               protowrappers.ProtoSizer[*protobuf.Microtransaction](),
 			Processor:           filterprocessor.NewAmountFilterProcessor[*protobuf.Microtransaction](amountToFilter),
+			MaxBatchWeight:      maxBatchWeight,
 		},
 	)
 }

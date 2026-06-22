@@ -21,6 +21,7 @@ type singleReceiverSingleSenderEngineConfig[T, V, R any] struct {
 	Inserter            sender.SerializerFunc[R]
 	Processor           processor.Processor[T, V]
 	Coordinator         coordinator.Coordinator
+	MaxBatchWeight      int
 }
 
 func buildSingleReceiverSingleSenderEngine[T, V, R any](
@@ -41,7 +42,7 @@ func buildSingleReceiverSingleSenderEngine[T, V, R any](
 		cfg.OutputQueue,
 		cfg.Wrapper,
 		cfg.Sizer,
-		0,
+		cfg.MaxBatchWeight,
 		cfg.Inserter,
 		namespace,
 	)
