@@ -28,6 +28,11 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
+
 	maxBankExchangeName, err := getEnvStrict("MAX_BANK_EXCHANGE_NAME")
 	if err != nil {
 		return nil, err
@@ -57,7 +62,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		maxBankExchange,
 		protowrappers.WrapMaxBank,
 		protowrappers.ProtoSizer[*protobuf.MaxBank](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertMaxBankBatch,
 		workerExchangeName,
 	)
@@ -81,6 +86,11 @@ func buildBankRouterWorker() (workers.Worker, error) {
 
 func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +137,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		groupByExchange,
 		protowrappers.WrapScatterGather,
 		protowrappers.ProtoSizer[*protobuf.ScatterGather](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertScatterGatherBatch,
 		workerExchangeName,
 	)
@@ -154,6 +164,12 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
+
 	queues, err := createQueues([]string{"INPUT_QUEUE_NAME"}, momConfig)
 	if err != nil {
 		return nil, err
@@ -184,7 +200,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		paymentTypeExchange,
 		protowrappers.WrapAvgByTypeTransactions,
 		protowrappers.ProtoSizer[*protobuf.AvgByTypeTransaction](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertAvgByTypeTransactionBatch,
 		workerExchangeName,
 	)
@@ -218,6 +234,11 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 
 func buildIntermediaryRouterWorker() (workers.Worker, error) {
 	mom, err := getMomConfigFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +283,7 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		AggregateByIntermediaryExchange,
 		protowrappers.WrapIntermediaryPair,
 		protowrappers.ProtoSizer[*protobuf.IntermediaryPair](),
-		0,
+		maxBatchWeight,
 		protoinserters.InsertIntermediaryPairBatch,
 		workerExchangeName,
 	)

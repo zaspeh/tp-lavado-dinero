@@ -90,11 +90,16 @@ func buildRoutedToJoinWorker[T, B any](cfg routedWorkerConfig[T, B]) (*worker.Wo
 		return nil, err
 	}
 
+	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
+	if err != nil {
+		return nil, err
+	}
+
 	routedSender := sender.NewRoutedSender[T, B](
 		exchange,
 		cfg.Wrapper,
 		cfg.Sizer,
-		0,
+		maxBatchWeight,
 		cfg.Inserter,
 		workerExchangeName,
 	)
