@@ -18,10 +18,10 @@ type CheckpointManager struct {
 	processor              Checkpointable
 	checkpointEveryBatches int
 
-	pendingAcks      map[string][]func()
 	batchCount       map[string]int
 	processedBatches map[string]map[string]bool
 	dirtyEntities    map[string]map[string]bool
+	pendingAcks      map[string][]func()
 }
 
 type CheckpointManagerConfig struct {
@@ -37,10 +37,10 @@ func NewCheckpointManager(checkpointConfig *CheckpointManagerConfig) *Checkpoint
 		workerID:               checkpointConfig.WorkerID,
 		processor:              checkpointConfig.Processor,
 		checkpointEveryBatches: checkpointConfig.CheckpointEveryBatches,
-		pendingAcks:            make(map[string][]func()),
 		batchCount:             make(map[string]int),
 		processedBatches:       make(map[string]map[string]bool),
 		dirtyEntities:          make(map[string]map[string]bool),
+		pendingAcks:            make(map[string][]func()),
 	}
 }
 
@@ -101,6 +101,10 @@ func (cm *CheckpointManager) LoadState() error {
 	return nil
 }
 
+// BeginBatch registra un batch como pendiente de procesamiento. El ack
+// se acumula y se dispara cuando CommitBatch persiste el estado a disco.
+// Si el batch ya fue procesado (cargado de LoadState), el ack se dispara
+// inmediatamente porque no hay nada que esperar.
 func (cm *CheckpointManager) BeginBatch(clientID, batchID string, ack func()) (shouldProcess bool, err error) {
 	if cm.processedBatches[clientID] != nil && cm.processedBatches[clientID][batchID] {
 		slog.Debug("CheckpointManager BeginBatch: already processed, acking", "clientID", clientID, "batchID", batchID)
@@ -123,6 +127,20 @@ func (cm *CheckpointManager) NotifyEntityChanged(clientID, entityID string) erro
 	return nil
 }
 
+// AckEOF dispara el ack de un mensaje EOF inmediatamente.
+// Los EOFs no se persisten como batches, así que el ack se puede hacer al
+// terminar el procesamiento (después de BeforeEOF que persiste los pendientes).
+func (cm *CheckpointManager) AckEOF(ack func()) {
+	ack()
+}
+
+// AckCleanup dispara el ack de un mensaje Cleanup inmediatamente.
+// Los Cleanups no se persisten como batches, así que el ack se puede hacer
+// al terminar el procesamiento.
+func (cm *CheckpointManager) AckCleanup(ack func()) {
+	ack()
+}
+
 func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
 	if cm.processedBatches[clientID] == nil {
 		cm.processedBatches[clientID] = make(map[string]bool)
@@ -136,6 +154,8 @@ func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
 		return cm.persistAndAck(clientID)
 	}
 
+	// Acks acumulados se disparan al final del procesamiento, no en cada commit.
+	// El disparo real ocurre en BeforeEOF, persistAndAck o cuando se vacía el batchCount.
 	return nil
 }
 
@@ -189,16 +209,17 @@ func (cm *CheckpointManager) persistAndAck(clientID string) error {
 
 	slog.Debug("CheckpointManager persistAndAck: checkpoint saved", "clientID", clientID, "path", path, "entities", len(entities), "batches", len(batches))
 
-	acks := cm.pendingAcks[clientID]
-	cm.pendingAcks[clientID] = nil
 	cm.batchCount[clientID] = 0
 	cm.dirtyEntities[clientID] = nil
+
+	acks := cm.pendingAcks[clientID]
+	cm.pendingAcks[clientID] = nil
 
 	for _, ack := range acks {
 		ack()
 	}
 
-	slog.Debug("CheckpointManager persistAndAck: acks sent", "clientID", clientID, "ackCount", len(acks))
+	slog.Debug("CheckpointManager persistAndAck: acks fired", "clientID", clientID, "ackCount", len(acks))
 	return nil
 }
 
@@ -207,10 +228,10 @@ func (cm *CheckpointManager) ClearState(clientID string) error {
 		return err
 	}
 
-	delete(cm.pendingAcks, clientID)
 	delete(cm.batchCount, clientID)
 	delete(cm.processedBatches, clientID)
 	delete(cm.dirtyEntities, clientID)
+	delete(cm.pendingAcks, clientID)
 
 	path := cm.statePath(clientID)
 	if err := os.Remove(path); err != nil {

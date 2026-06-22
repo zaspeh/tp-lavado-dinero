@@ -18,7 +18,7 @@ type FanInReceiver[T any] struct {
 	inputsIDs         []string
 	targetMessageType protobuf.MessageType
 	extractData       func(*protobuf.MoneyLaundry, string) []T
-	internalChan      chan Event[T]
+	internalChan      chan WrapEvent[T]
 }
 
 func NewFanInReceiver[T any](
@@ -50,7 +50,6 @@ func (r *FanInReceiver[T]) Receive(handler func(event Event[T]) error) error {
 			wrapEvent.nack()
 			return err
 		}
-		wrapEvent.ack()
 	}
 	return nil
 }
@@ -65,6 +64,8 @@ func (r *FanInReceiver[T]) consume(msg m.Message, ack, nack func(), inputID stri
 	event := Event[T]{
 		EventID:  moneyLaundry.GetBatchID(),
 		ClientID: moneyLaundry.GetClientID(),
+		AckFn:    ack,
+		Nack:     nack,
 	}
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_EOF_:

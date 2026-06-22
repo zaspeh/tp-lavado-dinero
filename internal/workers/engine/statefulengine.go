@@ -28,7 +28,6 @@ func NewStatefulEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V],
 		coordinator:       coordinator,
 		checkpointManager: cm,
 	}
-	// TODO: cm.LoadState() -> no cargamos el estado del processor cuando se despierta
 	engine.coordinator.SetFlushHandler(engine.handleTrueEOF)
 	return engine
 }
@@ -55,25 +54,37 @@ func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
 	switch event.Type {
 	case r.DataMessage:
 		slog.Debug("Data Message Received")
-		return e.handleDataMessage(event.ClientID, event.EventID, event.Data)
+		return e.handleDataMessage(event)
 	case r.EOFMessage:
-		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
+		if err := e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID); err != nil {
+			return err
+		}
+		e.checkpointManager.AckEOF(event.AckFn)
+		return nil
 	case r.CleanupMessage:
-		return e.handleCleanupMessage(event.ClientID)
+		if err := e.handleCleanupMessage(event.ClientID); err != nil {
+			return err
+		}
+		e.checkpointManager.AckCleanup(event.AckFn)
+		return nil
 	}
 	return nil
 }
 
-func (e *StatefulEngine[T, V]) handleDataMessage(clientID, batchID string, data []T) error {
-	if e.checkpointManager != nil {
-		// TODO: ACKEAR
-		shouldProcess, err := e.checkpointManager.BeginBatch(clientID, batchID, func() {})
-		if err != nil {
-			return err
-		}
-		if !shouldProcess {
-			return nil
-		}
+func (e *StatefulEngine[T, V]) handleDataMessage(event r.Event[T]) error {
+	clientID := event.ClientID
+	batchID := event.EventID
+	data := event.Data
+
+	// El checkpoint manager es el único responsable del ack/nack:
+	// - Si el batch ya fue procesado (cargado de disco), dispara el ack inmediato.
+	// - Si es nuevo, acumula el ack y lo dispara cuando persistAndAck escribe a disco.
+	shouldProcess, err := e.checkpointManager.BeginBatch(clientID, batchID, event.AckFn)
+	if err != nil {
+		return err
+	}
+	if !shouldProcess {
+		return nil
 	}
 
 	for _, item := range data {
@@ -82,18 +93,16 @@ func (e *StatefulEngine[T, V]) handleDataMessage(clientID, batchID string, data 
 		}
 	}
 
-	if e.checkpointManager != nil {
-		e.checkpointManager.CommitBatch(clientID, batchID)
+	if err := e.checkpointManager.CommitBatch(clientID, batchID); err != nil {
+		return err
 	}
 	return nil
 }
 
 func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, eofID string) error {
-	if e.checkpointManager != nil {
-		if err := e.checkpointManager.BeforeEOF(clientID); err != nil {
-			slog.Error("StatefulEngine: BeforeEOF failed", "error", err, "clientID", clientID)
-			return err
-		}
+	if err := e.checkpointManager.BeforeEOF(clientID); err != nil {
+		slog.Error("StatefulEngine: BeforeEOF failed", "error", err, "clientID", clientID)
+		return err
 	}
 
 	yield := func(result V) error {
@@ -118,11 +127,11 @@ func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, e
 }
 
 func (e *StatefulEngine[T, V]) handleCleanupMessage(clientID string) error {
-	err := e.processor.Cleanup(clientID)
-	if e.checkpointManager != nil {
-		if clearErr := e.checkpointManager.ClearState(clientID); clearErr != nil {
-			slog.Warn("StatefulEngine: ClearState failed", "error", clearErr, "clientID", clientID)
-		}
+	if err := e.processor.Cleanup(clientID); err != nil {
+		return err
 	}
-	return err
+	if err := e.checkpointManager.ClearState(clientID); err != nil {
+		slog.Warn("StatefulEngine: ClearState failed", "error", err, "clientID", clientID)
+	}
+	return nil
 }

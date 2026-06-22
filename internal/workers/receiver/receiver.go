@@ -15,6 +15,13 @@ type Event[T any] struct {
 	ClientID string
 	Data     []T
 	EOFCount uint64
+
+	// AckFn y Nack son las funciones reales del broker que el handler
+	// es responsable de invocar (típicamente vía el checkpoint manager
+	// después de persistir). Si ninguna se invoca, RabbitMQ redelivery
+	// el mensaje cuando el consumer muere.
+	AckFn func()
+	Nack  func()
 }
 
 type Receiver[T any] interface {

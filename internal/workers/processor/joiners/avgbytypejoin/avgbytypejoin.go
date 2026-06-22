@@ -1,9 +1,17 @@
 package avgbytypejoin
 
 import (
+	"encoding/json"
+	"fmt"
+
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 )
+
+type avgByTypeResultEntity struct {
+	Account    string `json:"account"`
+	AmountPaid string `json:"amountPaid"`
+}
 
 type AvgByTypeJoinProcessor struct {
 	stores map[string]*AvgByTypeResultStore
@@ -19,11 +27,10 @@ func (p *AvgByTypeJoinProcessor) Process(clientID string, msg *protobuf.AvgByTyp
 	store := p.getOrCreateStore(clientID)
 
 	store.Add(msg)
-	/*
-		if cm != nil {
-			cm.NotifyEntityChanged(clientID, "results")
-		}
-	*/
+
+	if cm != nil {
+		cm.NotifyEntityChanged(clientID, "results")
+	}
 	return nil
 }
 
@@ -67,14 +74,14 @@ func (p *AvgByTypeJoinProcessor) getOrCreateStore(clientID string) *AvgByTypeRes
 }
 
 func (p *AvgByTypeJoinProcessor) ListEntities(clientID string) ([]string, error) {
-	/*if _, ok := p.stores[clientID]; !ok {
+	if _, ok := p.stores[clientID]; !ok {
 		return nil, nil
-	}*/
+	}
 	return []string{"results"}, nil
 }
 
 func (p *AvgByTypeJoinProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	/*if entityID != "results" {
+	if entityID != "results" {
 		return nil, fmt.Errorf("unknown entity: %s", entityID)
 	}
 
@@ -84,43 +91,38 @@ func (p *AvgByTypeJoinProcessor) SerializeEntity(clientID, entityID string) ([]b
 	}
 
 	results := store.GetResults()
-	entities := make([]microtransactionEntity, 0, len(results))
+	entities := make([]avgByTypeResultEntity, 0, len(results))
 	for _, r := range results {
-		entities = append(entities, microtransactionEntity{
-			Account:   r.GetAccount(),
-			ToAccount: r.GetToAccount(),
-			Amount:    r.GetAmount(),
+		entities = append(entities, avgByTypeResultEntity{
+			Account:    r.GetAccount(),
+			AmountPaid: r.GetAmountPaid(),
 		})
 	}
 
 	return json.Marshal(entities)
-	*/
-	return []byte{}, nil
 }
 
 func (p *AvgByTypeJoinProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	/*if entityID != "results" {
+	if entityID != "results" {
 		return fmt.Errorf("unknown entity: %s", entityID)
 	}
 
-	var entities []microtransactionEntity
+	var entities []avgByTypeResultEntity
 	if err := json.Unmarshal(data, &entities); err != nil {
 		return err
 	}
 
 	store := p.getOrCreateStore(clientID)
 	for _, e := range entities {
-		store.Add(&protobuf.Microtransaction{
-			Account:   e.Account,
-			ToAccount: e.ToAccount,
-			Amount:    e.Amount,
+		store.Add(&protobuf.AvgByTypeResult{
+			Account:    e.Account,
+			AmountPaid: e.AmountPaid,
 		})
 	}
-	*/
+
 	return nil
 }
 
 func (p *AvgByTypeJoinProcessor) ClearClientState(clientID string) error {
-	//return p.Cleanup(clientID)
-	return nil
+	return p.Cleanup(clientID)
 }

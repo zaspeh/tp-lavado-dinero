@@ -37,6 +37,8 @@ func (r *SingleReceiver[T]) Receive(handler func(event Event[T]) error) error {
 		event := Event[T]{
 			EventID:  moneyLaundry.GetBatchID(),
 			ClientID: moneyLaundry.GetClientID(),
+			AckFn:    ack,
+			Nack:     nack,
 		}
 
 		switch moneyLaundry.GetType() {
@@ -59,8 +61,6 @@ func (r *SingleReceiver[T]) Receive(handler func(event Event[T]) error) error {
 			nack()
 			return
 		}
-
-		ack()
 	})
 }
 

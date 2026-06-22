@@ -52,19 +52,25 @@ func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 	switch event.Type {
 	case r.DataMessage:
 		slog.Debug("Data message received by pipeline")
-		return e.handleDataMessage(event.ClientID, event.Data, event.EventID)
+		return e.handleDataMessage(event)
 	case r.EOFMessage:
 		slog.Debug("EOF received by pipeline")
+		defer event.AckFn()
 		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
 	case r.CleanupMessage:
-		// e.coordinator.MarkCleanup(event.ClientID)
+		defer event.AckFn()
 	}
 	return nil
 }
 
-func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, batchID string) error {
+func (e *StatelessEngine[T, V]) handleDataMessage(event r.Event[T]) error {
+	clientID := event.ClientID
+	batchID := event.EventID
+	data := event.Data
+
 	if e.coordinator.HasSeenBatch(clientID, batchID) {
 		slog.Debug("Skipping already processed batch", "clientID", clientID, "batchID", batchID)
+		event.AckFn()
 		return nil
 	}
 	slog.Debug("Processing batch", "clientID", clientID, "batchID", batchID)
@@ -93,7 +99,12 @@ func (e *StatelessEngine[T, V]) handleDataMessage(clientID string, data []T, bat
 		return err
 	}
 
-	return e.coordinator.RecordBatch(clientID, batchID, processed, survivors)
+	if err := e.coordinator.RecordBatch(clientID, batchID, processed, survivors); err != nil {
+		return err
+	}
+
+	event.AckFn()
+	return nil
 }
 
 func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uint64, eofID string) error {
