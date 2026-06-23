@@ -1,36 +1,29 @@
 package avgbytypejoin
 
 import (
-	"encoding/json"
-	"fmt"
-
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 )
 
-type avgByTypeResultEntity struct {
-	Account    string `json:"account"`
-	AmountPaid string `json:"amountPaid"`
-}
-
 type AvgByTypeJoinProcessor struct {
-	stores map[string]*AvgByTypeResultStore
+	stores  map[string]*AvgByTypeResultStore
+	tracker *AvgByTypeJoinCheckpointTracker
 }
 
 func NewAvgByTypeJoinProcessor() *AvgByTypeJoinProcessor {
-	return &AvgByTypeJoinProcessor{
+	processor := &AvgByTypeJoinProcessor{
 		stores: make(map[string]*AvgByTypeResultStore),
 	}
+	processor.tracker = NewAvgByTypeJoinCheckpointTracker(processor.getOrCreateStore)
+	return processor
 }
 
 func (p *AvgByTypeJoinProcessor) Process(clientID string, msg *protobuf.AvgByTypeResult, cm *checkpoint.CheckpointManager) error {
 	store := p.getOrCreateStore(clientID)
 
 	store.Add(msg)
+	p.tracker.MarkResultAdded(clientID, msg.GetAccount())
 
-	if cm != nil {
-		cm.NotifyEntityChanged(clientID, "results")
-	}
 	return nil
 }
 
@@ -38,6 +31,7 @@ func (p *AvgByTypeJoinProcessor) Finalize(clientID string, yield func(result *pr
 	store := p.getOrCreateStore(clientID)
 	defer func() {
 		store.Clear()
+		p.tracker.ClearClient(clientID)
 		delete(p.stores, clientID)
 	}()
 
@@ -60,6 +54,7 @@ func (p *AvgByTypeJoinProcessor) Finalize(clientID string, yield func(result *pr
 func (p *AvgByTypeJoinProcessor) Cleanup(clientID string) error {
 	store := p.getOrCreateStore(clientID)
 	store.Clear()
+	p.tracker.ClearClient(clientID)
 	delete(p.stores, clientID)
 	return nil
 }
@@ -73,56 +68,18 @@ func (p *AvgByTypeJoinProcessor) getOrCreateStore(clientID string) *AvgByTypeRes
 	return store
 }
 
-func (p *AvgByTypeJoinProcessor) ListEntities(clientID string) ([]string, error) {
-	if _, ok := p.stores[clientID]; !ok {
-		return nil, nil
-	}
-	return []string{"results"}, nil
-}
-
-func (p *AvgByTypeJoinProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	if entityID != "results" {
-		return nil, fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	store := p.stores[clientID]
-	if store == nil {
-		return nil, fmt.Errorf("store not found for client: %s", clientID)
-	}
-
-	results := store.GetResults()
-	entities := make([]avgByTypeResultEntity, 0, len(results))
-	for _, r := range results {
-		entities = append(entities, avgByTypeResultEntity{
-			Account:    r.GetAccount(),
-			AmountPaid: r.GetAmountPaid(),
-		})
-	}
-
-	return json.Marshal(entities)
-}
-
-func (p *AvgByTypeJoinProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	if entityID != "results" {
-		return fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	var entities []avgByTypeResultEntity
-	if err := json.Unmarshal(data, &entities); err != nil {
-		return err
-	}
-
-	store := p.getOrCreateStore(clientID)
-	for _, e := range entities {
-		store.Add(&protobuf.AvgByTypeResult{
-			Account:    e.Account,
-			AmountPaid: e.AmountPaid,
-		})
-	}
-
-	return nil
-}
-
 func (p *AvgByTypeJoinProcessor) ClearClientState(clientID string) error {
 	return p.Cleanup(clientID)
+}
+
+func (p *AvgByTypeJoinProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
+	return p.tracker.DrainChanges(clientID)
+}
+
+func (p *AvgByTypeJoinProcessor) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
+	return p.tracker.RestoreChanges(clientID, changes)
+}
+
+func (p *AvgByTypeJoinProcessor) ApplyChange(clientID string, change checkpoint.CheckpointChange) error {
+	return p.tracker.ApplyChange(clientID, change)
 }
