@@ -104,7 +104,8 @@ func (cm *CheckpointManager) loadClientState(clientID string) error {
 	validEntries := 0
 
 	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 64*1024), 16*1024*1024)
+	// TODO: Escritura de changes del entry -> +16 mb
+	scanner.Buffer(make([]byte, 64*1024), 128*1024*1024)
 	lineNumber := 0
 	for scanner.Scan() {
 		lineNumber++

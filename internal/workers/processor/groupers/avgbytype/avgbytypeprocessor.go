@@ -1,8 +1,6 @@
 package avgbytype
 
 import (
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strconv"
 
@@ -21,25 +19,16 @@ type clientState struct {
 }
 
 type AvgByTypeProcessor struct {
-	clients map[string]*clientState
-}
-
-type period1Entity struct {
-	Format string  `json:"format"`
-	Sum    float64 `json:"sum"`
-	Count  int     `json:"count"`
-}
-
-type period2Entity struct {
-	Format     string `json:"format"`
-	Account    string `json:"account"`
-	AmountPaid string `json:"amountPaid"`
+	clients  map[string]*clientState
+	tracker  *AvgByTypeCheckpointTracker
 }
 
 func NewAvgByTypeProcessor() *AvgByTypeProcessor {
-	return &AvgByTypeProcessor{
+	processor := &AvgByTypeProcessor{
 		clients: make(map[string]*clientState),
 	}
+	processor.tracker = NewAvgByTypeCheckpointTracker(processor.getOrCreateClientState)
+	return processor
 }
 
 func (p *AvgByTypeProcessor) Process(clientID string, item *protobuf.AvgByTypeTransaction, cm *checkpoint.CheckpointManager) error {
@@ -80,6 +69,7 @@ func (p *AvgByTypeProcessor) processFirstPeriod(state *clientState, tx *protobuf
 	if cm != nil {
 		cm.NotifyEntityChanged(clientID, "period1")
 	}
+	p.tracker.MarkPeriod1Changed(clientID, paymentFormat)
 	return nil
 }
 
@@ -94,6 +84,7 @@ func (p *AvgByTypeProcessor) processSecondPeriod(state *clientState, tx *protobu
 	if cm != nil {
 		cm.NotifyEntityChanged(clientID, "period2")
 	}
+	p.tracker.MarkPeriod2Changed(clientID, paymentFormat)
 	return nil
 }
 
@@ -152,6 +143,7 @@ func (p *AvgByTypeProcessor) Finalize(clientID string, yield func(result *protob
 
 func (p *AvgByTypeProcessor) Cleanup(clientID string) error {
 	slog.Debug("AvgByTypeProcessor Cleanup", "clientID", clientID)
+	p.tracker.ClearClient(clientID)
 	delete(p.clients, clientID)
 	return nil
 }
@@ -165,90 +157,18 @@ func (p *AvgByTypeProcessor) getOrCreateClientState(clientID string) *clientStat
 	return state
 }
 
-func (p *AvgByTypeProcessor) ListEntities(clientID string) ([]string, error) {
-	state, ok := p.clients[clientID]
-	if !ok {
-		return nil, nil
-	}
-	entities := make([]string, 0, 2)
-	if state.period1Stats != nil && len(state.period1Stats) > 0 {
-		entities = append(entities, "period1")
-	}
-	if state.period2Transactions != nil && len(state.period2Transactions) > 0 {
-		entities = append(entities, "period2")
-	}
-	return entities, nil
-}
-
-func (p *AvgByTypeProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	state, ok := p.clients[clientID]
-	if !ok {
-		return nil, fmt.Errorf("client state not found")
-	}
-
-	switch entityID {
-	case "period1":
-		entities := make([]period1Entity, 0, len(state.period1Stats))
-		for format, stats := range state.period1Stats {
-			entities = append(entities, period1Entity{
-				Format: format,
-				Sum:    stats.Sum,
-				Count:  stats.Count,
-			})
-		}
-		return json.Marshal(entities)
-	case "period2":
-		var entities []period2Entity
-		for format, txs := range state.period2Transactions {
-			for _, tx := range txs {
-				entities = append(entities, period2Entity{
-					Format:     format,
-					Account:    tx.GetAccount(),
-					AmountPaid: tx.GetAmountPaid(),
-				})
-			}
-		}
-		return json.Marshal(entities)
-	default:
-		return nil, fmt.Errorf("unknown entity: %s", entityID)
-	}
-}
-
-func (p *AvgByTypeProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	state := p.getOrCreateClientState(clientID)
-
-	switch entityID {
-	case "period1":
-		var entities []period1Entity
-		if err := json.Unmarshal(data, &entities); err != nil {
-			return err
-		}
-		state.period1Stats = make(map[string]*AvgByTypeStats)
-		for _, e := range entities {
-			state.period1Stats[e.Format] = &AvgByTypeStats{
-				Sum:   e.Sum,
-				Count: e.Count,
-			}
-		}
-	case "period2":
-		var entities []period2Entity
-		if err := json.Unmarshal(data, &entities); err != nil {
-			return err
-		}
-		state.period2Transactions = make(map[string][]*protobuf.AvgByTypeTransaction)
-		for _, e := range entities {
-			tx := &protobuf.AvgByTypeTransaction{
-				Account:    e.Account,
-				AmountPaid: e.AmountPaid,
-			}
-			state.period2Transactions[e.Format] = append(state.period2Transactions[e.Format], tx)
-		}
-	default:
-		return fmt.Errorf("unknown entity: %s", entityID)
-	}
-	return nil
-}
-
 func (p *AvgByTypeProcessor) ClearClientState(clientID string) error {
 	return p.Cleanup(clientID)
+}
+
+func (p *AvgByTypeProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
+	return p.tracker.DrainChanges(clientID)
+}
+
+func (p *AvgByTypeProcessor) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
+	return p.tracker.RestoreChanges(clientID, changes)
+}
+
+func (p *AvgByTypeProcessor) ApplyChange(clientID string, change checkpoint.CheckpointChange) error {
+	return p.tracker.ApplyChange(clientID, change)
 }
