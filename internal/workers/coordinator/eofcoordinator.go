@@ -118,8 +118,11 @@ func (c *EOFCoordinator) SetFlushHandler(handler FlushHandler) {
 }
 
 func (c *EOFCoordinator) Run() error {
-	err := c.wakeUpNotification()
-	if err != nil {
+	if err := c.exchange.SetUp(); err != nil {
+		return err
+	}
+
+	if err := c.wakeUpNotification(); err != nil {
 		return err
 	}
 
