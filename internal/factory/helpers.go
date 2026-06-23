@@ -182,7 +182,7 @@ func createInputExchangeOutputQueue(keyPrefix string) (m.Middleware, m.Middlewar
 	return inputExchange, outputQueue, nil
 }
 
-func getCoordinator() (*c.EOFCoordinator, error) {
+func getCoordinator(maxBatchWeight int) (*c.EOFCoordinator, error) {
 	workerID, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {
 		return nil, err
@@ -198,6 +198,7 @@ func getCoordinator() (*c.EOFCoordinator, error) {
 		ConnSettings:      momConfig,
 		WorkerID:          workerID,
 		WorkerCount:       workerCount,
+		MaxBatchWeight:    maxBatchWeight,
 	}
 
 	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)

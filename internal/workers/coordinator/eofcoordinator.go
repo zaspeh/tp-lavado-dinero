@@ -21,18 +21,20 @@ type EOFCoordinatorConfig struct {
 	WorkerCount       int
 	ExpectedEOFs      int
 	FlushHandler      FlushHandler
+	MaxBatchWeight    int
 }
 
 type EOFCoordinator struct {
-	workerID     int
-	workerName   string
-	expectedEOFs uint32
-	publishKeys  []string
-	exchange     *m.ExchangeMiddleware
-	storage      *BatchStorage
-	flushHandler FlushHandler
-	mu           sync.Mutex
-	clients      map[string]*clientState
+	workerID         int
+	workerName       string
+	expectedEOFs     uint32
+	publishKeys      []string
+	exchange         *m.ExchangeMiddleware
+	storage          *BatchStorage
+	flushHandler     FlushHandler
+	mu               sync.Mutex
+	clients          map[string]*clientState
+	innerBatchWeight int
 }
 
 func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
@@ -61,14 +63,15 @@ func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 	}
 
 	coord := &EOFCoordinator{
-		workerID:     config.WorkerID,
-		workerName:   config.PeersExchangeName,
-		expectedEOFs: uint32(config.ExpectedEOFs),
-		publishKeys:  publishKeys,
-		exchange:     exchange,
-		storage:      storage,
-		flushHandler: config.FlushHandler,
-		clients:      make(map[string]*clientState),
+		workerID:         config.WorkerID,
+		workerName:       config.PeersExchangeName,
+		expectedEOFs:     uint32(config.ExpectedEOFs),
+		publishKeys:      publishKeys,
+		exchange:         exchange,
+		storage:          storage,
+		flushHandler:     config.FlushHandler,
+		clients:          make(map[string]*clientState),
+		innerBatchWeight: config.MaxBatchWeight,
 	}
 
 	if err := coord.restoreFromStorage(); err != nil {
@@ -252,7 +255,7 @@ func (c *EOFCoordinator) handleWakeUp(msg *protobuf.EOFCoordination) error {
 			continue
 		}
 
-		batchOfInformation := batch.New(0, protowrappers.ProtoSizer[*protobuf.BatchInformation](), protowrappers.FalseWrap)
+		batchOfInformation := batch.New(c.innerBatchWeight, protowrappers.ProtoSizer[*protobuf.BatchInformation](), protowrappers.FalseWrap)
 		onflush := func(items []*protobuf.BatchInformation, batchID string) error {
 			return c.responseToWakeUp(items, clientID, key)
 		}
@@ -380,7 +383,7 @@ func (c *EOFCoordinator) sendEOF(key, clientID, eofID string, expectedTotal uint
 
 func (c *EOFCoordinator) broadcastOwnBatches(clientID string, state *clientState) error {
 	// # TODO: max weight
-	batchOfInformation := batch.New(0, protowrappers.ProtoSizer[*protobuf.BatchInformation](), protowrappers.FalseWrap)
+	batchOfInformation := batch.New(c.innerBatchWeight, protowrappers.ProtoSizer[*protobuf.BatchInformation](), protowrappers.FalseWrap)
 	onflush := func(items []*protobuf.BatchInformation, batchID string) error {
 		return c.broadcastBatch(items, clientID)
 	}

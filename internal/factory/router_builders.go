@@ -81,6 +81,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		ExtractInputItems:  protoextractors.GetMaxBankBatchItems,
 		Processor:          processorrouters.NewMaxBankRouter(maxBankExchangeKeys),
 		Sender:             routedSender,
+		maxBatchWeight:     maxBatchWeight,
 	})
 }
 
@@ -156,6 +157,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		ExtractInputItems:  protoextractors.GetScatterGatherBatchItems,
 		Processor:          processorrouters.NewOriginDestinationRouter(originDestinationRouterKeys[:groupByOriginoutputWorkerAmount], originDestinationRouterKeys[groupByOriginoutputWorkerAmount:]),
 		Sender:             routedSender,
+		maxBatchWeight:     maxBatchWeight,
 	})
 }
 
@@ -183,7 +185,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	coordinator, err := getCoordinator()
+	coordinator, err := getCoordinator(maxBatchWeight)
 	if err != nil {
 		inputQueue.Close()
 		paymentTypeExchange.Close()
@@ -302,6 +304,7 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		ExtractInputItems:  protoextractors.GetGroupedAccountsBatchItems,
 		Processor:          processorrouters.NewIntermediaryRouter(keys),
 		Sender:             routedSender,
+		maxBatchWeight:     maxBatchWeight,
 	})
 
 }

@@ -27,6 +27,7 @@ type statelessWorkerWithSenderConfig[T, V any] struct {
 	ExtractInputItems  func(*protobuf.MoneyLaundry) []T
 	Processor          p.Processor[T, V]
 	Sender             s.Sender[V]
+	maxBatchWeight     int
 }
 
 func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderConfig[T, V]) (*worker.Worker, error) {
@@ -48,6 +49,7 @@ func buildStatelessWorkerWithSender[T, V any](config statelessWorkerWithSenderCo
 		WorkerID:          config.id,
 		WorkerCount:       config.workerCount,
 		ExpectedEOFs:      config.expectedEOFs,
+		MaxBatchWeight:    config.maxBatchWeight,
 	}
 
 	coordinator, err := c.NewEOFCoordinator(coordinatorConfig)
@@ -90,7 +92,7 @@ func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutput
 		return nil, err
 	}
 
-	coordinator, err := getCoordinator()
+	coordinator, err := getCoordinator(cfg.MaxBatchWeight)
 	if err != nil {
 		inputQueue.Close()
 		outputQueue.Close()

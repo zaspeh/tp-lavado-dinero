@@ -47,7 +47,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	coordinator, err := getCoordinator()
+	coordinator, err := getCoordinator(maxBatchWeight)
 	if err != nil {
 		closeQueues(queues)
 		return nil, err
@@ -200,20 +200,20 @@ func buildPeriodFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	rawCoordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q5_raw", workerExchangeName))
+	rawCoordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q5_raw", workerExchangeName), maxBatchWeight)
 	if err != nil {
 		closeQueues(queues)
 		return nil, err
 	}
 
-	query3Coordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q3_periods", workerExchangeName))
+	query3Coordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q3_periods", workerExchangeName), maxBatchWeight)
 	if err != nil {
 		rawCoordinator.Close()
 		closeQueues(queues)
 		return nil, err
 	}
 
-	query4Coordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q4_scatter", workerExchangeName))
+	query4Coordinator, err := buildPeriodFilterCoordinator(connSettings, id, workerCount, fmt.Sprintf("%s.q4_scatter", workerExchangeName), maxBatchWeight)
 	if err != nil {
 		rawCoordinator.Close()
 		query3Coordinator.Close()
@@ -309,12 +309,14 @@ func buildPeriodFilterCoordinator(
 	id int,
 	workerCount int,
 	workerExchangeName string,
+	maxBatchWeight int,
 ) (*c.EOFCoordinator, error) {
 	return c.NewEOFCoordinator(c.EOFCoordinatorConfig{
 		PeersExchangeName: workerExchangeName,
 		ConnSettings:      connSettings,
 		WorkerID:          id,
 		WorkerCount:       workerCount,
+		MaxBatchWeight:    maxBatchWeight,
 	})
 }
 

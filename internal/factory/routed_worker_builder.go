@@ -116,6 +116,7 @@ func buildRoutedToJoinWorker[T, B any](cfg routedWorkerConfig[T, B]) (*worker.Wo
 		WorkerID:          id,
 		WorkerCount:       workerCount,
 		ExpectedEOFs:      expectedEOFs,
+		MaxBatchWeight:    maxBatchWeight,
 	}
 
 	coord, err := coordinator.NewEOFCoordinator(coordinatorConfig)
