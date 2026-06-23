@@ -16,7 +16,15 @@ func NewBankStore() *MaxBankStore {
 	}
 }
 
-func (s *MaxBankStore) UpdateBankName(bankID int32, bankName string) {
+func (s *MaxBankStore) UpdateBankName(bankID int32, bankName string) bool {
+	if current, ok := s.bankNames[bankID]; ok && current == bankName {
+		return false
+	}
+	s.bankNames[bankID] = bankName
+	return true
+}
+
+func (s *MaxBankStore) SetBankName(bankID int32, bankName string) {
 	s.bankNames[bankID] = bankName
 }
 
@@ -27,7 +35,7 @@ func (s *MaxBankStore) BankName(id int32) string {
 	return defaultBankName
 }
 
-func (s *MaxBankStore) UpdateMaxTransaction(bankID int32, account string, amount float64, amountStr string) {
+func (s *MaxBankStore) UpdateMaxTransaction(bankID int32, account string, amount float64, amountStr string) bool {
 	current, ok := s.maxTransactions[bankID]
 
 	// Nuevo maximo
@@ -37,8 +45,9 @@ func (s *MaxBankStore) UpdateMaxTransaction(bankID int32, account string, amount
 			AmountValue:  amount,
 			AmountString: amountStr,
 		}
-		return
+		return true
 	}
+	return false
 }
 
 func (s *MaxBankStore) Reader() *Reader {
