@@ -1,8 +1,6 @@
 package maxbankjoin
 
 import (
-	"encoding/json"
-	"fmt"
 	"sync"
 
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
@@ -12,28 +10,22 @@ import (
 type MaxBankJoinProcessor struct {
 	stores   map[string]*MaxBankStore
 	storesMu sync.RWMutex
-}
-
-type maxBankResultEntity struct {
-	BankName string `json:"bankName"`
-	Account string `json:"account"`
-	Amount  string `json:"amount"`
+	tracker  *MaxBankJoinCheckpointTracker
 }
 
 func NewMaxBankJoinProcessor() *MaxBankJoinProcessor {
-	return &MaxBankJoinProcessor{
+	processor := &MaxBankJoinProcessor{
 		stores: make(map[string]*MaxBankStore),
 	}
+	processor.tracker = NewMaxBankJoinCheckpointTracker(&processor.stores)
+	return processor
 }
 
 func (p *MaxBankJoinProcessor) Process(clientID string, msg *protobuf.MaxBankResult, cm *checkpoint.CheckpointManager) error {
 	store := p.getOrCreateStore(clientID)
 
 	store.Add(msg)
-
-	if cm != nil {
-		cm.NotifyEntityChanged(clientID, "results")
-	}
+	p.tracker.MarkResultAdded(clientID)
 
 	return nil
 }
@@ -45,6 +37,7 @@ func (p *MaxBankJoinProcessor) Finalize(clientID string, yield func(result *prot
 		p.storesMu.Lock()
 		delete(p.stores, clientID)
 		p.storesMu.Unlock()
+		p.tracker.ClearClient(clientID)
 	}()
 
 	totalPairs := 0
@@ -70,6 +63,7 @@ func (p *MaxBankJoinProcessor) Cleanup(clientID string) error {
 	store := p.getOrCreateStore(clientID)
 	store.Clear()
 	delete(p.stores, clientID)
+	p.tracker.ClearClient(clientID)
 	return nil
 }
 
@@ -85,67 +79,18 @@ func (p *MaxBankJoinProcessor) getOrCreateStore(clientID string) *MaxBankStore {
 	return store
 }
 
-func (p *MaxBankJoinProcessor) ListEntities(clientID string) ([]string, error) {
-	p.storesMu.RLock()
-	defer p.storesMu.RUnlock()
-
-	if _, ok := p.stores[clientID]; !ok {
-		return nil, nil
-	}
-	return []string{"results"}, nil
-}
-
-func (p *MaxBankJoinProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	if entityID != "results" {
-		return nil, fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	p.storesMu.RLock()
-	defer p.storesMu.RUnlock()
-
-	store := p.stores[clientID]
-	if store == nil {
-		return nil, fmt.Errorf("store not found for client: %s", clientID)
-	}
-
-	results := store.GetResults()
-	entities := make([]maxBankResultEntity, 0, len(results))
-	for _, r := range results {
-		entities = append(entities, maxBankResultEntity{
-			BankName: r.GetBankName(),
-			Account: r.GetAccount(),
-			Amount:  r.GetAmount(),
-		})
-	}
-
-	return json.Marshal(entities)
-}
-
-func (p *MaxBankJoinProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	if entityID != "results" {
-		return fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	var entities []maxBankResultEntity
-	if err := json.Unmarshal(data, &entities); err != nil {
-		return err
-	}
-
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
-	store := p.getOrCreateStore(clientID)
-	for _, e := range entities {
-		store.Add(&protobuf.MaxBankResult{
-			BankName: e.BankName,
-			Account:  e.Account,
-			Amount:   e.Amount,
-		})
-	}
-
-	return nil
-}
-
 func (p *MaxBankJoinProcessor) ClearClientState(clientID string) error {
 	return p.Cleanup(clientID)
+}
+
+func (p *MaxBankJoinProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
+	return p.tracker.DrainChanges(clientID)
+}
+
+func (p *MaxBankJoinProcessor) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
+	return p.tracker.RestoreChanges(clientID, changes)
+}
+
+func (p *MaxBankJoinProcessor) ApplyChange(clientID string, change checkpoint.CheckpointChange) error {
+	return p.tracker.ApplyChange(clientID, change)
 }
