@@ -1,8 +1,6 @@
 package scattergatherjoin
 
 import (
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"sync"
 
@@ -14,6 +12,7 @@ import (
 type ScatterGatherJoinProcessor struct {
 	stores   map[string]*ScatterGatherStore
 	storesMu sync.RWMutex
+	tracker  *ScatterGatherCheckpointTracker
 }
 
 type pairEntity struct {
@@ -25,9 +24,15 @@ type pairEntity struct {
 }
 
 func NewScatterGatherJoinProcessor() *ScatterGatherJoinProcessor {
-	return &ScatterGatherJoinProcessor{
+	processor := &ScatterGatherJoinProcessor{
 		stores: make(map[string]*ScatterGatherStore),
 	}
+	processor.tracker = NewScatterGatherCheckpointTracker(&processor.stores)
+	return processor
+}
+
+func init() {
+	// nothing
 }
 
 func (p *ScatterGatherJoinProcessor) Process(clientID string, path *protobuf.SuspiciousPath, cm *checkpoint.CheckpointManager) error {
@@ -49,7 +54,8 @@ func (p *ScatterGatherJoinProcessor) Process(clientID string, path *protobuf.Sus
 	store.Add(pair, int(path.GetIntermediaryCount()))
 
 	if cm != nil {
-		cm.NotifyEntityChanged(clientID, "paths")
+		// use change-based checkpoint tracking
+		p.tracker.MarkResultAdded(clientID)
 	}
 
 	return nil
@@ -112,6 +118,24 @@ func (p *ScatterGatherJoinProcessor) Cleanup(clientID string) error {
 	return nil
 }
 
+// Checkpoint integration (ChangeCheckpointable / RestorableChangeCheckpointable)
+func (p *ScatterGatherJoinProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
+	return p.tracker.DrainChanges(clientID)
+}
+
+func (p *ScatterGatherJoinProcessor) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
+	return p.tracker.RestoreChanges(clientID, changes)
+}
+
+func (p *ScatterGatherJoinProcessor) ApplyChange(clientID string, change checkpoint.CheckpointChange) error {
+	return p.tracker.ApplyChange(clientID, change)
+}
+
+func (p *ScatterGatherJoinProcessor) ClearClientState(clientID string) error {
+	p.tracker.ClearClient(clientID)
+	return p.Cleanup(clientID)
+}
+
 func (p *ScatterGatherJoinProcessor) getOrCreateStore(clientID string) *ScatterGatherStore {
 	p.storesMu.Lock()
 	defer p.storesMu.Unlock()
@@ -122,76 +146,4 @@ func (p *ScatterGatherJoinProcessor) getOrCreateStore(clientID string) *ScatterG
 		p.stores[clientID] = store
 	}
 	return store
-}
-
-func (p *ScatterGatherJoinProcessor) ListEntities(clientID string) ([]string, error) {
-	p.storesMu.RLock()
-	defer p.storesMu.RUnlock()
-
-	if _, ok := p.stores[clientID]; !ok {
-		return nil, nil
-	}
-	return []string{"paths"}, nil
-}
-
-func (p *ScatterGatherJoinProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	if entityID != "paths" {
-		return nil, fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	p.storesMu.RLock()
-	defer p.storesMu.RUnlock()
-
-	store := p.stores[clientID]
-	if store == nil {
-		return nil, fmt.Errorf("store not found for client: %s", clientID)
-	}
-
-	paths := store.GetPaths()
-	entities := make([]pairEntity, 0, len(paths))
-	for pair, count := range paths {
-		entities = append(entities, pairEntity{
-			OriginBank:        pair.Origin.Bank,
-			OriginAccount:     pair.Origin.Account,
-			DestBank:          pair.Destination.Bank,
-			DestAccount:       pair.Destination.Account,
-			IntermediaryCount: count,
-		})
-	}
-
-	return json.Marshal(entities)
-}
-
-func (p *ScatterGatherJoinProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	if entityID != "paths" {
-		return fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	var entities []pairEntity
-	if err := json.Unmarshal(data, &entities); err != nil {
-		return err
-	}
-
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
-	store := p.getOrCreateStore(clientID)
-	for _, e := range entities {
-		store.SetPairCount(model.OriginDestinationPair{
-			Origin: model.Account{
-				Bank:    e.OriginBank,
-				Account: e.OriginAccount,
-			},
-			Destination: model.Account{
-				Bank:    e.DestBank,
-				Account: e.DestAccount,
-			},
-		}, e.IntermediaryCount)
-	}
-
-	return nil
-}
-
-func (p *ScatterGatherJoinProcessor) ClearClientState(clientID string) error {
-	return p.Cleanup(clientID)
 }
