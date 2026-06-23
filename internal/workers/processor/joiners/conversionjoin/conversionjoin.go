@@ -1,8 +1,6 @@
 package conversionjoin
 
 import (
-	"encoding/json"
-	"fmt"
 	"log/slog"
 
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
@@ -11,26 +9,24 @@ import (
 
 type ConversionJoinProcessor struct {
 	clientResults map[string]int
-}
-
-type countEntity struct {
-	Count int `json:"count"`
+	tracker      *ConversionJoinCheckpointTracker
 }
 
 func NewConversionJoinProcessor() *ConversionJoinProcessor {
-	return &ConversionJoinProcessor{
+	processor := &ConversionJoinProcessor{
 		clientResults: make(map[string]int),
 	}
+	processor.tracker = NewConversionJoinCheckpointTracker(&processor.clientResults)
+	return processor
 }
 
 func (p *ConversionJoinProcessor) Process(clientID string, path *protobuf.ConvertedAmount, cm *checkpoint.CheckpointManager) error {
+	p.getOrCreateClient(clientID)
 	p.clientResults[clientID]++
 
 	slog.Debug("Handling ConvertedAmountBatch")
 
-	if cm != nil {
-		cm.NotifyEntityChanged(clientID, "count")
-	}
+	p.tracker.MarkCountChanged(clientID)
 
 	return nil
 }
@@ -50,45 +46,35 @@ func (p *ConversionJoinProcessor) Finalize(clientID string, yield func(result *p
 		return 0, nil
 	}
 	delete(p.clientResults, clientID)
+	p.tracker.ClearClient(clientID)
 
 	return uint64(totalPairs), nil
 }
 
 func (p *ConversionJoinProcessor) Cleanup(clientID string) error {
 	delete(p.clientResults, clientID)
+	p.tracker.ClearClient(clientID)
 	return nil
 }
 
-func (p *ConversionJoinProcessor) ListEntities(clientID string) ([]string, error) {
+func (p *ConversionJoinProcessor) getOrCreateClient(clientID string) {
 	if _, ok := p.clientResults[clientID]; !ok {
-		return nil, nil
+		p.clientResults[clientID] = 0
 	}
-	return []string{"count"}, nil
-}
-
-func (p *ConversionJoinProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	if entityID != "count" {
-		return nil, fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	count := p.clientResults[clientID]
-	return json.Marshal(countEntity{Count: count})
-}
-
-func (p *ConversionJoinProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	if entityID != "count" {
-		return fmt.Errorf("unknown entity: %s", entityID)
-	}
-
-	var entity countEntity
-	if err := json.Unmarshal(data, &entity); err != nil {
-		return err
-	}
-
-	p.clientResults[clientID] = entity.Count
-	return nil
 }
 
 func (p *ConversionJoinProcessor) ClearClientState(clientID string) error {
 	return p.Cleanup(clientID)
+}
+
+func (p *ConversionJoinProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
+	return p.tracker.DrainChanges(clientID)
+}
+
+func (p *ConversionJoinProcessor) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
+	return p.tracker.RestoreChanges(clientID, changes)
+}
+
+func (p *ConversionJoinProcessor) ApplyChange(clientID string, change checkpoint.CheckpointChange) error {
+	return p.tracker.ApplyChange(clientID, change)
 }
