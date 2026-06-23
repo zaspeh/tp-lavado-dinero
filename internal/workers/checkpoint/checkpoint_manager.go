@@ -18,8 +18,8 @@ const legacyEntityChangeKind = "entity"
 type CheckpointManager struct {
 	workerName             string
 	workerID               int
-	processor              Checkpointable
 	checkpointEveryBatches int
+	participants           []checkpointParticipant
 
 	mu               sync.Mutex
 	nextSeq          map[string]uint64
@@ -34,15 +34,28 @@ type CheckpointManagerConfig struct {
 	WorkerName             string
 	WorkerID               int
 	Processor              Checkpointable
+	Participants           []ChangeCheckpointable
 	CheckpointEveryBatches int
+}
+
+type checkpointParticipant struct {
+	name         string
+	base         Checkpointable
+	checkpointer ChangeCheckpointable
+	entity       EntityCheckpointable
+}
+
+type drainedParticipantChanges struct {
+	participant checkpointParticipant
+	changes     []CheckpointChange
 }
 
 func NewCheckpointManager(checkpointConfig *CheckpointManagerConfig) *CheckpointManager {
 	return &CheckpointManager{
 		workerName:             checkpointConfig.WorkerName,
 		workerID:               checkpointConfig.WorkerID,
-		processor:              checkpointConfig.Processor,
 		checkpointEveryBatches: checkpointConfig.CheckpointEveryBatches,
+		participants:           normalizeParticipants(checkpointConfig),
 		nextSeq:                make(map[string]uint64),
 		batchCount:             make(map[string]int),
 		processedBatches:       make(map[string]map[string]bool),
@@ -50,6 +63,53 @@ func NewCheckpointManager(checkpointConfig *CheckpointManagerConfig) *Checkpoint
 		dirtyEntities:          make(map[string]map[string]bool),
 		pendingAcks:            make(map[string][]func()),
 	}
+}
+
+func normalizeParticipants(config *CheckpointManagerConfig) []checkpointParticipant {
+	if len(config.Participants) > 0 {
+		participants := make([]checkpointParticipant, 0, len(config.Participants))
+		for _, participant := range config.Participants {
+			participants = append(participants, checkpointParticipant{
+				name:         participantName(participant),
+				base:         participant,
+				checkpointer: participant,
+			})
+		}
+		return participants
+	}
+
+	if config.Processor == nil {
+		return nil
+	}
+
+	if changeProcessor, ok := config.Processor.(ChangeCheckpointable); ok {
+		return []checkpointParticipant{{
+			name:         participantName(changeProcessor),
+			base:         changeProcessor,
+			checkpointer: changeProcessor,
+		}}
+	}
+
+	if entityProcessor, ok := config.Processor.(EntityCheckpointable); ok {
+		return []checkpointParticipant{{
+			name:   participantName(entityProcessor),
+			base:   entityProcessor,
+			entity: entityProcessor,
+		}}
+	}
+
+	return []checkpointParticipant{{
+		name: participantName(config.Processor),
+		base: config.Processor,
+	}}
+}
+
+func participantName(participant Checkpointable) string {
+	named, ok := participant.(NamedCheckpointable)
+	if !ok {
+		return ""
+	}
+	return named.CheckpointParticipantName()
 }
 
 func (cm *CheckpointManager) SetCheckpointEveryBatches(n int) {
@@ -261,8 +321,10 @@ func (cm *CheckpointManager) persistAndAck(clientID string) error {
 }
 
 func (cm *CheckpointManager) ClearState(clientID string) error {
-	if err := cm.processor.ClearClientState(clientID); err != nil {
-		return err
+	for _, participant := range cm.participants {
+		if err := participant.clearClientState(clientID); err != nil {
+			return err
+		}
 	}
 
 	cm.mu.Lock()
@@ -284,13 +346,81 @@ func (cm *CheckpointManager) ClearState(clientID string) error {
 }
 
 func (cm *CheckpointManager) drainChanges(clientID string) ([]CheckpointChange, error) {
-	if changeProcessor, ok := cm.processor.(ChangeCheckpointable); ok {
-		return changeProcessor.DrainChanges(clientID)
+	changes, drained, err := cm.drainParticipantChanges(clientID)
+	if err != nil {
+		cm.restoreDrainedChanges(clientID, drained)
+		return nil, err
+	}
+	return changes, nil
+}
+
+func (cm *CheckpointManager) restoreChanges(clientID string, changes []CheckpointChange) {
+	drained := cm.groupChangesByParticipant(changes)
+	cm.restoreDrainedChanges(clientID, drained)
+}
+
+func (cm *CheckpointManager) applyChange(clientID string, change CheckpointChange) error {
+	participant, routedChange, err := cm.routeChange(change)
+	if err != nil {
+		return err
+	}
+	return participant.applyChange(clientID, routedChange)
+}
+
+func (cm *CheckpointManager) drainParticipantChanges(clientID string) ([]CheckpointChange, []drainedParticipantChanges, error) {
+	if err := cm.validateParticipantRouting(); err != nil {
+		return nil, nil, err
 	}
 
-	entityProcessor, ok := cm.processor.(EntityCheckpointable)
-	if !ok {
-		return nil, fmt.Errorf("checkpoint processor does not support changes or entities")
+	allChanges := make([]CheckpointChange, 0)
+	drained := make([]drainedParticipantChanges, 0, len(cm.participants))
+
+	for _, participant := range cm.participants {
+		changes, err := cm.drainParticipant(clientID, participant)
+		if err != nil {
+			return nil, drained, err
+		}
+		if len(changes) == 0 {
+			continue
+		}
+
+		drained = append(drained, drainedParticipantChanges{
+			participant: participant,
+			changes:     append([]CheckpointChange(nil), changes...),
+		})
+
+		for _, change := range changes {
+			if participant.name == "" && len(cm.participants) > 1 && change.Kind != legacyEntityChangeKind {
+				return nil, drained, fmt.Errorf("checkpoint participant emitted unnamespaced change kind %q with multiple participants", change.Kind)
+			}
+			allChanges = append(allChanges, participant.persistedChange(change))
+		}
+	}
+
+	return allChanges, drained, nil
+}
+
+func (cm *CheckpointManager) validateParticipantRouting() error {
+	seenNames := make(map[string]bool)
+	for _, participant := range cm.participants {
+		if participant.name == "" {
+			continue
+		}
+		if seenNames[participant.name] {
+			return fmt.Errorf("duplicate checkpoint participant name %q", participant.name)
+		}
+		seenNames[participant.name] = true
+	}
+	return nil
+}
+
+func (cm *CheckpointManager) drainParticipant(clientID string, participant checkpointParticipant) ([]CheckpointChange, error) {
+	if participant.checkpointer != nil {
+		return participant.checkpointer.DrainChanges(clientID)
+	}
+
+	if participant.entity == nil {
+		return nil, fmt.Errorf("checkpoint participant does not support changes or entities")
 	}
 
 	cm.mu.Lock()
@@ -302,7 +432,7 @@ func (cm *CheckpointManager) drainChanges(clientID string) ([]CheckpointChange, 
 
 	changes := make([]CheckpointChange, 0, len(dirty))
 	for _, entityID := range dirty {
-		data, err := entityProcessor.SerializeEntity(clientID, entityID)
+		data, err := participant.entity.SerializeEntity(clientID, entityID)
 		if err != nil {
 			slog.Error("CheckpointManager persistAndAck: SerializeEntity failed", "clientID", clientID, "entityID", entityID, "error", err)
 			return nil, err
@@ -317,27 +447,135 @@ func (cm *CheckpointManager) drainChanges(clientID string) ([]CheckpointChange, 
 	return changes, nil
 }
 
-func (cm *CheckpointManager) restoreChanges(clientID string, changes []CheckpointChange) {
-	if restorable, ok := cm.processor.(RestorableChangeCheckpointable); ok {
-		if err := restorable.RestoreChanges(clientID, changes); err != nil {
-			slog.Warn("CheckpointManager persistAndAck: failed to restore drained changes", "clientID", clientID, "error", err)
+func (cm *CheckpointManager) restoreDrainedChanges(clientID string, drained []drainedParticipantChanges) {
+	for _, item := range drained {
+		if err := item.participant.restoreChanges(clientID, item.changes); err != nil {
+			slog.Warn("CheckpointManager persistAndAck: failed to restore drained changes", "clientID", clientID, "participant", item.participant.name, "error", err)
 		}
 	}
 }
 
-func (cm *CheckpointManager) applyChange(clientID string, change CheckpointChange) error {
-	if changeProcessor, ok := cm.processor.(ChangeCheckpointable); ok && change.Kind != legacyEntityChangeKind {
-		return changeProcessor.ApplyChange(clientID, change)
+func (cm *CheckpointManager) groupChangesByParticipant(changes []CheckpointChange) []drainedParticipantChanges {
+	grouped := make([]drainedParticipantChanges, 0)
+	indexByParticipant := make(map[int]int)
+
+	for _, change := range changes {
+		participant, routedChange, err := cm.routeChange(change)
+		if err != nil {
+			slog.Warn("CheckpointManager persistAndAck: failed to route change for restore", "kind", change.Kind, "key", change.Key, "error", err)
+			continue
+		}
+		participantIndex := cm.participantIndex(participant)
+		groupIndex, ok := indexByParticipant[participantIndex]
+		if !ok {
+			groupIndex = len(grouped)
+			indexByParticipant[participantIndex] = groupIndex
+			grouped = append(grouped, drainedParticipantChanges{participant: participant})
+		}
+		grouped[groupIndex].changes = append(grouped[groupIndex].changes, routedChange)
 	}
 
-	entityProcessor, ok := cm.processor.(EntityCheckpointable)
-	if !ok {
-		return fmt.Errorf("checkpoint processor cannot apply change kind %q", change.Kind)
+	return grouped
+}
+
+func (cm *CheckpointManager) participantIndex(participant checkpointParticipant) int {
+	for i, current := range cm.participants {
+		if current.sameParticipant(participant) {
+			return i
+		}
 	}
-	if change.Kind != legacyEntityChangeKind {
-		return fmt.Errorf("unsupported checkpoint change kind %q", change.Kind)
+	return -1
+}
+
+func (cm *CheckpointManager) routeChange(change CheckpointChange) (checkpointParticipant, CheckpointChange, error) {
+	if change.Kind == legacyEntityChangeKind {
+		for _, participant := range cm.participants {
+			if participant.entity != nil {
+				return participant, change, nil
+			}
+		}
+		return checkpointParticipant{}, change, fmt.Errorf("checkpoint change kind %q has no entity participant", change.Kind)
 	}
-	return entityProcessor.LoadEntity(clientID, change.Key, change.Value)
+
+	if prefix, rest, ok := strings.Cut(change.Kind, "."); ok {
+		var matched *checkpointParticipant
+		for _, participant := range cm.participants {
+			if participant.name == prefix {
+				if matched != nil {
+					return checkpointParticipant{}, change, fmt.Errorf("duplicate checkpoint participant name %q", prefix)
+				}
+				current := participant
+				matched = &current
+			}
+		}
+		if matched != nil {
+			change.Kind = rest
+			return *matched, change, nil
+		}
+	}
+
+	unnamedIncremental := make([]checkpointParticipant, 0, 1)
+	for _, participant := range cm.participants {
+		if participant.checkpointer != nil && participant.name == "" {
+			unnamedIncremental = append(unnamedIncremental, participant)
+		}
+	}
+	if len(unnamedIncremental) == 1 {
+		return unnamedIncremental[0], change, nil
+	}
+
+	if len(cm.participants) == 1 && cm.participants[0].checkpointer != nil {
+		return cm.participants[0], change, nil
+	}
+
+	return checkpointParticipant{}, change, fmt.Errorf("ambiguous checkpoint change kind %q; use a participant namespace", change.Kind)
+}
+
+func (p checkpointParticipant) persistedChange(change CheckpointChange) CheckpointChange {
+	if p.name == "" || change.Kind == legacyEntityChangeKind || strings.HasPrefix(change.Kind, p.name+".") {
+		return change
+	}
+	change.Kind = p.name + "." + change.Kind
+	return change
+}
+
+func (p checkpointParticipant) applyChange(clientID string, change CheckpointChange) error {
+	if p.checkpointer != nil {
+		return p.checkpointer.ApplyChange(clientID, change)
+	}
+	if p.entity != nil && change.Kind == legacyEntityChangeKind {
+		return p.entity.LoadEntity(clientID, change.Key, change.Value)
+	}
+	return fmt.Errorf("checkpoint participant cannot apply change kind %q", change.Kind)
+}
+
+func (p checkpointParticipant) restoreChanges(clientID string, changes []CheckpointChange) error {
+	if restorable, ok := p.changeOrEntity().(RestorableChangeCheckpointable); ok {
+		return restorable.RestoreChanges(clientID, changes)
+	}
+	return nil
+}
+
+func (p checkpointParticipant) clearClientState(clientID string) error {
+	checkpointable := p.changeOrEntity()
+	if checkpointable == nil {
+		return nil
+	}
+	return checkpointable.ClearClientState(clientID)
+}
+
+func (p checkpointParticipant) changeOrEntity() Checkpointable {
+	if p.checkpointer != nil {
+		return p.checkpointer
+	}
+	if p.entity != nil {
+		return p.entity
+	}
+	return p.base
+}
+
+func (p checkpointParticipant) sameParticipant(other checkpointParticipant) bool {
+	return p.name == other.name && p.changeOrEntity() == other.changeOrEntity()
 }
 
 func (cm *CheckpointManager) appendLogEntry(clientID string, entry CheckpointLogEntry) error {

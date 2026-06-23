@@ -24,6 +24,10 @@ type ChangeCheckpointable interface {
 	ApplyChange(clientID string, change CheckpointChange) error
 }
 
+type NamedCheckpointable interface {
+	CheckpointParticipantName() string
+}
+
 type RestorableChangeCheckpointable interface {
 	RestoreChanges(clientID string, changes []CheckpointChange) error
 }

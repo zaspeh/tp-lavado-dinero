@@ -1,6 +1,6 @@
 # Infraestructura Core
 
-global_log_level: debug
+global_log_level: info
 global_worker_batch_size: 1000000
 gateway:
   env:
