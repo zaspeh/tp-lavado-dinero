@@ -74,6 +74,13 @@ func (s *RoutedSender[T, B]) Flush(clientID string) error {
 }
 
 func (s *RoutedSender[T, B]) Cleanup(clientID string) error {
+	cleanupMsg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_CLEANUP, nil, "")
+	if err != nil {
+		return err
+	}
+	if err := s.exchange.Send(cleanupMsg); err != nil {
+		return err
+	}
 	for key := range s.batchers {
 		if batcherClientID(key) == clientID {
 			delete(s.batchers, key)

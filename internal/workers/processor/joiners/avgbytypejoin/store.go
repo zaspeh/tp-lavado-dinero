@@ -15,14 +15,12 @@ func newAvgByTypeResultStore() *AvgByTypeResultStore {
 }
 
 func (s *AvgByTypeResultStore) Add(result *protobuf.AvgByTypeResult) {
-
 	s.results = append(s.results, result)
 }
 
 func (s *AvgByTypeResultStore) GetResults() []*protobuf.AvgByTypeResult {
 	results := make([]*protobuf.AvgByTypeResult, len(s.results))
 	copy(results, s.results)
-
 	return results
 }
 

@@ -2,7 +2,6 @@ package aggregatebyintermediary
 
 import (
 	"log/slog"
-	"sync"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
@@ -25,8 +24,7 @@ type pairEntity struct {
 }
 
 type AggregateByIntermediaryProcessor struct {
-	stores   map[string]*IntermediaryStore
-	storesMu sync.RWMutex
+	stores map[string]*IntermediaryStore
 }
 
 func NewAggregateByIntermediaryProcessor() *AggregateByIntermediaryProcessor {
@@ -65,9 +63,6 @@ func (p *AggregateByIntermediaryProcessor) Process(clientID string, msg Intermed
 }
 
 func (p *AggregateByIntermediaryProcessor) getOrCreateStore(clientID string) *IntermediaryStore {
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
 	store, exists := p.stores[clientID]
 	if !exists {
 		store = NewIntermediaryStore()
@@ -80,9 +75,7 @@ func (p *AggregateByIntermediaryProcessor) Finalize(clientID string, yield func(
 	store := p.getOrCreateStore(clientID)
 	defer func() {
 		store.Clear()
-		p.storesMu.Lock()
 		delete(p.stores, clientID)
-		p.storesMu.Unlock()
 	}()
 
 	totalPairs := 0
@@ -114,9 +107,6 @@ func (p *AggregateByIntermediaryProcessor) Finalize(clientID string, yield func(
 }
 
 func (p *AggregateByIntermediaryProcessor) Cleanup(clientID string) error {
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
 	store := p.getOrCreateStore(clientID)
 	store.Clear()
 	delete(p.stores, clientID)

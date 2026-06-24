@@ -55,10 +55,17 @@ func (e *StatelessEngine[T, V]) handleEvent(event r.Event[T]) error {
 		return e.handleDataMessage(event)
 	case r.EOFMessage:
 		slog.Debug("EOF received by pipeline")
-		defer event.AckFn()
-		return e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
+		err := e.coordinator.HandleLocalEOF(event.ClientID, event.EOFCount, event.EventID)
+		if err != nil {
+			return err
+		}
+		event.AckFn()
 	case r.CleanupMessage:
-		defer event.AckFn()
+		err := e.handleCleanupMessage(event)
+		if err != nil {
+			return err
+		}
+		event.AckFn()
 	}
 	return nil
 }
@@ -117,4 +124,23 @@ func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uin
 	}
 	slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivorCount)
 	return e.sender.SendEOF(clientID, survivorCount, eofID)
+}
+
+func (e *StatelessEngine[T, V]) handleCleanupMessage(event r.Event[T]) error {
+	clientID := event.ClientID
+	slog.Info("StatelessEngine: handling cleanup", "clientID", clientID)
+
+	if err := e.coordinator.ClearClient(clientID); err != nil {
+		slog.Warn("StatelessEngine: coordinator.ClearClient failed", "error", err, "clientID", clientID)
+	}
+
+	if err := e.coordinator.BroadcastCleanup(clientID); err != nil {
+		slog.Warn("StatelessEngine: coordinator.BroadcastCleanup failed", "error", err, "clientID", clientID)
+	}
+
+	if err := e.sender.Cleanup(clientID); err != nil {
+		slog.Warn("StatelessEngine: sender.Cleanup failed", "error", err, "clientID", clientID)
+	}
+
+	return nil
 }

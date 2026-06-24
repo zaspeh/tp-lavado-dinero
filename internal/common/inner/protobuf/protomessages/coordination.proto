@@ -8,6 +8,7 @@ enum CoordinationMessageType {
   eof_arrived = 0;
   batch_information = 1;
   wakeup = 2;
+  cleanup = 3;
 }
 
 message EOFCoordination {

@@ -229,6 +229,8 @@ func (c *EOFCoordinator) handleCoordinationMessage(msg m.Message, ack, nack func
 		handleErr = c.handleRemoteEOF(progressMsg)
 	case protobuf.CoordinationMessageType_batch_information:
 		handleErr = c.handleRemoteBatch(progressMsg)
+	case protobuf.CoordinationMessageType_cleanup:
+		handleErr = c.handleRemoteCleanup(progressMsg)
 	}
 
 	if handleErr != nil {
@@ -300,6 +302,8 @@ func (c *EOFCoordinator) responseToWakeUp(items []*protobuf.BatchInformation, cl
 }
 
 func (c *EOFCoordinator) handleRemoteEOF(msg *protobuf.EOFCoordination) error {
+	slog.Info("handleRemoteEOF received", "clientID", msg.GetClientId(), "eofID", msg.GetEofID(), "senderID", msg.GetSenderId())
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	slog.Info("Handling remote EOF", "clientID", msg.GetClientId(), "eofID", msg.GetEofID(), "expectedTotal", msg.GetExpectedTotal())
@@ -361,6 +365,7 @@ func (c *EOFCoordinator) broadcastBatch(record []*protobuf.BatchInformation, cli
 }
 
 func (c *EOFCoordinator) broadcastEOF(clientID, eofID string, expectedTotal uint64) error {
+	slog.Info("broadcastEOF called", "clientID", clientID, "eofID", eofID, "expectedTotal", expectedTotal)
 	msg := &protobuf.EOFCoordination{
 		Type:          protobuf.CoordinationMessageType_eof_arrived,
 		ClientId:      clientID,
@@ -457,6 +462,42 @@ func (c *EOFCoordinator) Close() error {
 		return err
 	}
 	return c.storage.Close()
+}
+
+func (c *EOFCoordinator) ClearClient(clientID string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.clients, clientID)
+	if err := c.storage.ClearClient(clientID); err != nil {
+		slog.Error("EOFCoordinator: failed to clear client storage", "error", err, "clientID", clientID)
+		return err
+	}
+	slog.Info("EOFCoordinator: cleared client state", "clientID", clientID)
+	return nil
+}
+
+func (c *EOFCoordinator) BroadcastCleanup(clientID string) error {
+	coordMsg := &protobuf.EOFCoordination{
+		Type:     protobuf.CoordinationMessageType_cleanup,
+		ClientId: clientID,
+		SenderId: uint32(c.workerID),
+	}
+
+	if err := c.broadcast(coordMsg); err != nil {
+		slog.Error("EOFCoordinator: failed to broadcast cleanup", "error", err, "clientID", clientID)
+		return err
+	}
+
+	slog.Info("EOFCoordinator: broadcasted cleanup to peers", "clientID", clientID)
+	return nil
+}
+
+func (c *EOFCoordinator) handleRemoteCleanup(msg *protobuf.EOFCoordination) error {
+	clientID := msg.GetClientId()
+	c.ClearClient(clientID)
+	slog.Info("EOFCoordinator: handled remote cleanup", "clientID", clientID, "senderID", msg.GetSenderId())
+	return nil
 }
 
 func (c *EOFCoordinator) transformBatchToProto(batch BatchRecord) *protobuf.BatchInformation {

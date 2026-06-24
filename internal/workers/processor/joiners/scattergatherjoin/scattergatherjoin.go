@@ -2,7 +2,6 @@ package scattergatherjoin
 
 import (
 	"log/slog"
-	"sync"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/model"
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
@@ -10,9 +9,8 @@ import (
 )
 
 type ScatterGatherJoinProcessor struct {
-	stores   map[string]*ScatterGatherStore
-	storesMu sync.RWMutex
-	tracker  *ScatterGatherCheckpointTracker
+	stores  map[string]*ScatterGatherStore
+	tracker *ScatterGatherCheckpointTracker
 }
 
 type pairEntity struct {
@@ -65,9 +63,7 @@ func (p *ScatterGatherJoinProcessor) Finalize(clientID string, yield func(result
 	store := p.getOrCreateStore(clientID)
 	defer func() {
 		store.Clear()
-		p.storesMu.Lock()
 		delete(p.stores, clientID)
-		p.storesMu.Unlock()
 	}()
 
 	totalPairs := 0
@@ -109,9 +105,6 @@ func (p *ScatterGatherJoinProcessor) Finalize(clientID string, yield func(result
 }
 
 func (p *ScatterGatherJoinProcessor) Cleanup(clientID string) error {
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
 	store := p.getOrCreateStore(clientID)
 	store.Clear()
 	delete(p.stores, clientID)
@@ -137,9 +130,6 @@ func (p *ScatterGatherJoinProcessor) ClearClientState(clientID string) error {
 }
 
 func (p *ScatterGatherJoinProcessor) getOrCreateStore(clientID string) *ScatterGatherStore {
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
 	store, exists := p.stores[clientID]
 	if !exists {
 		store = NewScatterGatherStore()

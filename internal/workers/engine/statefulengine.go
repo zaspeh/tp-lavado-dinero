@@ -20,6 +20,7 @@ type StatefulEngine[T any, V any] struct {
 	coordinator       c.Coordinator
 	checkpointManager *checkpoint.CheckpointManager
 	wasStopped        atomic.Bool
+	cleanupMessages   map[string]bool
 }
 
 func NewStatefulEngine[T any, V any](workerId int, receiver r.Receiver[T], sender s.Sender[V], processor p.StatefulProcessor[T, V], coordinator c.Coordinator, cm *checkpoint.CheckpointManager) *StatefulEngine[T, V] {
@@ -30,6 +31,7 @@ func NewStatefulEngine[T any, V any](workerId int, receiver r.Receiver[T], sende
 		processor:         processor,
 		coordinator:       coordinator,
 		checkpointManager: cm,
+		cleanupMessages:   make(map[string]bool),
 	}
 	engine.coordinator.SetFlushHandler(engine.handleTrueEOF)
 	return engine
@@ -57,6 +59,10 @@ func (e *StatefulEngine[T, V]) Shutdown() {
 }
 
 func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
+	if e.cleanupMessages[event.ClientID] == true {
+		slog.Debug("Aceking old client message: ", "ClientID", event.ClientID)
+		event.AckFn()
+	}
 	switch event.Type {
 	case r.DataMessage:
 		slog.Debug("Data Message Received")
@@ -134,8 +140,21 @@ func (e *StatefulEngine[T, V]) handleCleanupMessage(clientID string) error {
 	if err := e.processor.Cleanup(clientID); err != nil {
 		return err
 	}
-	if err := e.checkpointManager.ClearState(clientID); err != nil {
-		slog.Warn("StatefulEngine: ClearState failed", "error", err, "clientID", clientID)
+
+	if err := e.coordinator.ClearClient(clientID); err != nil {
+		slog.Warn("StatelessEngine: coordinator.ClearClient failed", "error", err, "clientID", clientID)
 	}
+
+	if err := e.sender.Cleanup(clientID); err != nil {
+		slog.Warn("StatelessEngine: sender.Cleanup failed", "error", err, "clientID", clientID)
+	}
+
+	if err := e.checkpointManager.ClearState(clientID); err != nil {
+		slog.Warn("StatelessEngine: checkpointManager.ClearState failed", "error", err, "clientID", clientID)
+	}
+
+	slog.Info("Cleanup for client: ", "clientID", clientID)
+	e.cleanupMessages[clientID] = true
+
 	return nil
 }

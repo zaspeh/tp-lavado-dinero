@@ -143,3 +143,62 @@ func (s *BatchStorage) Close() error {
 	s.batchFile.Close()
 	return s.eofFile.Close()
 }
+
+func (s *BatchStorage) ClearClient(clientID string) error {
+	if err := s.batchWriter.Flush(); err != nil {
+		return err
+	}
+	if err := s.eofWriter.Flush(); err != nil {
+		return err
+	}
+
+	batches, err := s.LoadBatches()
+	if err != nil {
+		return err
+	}
+	eofs, err := s.LoadEOFs()
+	if err != nil {
+		return err
+	}
+
+	delete(batches, clientID)
+	delete(eofs, clientID)
+
+	if _, err := s.batchFile.Seek(0, 0); err != nil {
+		return err
+	}
+	if err := s.batchFile.Truncate(0); err != nil {
+		return err
+	}
+	if err := s.batchWriter.Flush(); err != nil {
+		return err
+	}
+
+	for cid, clientBatches := range batches {
+		for _, record := range clientBatches {
+			if err := s.WriteBatch(cid, record); err != nil {
+				return err
+			}
+		}
+	}
+
+	if _, err := s.eofFile.Seek(0, 0); err != nil {
+		return err
+	}
+	if err := s.eofFile.Truncate(0); err != nil {
+		return err
+	}
+	if err := s.eofWriter.Flush(); err != nil {
+		return err
+	}
+
+	for cid, clientEOFs := range eofs {
+		for eofID, expectedTotal := range clientEOFs {
+			if err := s.WriteEOF(cid, eofID, expectedTotal); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}

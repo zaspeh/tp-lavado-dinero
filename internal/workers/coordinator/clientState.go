@@ -1,5 +1,9 @@
 package coordinator
 
+import (
+	"log/slog"
+)
+
 type clientState struct {
 	ownBatches  map[string]BatchRecord         // batches que fueron procesados por el nodo
 	peerBatches map[int]map[string]BatchRecord // batches del resto de los peers, no locales
@@ -82,9 +86,11 @@ func (cs *clientState) isReadyToFlush(expectedEOFs uint32) bool {
 		return false
 	}
 	if !cs.hasAllEOFs(expectedEOFs) {
+		slog.Debug("Not ready to flush: not all EOFs", "eofCount", cs.eofCount, "expectedEOFs", expectedEOFs)
 		return false
 	}
 	processed, _ := cs.totals()
+	slog.Debug("isReadyToFlush check", "processed", processed, "expectedTotal", cs.expectedTotal)
 	return processed >= cs.expectedTotal
 }
 

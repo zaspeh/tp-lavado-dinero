@@ -87,6 +87,13 @@ func (s *SingleSender[T, V]) Flush(clientID string) error {
 }
 
 func (s *SingleSender[T, V]) Cleanup(clientID string) error {
+	cleanupMsg, err := protobuf.SerializeProtoMessageONTRIAL(clientID, protobuf.MessageType_CLEANUP, nil, "")
+	if err != nil {
+		return err
+	}
+	if err := s.publish(clientID, cleanupMsg); err != nil {
+		return err
+	}
 	delete(s.batchers, clientID)
 	return nil
 }

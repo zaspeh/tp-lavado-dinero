@@ -1,16 +1,13 @@
 package microtransactionjoin
 
 import (
-	"sync"
-
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 )
 
 type MicrotransactionJoinProcessor struct {
-	stores    map[string]*MicrotransactionStore
-	storesMu  sync.RWMutex
-	tracker   *MicrotransactionJoinCheckpointTracker
+	stores  map[string]*MicrotransactionStore
+	tracker *MicrotransactionJoinCheckpointTracker
 }
 
 func NewMicrotransactionJoinProcessor() *MicrotransactionJoinProcessor {
@@ -34,9 +31,7 @@ func (p *MicrotransactionJoinProcessor) Finalize(clientID string, yield func(res
 	store := p.getOrCreateStore(clientID)
 	defer func() {
 		store.Clear()
-		p.storesMu.Lock()
 		delete(p.stores, clientID)
-		p.storesMu.Unlock()
 		p.tracker.ClearClient(clientID)
 	}()
 
@@ -57,9 +52,6 @@ func (p *MicrotransactionJoinProcessor) Finalize(clientID string, yield func(res
 }
 
 func (p *MicrotransactionJoinProcessor) Cleanup(clientID string) error {
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
 	store := p.getOrCreateStore(clientID)
 	store.Clear()
 	delete(p.stores, clientID)
@@ -68,9 +60,6 @@ func (p *MicrotransactionJoinProcessor) Cleanup(clientID string) error {
 }
 
 func (p *MicrotransactionJoinProcessor) getOrCreateStore(clientID string) *MicrotransactionStore {
-	p.storesMu.Lock()
-	defer p.storesMu.Unlock()
-
 	store, exists := p.stores[clientID]
 	if !exists {
 		store = newMicrotransactionStore()

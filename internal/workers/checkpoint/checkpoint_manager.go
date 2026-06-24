@@ -385,6 +385,7 @@ func (cm *CheckpointManager) ClearState(clientID string) error {
 	delete(cm.pendingAcks, clientID)
 	delete(cm.eofSent, clientID)
 	delete(cm.finalizeComplete, clientID)
+	delete(cm.processedCount, clientID)
 	cm.mu.Unlock()
 
 	path := cm.clientStateDir(clientID)

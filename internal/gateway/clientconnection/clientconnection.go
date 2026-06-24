@@ -156,10 +156,31 @@ func (cc *ClientConnection) Run() error {
 func (cc *ClientConnection) handleDisconection(err error) error {
 	if errors.Is(err, socket.ErrConnectionClosed) {
 		slog.Info("client disconnected", "clientID", cc.id)
-		// return cc.broadcastCleanup()
+		cc.cleanup()
 		return nil
 	}
 	return err
+}
+
+func (cc *ClientConnection) cleanup() {
+	slog.Info("cleaning up client state", "clientID", cc.id)
+
+	if err := cc.broadcastCleanup(); err != nil {
+		slog.Error("error broadcasting cleanup", "clientID", cc.id, "err", err)
+	}
+
+	cc.seenResults = make(map[string]struct{})
+	cc.transactionCounter = 0
+	cc.accountsCounter = 0
+	cc.micropaymentsCount = 0
+	cc.converterJoinAumount = 0
+	cc.EOFamountReceived = 0
+
+	cc.transactionBatcher.SetNewBatchId(batch.DefaultBatchId)
+	cc.rawDataBatcher.SetNewBatchId(batch.DefaultBatchId)
+	cc.accountBatcher.SetNewBatchId(batch.DefaultBatchId)
+
+	slog.Info("client state cleaned", "clientID", cc.id)
 }
 
 func (cc *ClientConnection) isResultSeen(batchID string) bool {
@@ -178,10 +199,6 @@ func (cc *ClientConnection) broadcastCleanup() error {
 	}
 
 	if err := cc.currencyFilterQueue.Send(cleanupMsg); err != nil {
-		return err
-	}
-
-	if err := cc.resultExchange.Send(cleanupMsg); err != nil {
 		return err
 	}
 
@@ -320,6 +337,11 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	moneyLaundry, err := protobuf.DeserializeMoneyLaunderingONTRIAL(msg)
 	if err != nil {
 		nack()
+		return
+	}
+
+	if moneyLaundry.GetType() == protobuf.MessageType_CLEANUP {
+		ack()
 		return
 	}
 
