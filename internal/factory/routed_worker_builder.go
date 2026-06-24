@@ -2,6 +2,7 @@ package factory
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -84,7 +85,7 @@ func buildRoutedToJoinWorker[T, B any](cfg routedWorkerConfig[T, B]) (*worker.Wo
 		return nil, err
 	}
 
-	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom, false, false, strconv.Itoa(id))
 	if err != nil {
 		inputQueue.Close()
 		return nil, err

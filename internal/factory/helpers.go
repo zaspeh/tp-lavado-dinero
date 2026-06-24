@@ -168,7 +168,7 @@ func createInputExchangeOutputQueue(keyPrefix string) (m.Middleware, m.Middlewar
 	}
 	inputKeys := []string{keyPrefix + "." + id}
 
-	inputExchange, err := middleware.CreateExchangeMiddleware(inputExchangeName, inputKeys, momConfig)
+	inputExchange, err := middleware.CreateExchangeMiddleware(inputExchangeName, inputKeys, momConfig, false, false, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -240,7 +240,7 @@ func closeQueues(queues []m.Middleware) {
 	}
 }
 
-func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, workerAmountName string) (*middleware.ExchangeMiddleware, []string, error) {
+func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, workerAmountName string, id string) (*middleware.ExchangeMiddleware, []string, error) {
 	exchangeName, err := getEnvStrict(exchangeNameKey)
 	if err != nil {
 		return nil, nil, err
@@ -257,7 +257,7 @@ func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, work
 		exchangeKeys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
 	}
 
-	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(exchangeName, exchangeKeys, momConfig)
+	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(exchangeName, exchangeKeys, momConfig, false, false, id)
 	if err != nil {
 		return nil, nil, err
 	}

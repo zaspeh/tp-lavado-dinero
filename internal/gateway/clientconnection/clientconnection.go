@@ -64,8 +64,9 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 	}
 
 	personalKey := config.ClientExchangeName + "." + config.ID
+
 	exchangeRoutingKeys := []string{personalKey}
-	resultExchange, err := m.CreateExchangeMiddleware(config.ClientExchangeName, exchangeRoutingKeys, connSettings)
+	resultExchange, err := m.CreateExchangeMiddleware(config.ClientExchangeName, exchangeRoutingKeys, connSettings, true, true, config.ID)
 	if err != nil {
 		currencyFilterQueue.Close()
 		return nil, err

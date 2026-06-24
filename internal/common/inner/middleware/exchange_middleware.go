@@ -6,25 +6,27 @@ import (
 
 type ExchangeMiddleware struct {
 	baseMiddleware
-	exchange  string
-	keys      []string
-	queueName string
+	exchange   string
+	keys       []string
+	queueName  string
+	autoDelete bool
+	exclusive  bool
+	setup      bool
 }
 
 func (em *ExchangeMiddleware) SetUp() error {
 	queue, err := em.consumerChannel.QueueDeclare(
-		"",    // name
-		false, // durability
-		true,  // delete when unused
-		true,  // exclusive
-		false, // no-wait
+		em.queueName,  // name
+		false,         // durability
+		em.autoDelete, // delete when unused
+		em.exclusive,  // exclusive
+		false,         // no-wait
 		nil,
 	)
 
 	if err != nil {
 		return ErrMessageMiddlewareMessage
 	}
-
 	em.queueName = queue.Name
 
 	for _, key := range em.keys {
@@ -40,12 +42,16 @@ func (em *ExchangeMiddleware) SetUp() error {
 		}
 	}
 
+	em.setup = true
+
 	return nil
 }
 
 func (em *ExchangeMiddleware) StartConsuming(callbackFunc func(msg Message, ack func(), nack func())) error {
-	if em.queueName == "" {
-		em.SetUp()
+	if !em.setup {
+		if err := em.SetUp(); err != nil {
+			return err
+		}
 	}
 
 	msgs, err := em.consumerChannel.Consume(

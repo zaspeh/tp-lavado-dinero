@@ -53,7 +53,7 @@ func CreateQueueMiddleware(queueName string, connectionSettings ConnSettings) (M
 	}, nil
 }
 
-func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings ConnSettings) (*ExchangeMiddleware, error) {
+func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings ConnSettings, autoDelete bool, exclusive bool, id string) (*ExchangeMiddleware, error) {
 	url := fmt.Sprintf("amqp://guest:guest@%s:%d/", connectionSettings.Hostname, connectionSettings.Port)
 	conn, err := amqp.Dial(url)
 	if err != nil {
@@ -90,6 +90,11 @@ func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings
 		return nil, err
 	}
 
+	queueName := ""
+	if !exclusive {
+		queueName = exchange + "." + id
+	}
+
 	return &ExchangeMiddleware{
 		baseMiddleware: baseMiddleware{
 			conn:             conn,
@@ -97,7 +102,11 @@ func CreateExchangeMiddleware(exchange string, keys []string, connectionSettings
 			publisherChannel: publisherChannel,
 			consumerTag:      SimpleCryptoID(32),
 		},
-		exchange: exchange,
-		keys:     keys,
+		exchange:   exchange,
+		keys:       keys,
+		queueName:  queueName,
+		exclusive:  exclusive,
+		autoDelete: autoDelete,
+		setup:      false,
 	}, nil
 }

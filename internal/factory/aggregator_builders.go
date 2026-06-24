@@ -32,7 +32,7 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 		return nil, err
 	}
 	originInputExchangeKeys := []string{originInputExchangeName + "." + strconv.Itoa(id)}
-	originInputExchange, err := middleware.CreateExchangeMiddleware(originInputExchangeName, originInputExchangeKeys, mom)
+	originInputExchange, err := middleware.CreateExchangeMiddleware(originInputExchangeName, originInputExchangeKeys, mom, false, false, strconv.Itoa(id))
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 		return nil, err
 	}
 	destinationInputExchangeKeys := []string{destinationInputExchangeName + "." + strconv.Itoa(id)}
-	destinationInputExchange, err := middleware.CreateExchangeMiddleware(destinationInputExchangeName, destinationInputExchangeKeys, mom)
+	destinationInputExchange, err := middleware.CreateExchangeMiddleware(destinationInputExchangeName, destinationInputExchangeKeys, mom, false, false, strconv.Itoa(id))
 	if err != nil {
 		originInputExchange.Close()
 		return nil, err

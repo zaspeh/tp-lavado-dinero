@@ -22,17 +22,17 @@ import (
 // V es el resultado individual del processor (e.g., *protobuf.MaxBankResult).
 // R es el batch que arma el sender antes de publicarlo.
 type joinWorkerConfig[T, V, R any] struct {
-	Mom              middleware.ConnSettings
-	ID               int
-	InputExchange    string
-	ClientExchange   string
-	MaxBatchWeight   int
-	ReceivedType     protobuf.MessageType
-	ExtractItems     func(*protobuf.MoneyLaundry) []T
-	Processor        processor.StatefulProcessor[T, V]
-	Wrapper          batch.Wrapper[V, R]
-	Sizer            batch.Sizer[V]
-	Inserter         sender.SerializerFunc[R]
+	Mom            middleware.ConnSettings
+	ID             int
+	InputExchange  string
+	ClientExchange string
+	MaxBatchWeight int
+	ReceivedType   protobuf.MessageType
+	ExtractItems   func(*protobuf.MoneyLaundry) []T
+	Processor      processor.StatefulProcessor[T, V]
+	Wrapper        batch.Wrapper[V, R]
+	Sizer          batch.Sizer[V]
+	Inserter       sender.SerializerFunc[R]
 }
 
 func buildJoinWorker[T, V, R any](cfg joinWorkerConfig[T, V, R]) (workers.Worker, error) {
@@ -40,12 +40,12 @@ func buildJoinWorker[T, V, R any](cfg joinWorkerConfig[T, V, R]) (workers.Worker
 		fmt.Sprintf("%s.%s", cfg.InputExchange, strconv.Itoa(cfg.ID)),
 	}
 
-	inputExchange, err := middleware.CreateExchangeMiddleware(cfg.InputExchange, inputExchangeKeys, cfg.Mom)
+	inputExchange, err := middleware.CreateExchangeMiddleware(cfg.InputExchange, inputExchangeKeys, cfg.Mom, false, false, strconv.Itoa(cfg.ID))
 	if err != nil {
 		return nil, err
 	}
 
-	resultExchange, err := middleware.CreateExchangeMiddleware(cfg.ClientExchange, []string{cfg.ClientExchange}, cfg.Mom)
+	resultExchange, err := middleware.CreateExchangeMiddleware(cfg.ClientExchange, []string{cfg.ClientExchange}, cfg.Mom, false, false, strconv.Itoa(cfg.ID))
 	if err != nil {
 		inputExchange.Close()
 		return nil, err

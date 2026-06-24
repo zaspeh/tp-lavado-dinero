@@ -2,6 +2,7 @@ package factory
 
 import (
 	"fmt"
+	"strconv"
 
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protoextractors"
@@ -53,7 +54,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		maxBankExchangeKeys[i] = fmt.Sprintf("%s.%d", maxBankExchangeName, i)
 	}
 
-	maxBankExchange, err := m.CreateExchangeMiddleware(maxBankExchangeName, maxBankExchangeKeys, mom)
+	maxBankExchange, err := m.CreateExchangeMiddleware(maxBankExchangeName, maxBankExchangeKeys, mom, false, false, strconv.Itoa(id))
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		originDestinationRouterKeys[groupByOriginoutputWorkerAmount+i] = fmt.Sprintf("destination.%d", i)
 	}
 
-	groupByExchange, err := m.CreateExchangeMiddleware(groupByExchangeName, originDestinationRouterKeys, mom)
+	groupByExchange, err := m.CreateExchangeMiddleware(groupByExchangeName, originDestinationRouterKeys, mom, false, false, strconv.Itoa(id))
 	if err != nil {
 		return nil, err
 	}
@@ -166,6 +167,10 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 	if err != nil {
 		return nil, err
 	}
+	id, err := getEnvStrict("ID")
+	if err != nil {
+		return nil, err
+	}
 
 	maxBatchWeight, err := getEnvIntStrict("MAX_BATCH_WEIGHT")
 	if err != nil {
@@ -179,7 +184,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 
 	inputQueue := queues[0]
 
-	paymentTypeExchange, paymentTypeKeys, err := createExchangeOutput(momConfig, "PAYMENT_TYPE_EXCHANGE_NAME", "AVG_BY_TYPE_WORKER_AMOUNT")
+	paymentTypeExchange, paymentTypeKeys, err := createExchangeOutput(momConfig, "PAYMENT_TYPE_EXCHANGE_NAME", "AVG_BY_TYPE_WORKER_AMOUNT", id)
 	if err != nil {
 		inputQueue.Close()
 		return nil, err
@@ -276,7 +281,7 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
 	}
 
-	AggregateByIntermediaryExchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom)
+	AggregateByIntermediaryExchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom, false, false, strconv.Itoa(id))
 	if err != nil {
 		return nil, err
 	}

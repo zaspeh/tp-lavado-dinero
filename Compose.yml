@@ -75,7 +75,7 @@ services:
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
     - HEARTBEAT_QUEUE_NAME=heartbeat_queue
-    - CHECK_INTERVAL_SECONDS=5
+    - CHECK_INTERVAL_SECONDS=45
     - HEARTBEAT_TIMEOUT_SECONDS=15
     healthcheck:
       test:

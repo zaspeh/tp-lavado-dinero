@@ -3,6 +3,7 @@ package coordinator
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"sync"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
@@ -39,7 +40,7 @@ type EOFCoordinator struct {
 
 func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 	subscriptionKey := []string{fmt.Sprintf("%s.%d", config.PeersExchangeName, config.WorkerID)}
-	exchange, err := m.CreateExchangeMiddleware(config.PeersExchangeName, subscriptionKey, config.ConnSettings)
+	exchange, err := m.CreateExchangeMiddleware(config.PeersExchangeName, subscriptionKey, config.ConnSettings, true, true, strconv.Itoa(config.WorkerID))
 	if err != nil {
 		return nil, err
 	}
