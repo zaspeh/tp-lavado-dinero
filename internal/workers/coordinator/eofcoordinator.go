@@ -36,6 +36,7 @@ type EOFCoordinator struct {
 	mu               sync.Mutex
 	clients          map[string]*clientState
 	innerBatchWeight int
+	cleanedClients   map[string]bool
 }
 
 func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
@@ -77,6 +78,7 @@ func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 		flushHandler:     config.FlushHandler,
 		clients:          make(map[string]*clientState),
 		innerBatchWeight: config.MaxBatchWeight,
+		cleanedClients:   make(map[string]bool),
 	}
 
 	if err := coord.restoreFromStorage(); err != nil {
@@ -311,6 +313,9 @@ func (c *EOFCoordinator) handleRemoteEOF(msg *protobuf.EOFCoordination) error {
 	clientID := msg.GetClientId()
 	eofID := msg.GetEofID()
 	state := c.getClientState(clientID)
+	if c.cleanedClients[clientID] {
+		return nil
+	}
 
 	if state.hasSeenEOF(eofID) {
 		slog.Debug("Ignoring duplicate remote EOF", "clientID", clientID, "eofID", eofID)
@@ -333,6 +338,9 @@ func (c *EOFCoordinator) handleRemoteBatch(msg *protobuf.EOFCoordination) error 
 	defer c.mu.Unlock()
 
 	clientID := msg.GetClientId()
+	if c.cleanedClients[clientID] {
+		return nil
+	}
 	peerID := int(msg.GetSenderId())
 
 	state := c.getClientState(clientID)
@@ -467,7 +475,7 @@ func (c *EOFCoordinator) Close() error {
 func (c *EOFCoordinator) ClearClient(clientID string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
+	c.cleanedClients[clientID] = true
 	delete(c.clients, clientID)
 	if err := c.storage.ClearClient(clientID); err != nil {
 		slog.Error("EOFCoordinator: failed to clear client storage", "error", err, "clientID", clientID)
@@ -495,6 +503,9 @@ func (c *EOFCoordinator) BroadcastCleanup(clientID string) error {
 
 func (c *EOFCoordinator) handleRemoteCleanup(msg *protobuf.EOFCoordination) error {
 	clientID := msg.GetClientId()
+	if c.cleanedClients[clientID] {
+		return nil
+	}
 	c.ClearClient(clientID)
 	slog.Info("EOFCoordinator: handled remote cleanup", "clientID", clientID, "senderID", msg.GetSenderId())
 	return nil

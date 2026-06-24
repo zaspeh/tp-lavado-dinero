@@ -62,6 +62,7 @@ func (e *StatefulEngine[T, V]) handleEvent(event r.Event[T]) error {
 	if e.cleanupMessages[event.ClientID] == true {
 		slog.Debug("Aceking old client message: ", "ClientID", event.ClientID)
 		event.AckFn()
+		return nil
 	}
 	switch event.Type {
 	case r.DataMessage:

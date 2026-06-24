@@ -377,6 +377,7 @@ func (cm *CheckpointManager) ClearState(clientID string) error {
 	}
 
 	cm.mu.Lock()
+	acks := append([]func(){}, cm.pendingAcks[clientID]...)
 	delete(cm.nextSeq, clientID)
 	delete(cm.batchCount, clientID)
 	delete(cm.processedBatches, clientID)
@@ -387,6 +388,10 @@ func (cm *CheckpointManager) ClearState(clientID string) error {
 	delete(cm.finalizeComplete, clientID)
 	delete(cm.processedCount, clientID)
 	cm.mu.Unlock()
+
+	for _, ack := range acks {
+		ack()
+	}
 
 	path := cm.clientStateDir(clientID)
 	if err := os.RemoveAll(path); err != nil {
