@@ -49,6 +49,7 @@ type ClientConnection struct {
 	accountBatcher       *batch.Batcher[*protobuf.MaxBank, *protobuf.MaxBankBatch]
 	micropaymentsCount   int64
 	converterJoinAumount int
+	seenResults          map[string]struct{}
 }
 
 func New(config ClientConnectionConfig) (*ClientConnection, error) {
@@ -95,6 +96,7 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 		transactionCounter:   0,
 		micropaymentsCount:   0,
 		converterJoinAumount: config.ConverterJoinAmount,
+		seenResults:          make(map[string]struct{}),
 	}, nil
 }
 
@@ -157,6 +159,15 @@ func (cc *ClientConnection) handleDisconection(err error) error {
 		return nil
 	}
 	return err
+}
+
+func (cc *ClientConnection) isResultSeen(batchID string) bool {
+	_, seen := cc.seenResults[batchID]
+	return seen
+}
+
+func (cc *ClientConnection) markResultAsSeen(batchID string) {
+	cc.seenResults[batchID] = struct{}{}
 }
 
 func (cc *ClientConnection) broadcastCleanup() error {
@@ -311,6 +322,14 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 		return
 	}
 
+	batchID := moneyLaundry.GetBatchID()
+	if cc.isResultSeen(batchID) {
+		slog.Debug("Skipping duplicate result", "clientID", cc.id, "batchID", batchID)
+		ack()
+		return
+	}
+	cc.markResultAsSeen(batchID)
+
 	switch moneyLaundry.GetType() {
 	case protobuf.MessageType_EOF_:
 		cc.handleEOFFromWorker(ack, nack)
@@ -340,6 +359,8 @@ func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
 			nack()
 			return
 		}
+		cc.seenResults = make(map[string]struct{})
+		slog.Info("cleaned seenResults for client", "clientID", cc.id)
 	}
 	ack()
 }
@@ -383,7 +404,6 @@ func (cc *ClientConnection) handleMicrotransactionResult(moneyLaundry *protobuf.
 }
 
 func (cc *ClientConnection) handleMaxBankResult(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
-
 	slog.Debug("Client received MaxBank Result", "clientID", moneyLaundering.GetClientID())
 
 	externalMsg, err := messagehandler.ProtoToMaxBankResult(moneyLaundering)
