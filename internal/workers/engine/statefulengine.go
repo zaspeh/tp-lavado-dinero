@@ -39,21 +39,10 @@ func (e *StatefulEngine[T, V]) Run() error {
 	if e.wasStopped.Load() {
 		return nil
 	}
-	e.handleEofRecovery()
 
 	go e.coordinator.Run()
-
 	e.checkpointManager.LoadState(e.coordinator)
-
 	return e.receiver.Receive(e.handleEvent)
-}
-
-func (e *StatefulEngine[T, V]) handleEofRecovery() {
-	clients := e.checkpointManager.GetClientsNeedingFinalize()
-	for _, clientID := range clients {
-		slog.Info("StatefulEngine: recovering EOF for client", "clientID", clientID)
-		e.handleTrueEOF(clientID, 0, "recovery-eof-id")
-	}
 }
 
 func (e *StatefulEngine[T, V]) Shutdown() {
@@ -115,11 +104,6 @@ func (e *StatefulEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 	}
 
 	processed := uint64(len(data))
-	/*
-		if err := e.coordinator.RecordBatch(clientID, batchID, processed, 0); err != nil {
-			return err
-		}*/
-
 	if err := e.checkpointManager.CommitBatch(clientID, batchID, processed, e.coordinator); err != nil {
 		return err
 	}
@@ -128,21 +112,6 @@ func (e *StatefulEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 
 func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, eofID string) error {
 	newEof := fmt.Sprintf("%s-%d", eofID, e.id)
-
-	//if e.checkpointManager.NeedsFinalize(clientID) {
-	/*
-		if err := e.checkpointManager.BeforeEOF(clientID); err != nil {
-			slog.Error("StatefulEngine: BeforeEOF failed", "error", err, "clientID", clientID)
-			return err
-		}
-	*/
-	/*
-		if err := e.checkpointManager.SetEofSent(clientID); err != nil {
-			slog.Error("StatefulEngine: SetEofSent failed", "error", err, "clientID", clientID)
-			return err
-		}
-	*/
-
 	yield := func(result V) error {
 		return e.sender.Add(clientID, result, newEof)
 	}
@@ -158,17 +127,7 @@ func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, e
 
 	slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivors, "eofID", newEof)
 
-	if err := e.sender.SendEOF(clientID, survivors, newEof); err != nil {
-		return err
-	}
-	//e.checkpointManager.SetFinalizeComplete(clientID)
-	/*
-		} else {
-			slog.Info("StatefulEngine handleTrueEOF: client already finalized, skipping", "clientID", clientID, "eofID", eofID)
-		}
-	*/
-
-	return nil
+	return e.sender.SendEOF(clientID, survivors, newEof)
 }
 
 func (e *StatefulEngine[T, V]) handleCleanupMessage(clientID string) error {

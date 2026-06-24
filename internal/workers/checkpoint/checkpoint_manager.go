@@ -283,111 +283,6 @@ func (cm *CheckpointManager) AckCleanup(ack func()) {
 	ack()
 }
 
-func (cm *CheckpointManager) SetEofSent(clientID string) error {
-	cm.mu.Lock()
-	cm.eofSent[clientID] = true
-	cm.mu.Unlock()
-
-	slog.Debug("CheckpointManager SetEofSent: persisting EOF sent marker", "clientID", clientID)
-	return cm.persistEofMarker(clientID)
-}
-
-func (cm *CheckpointManager) IsEofSent(clientID string) bool {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	return cm.eofSent[clientID]
-}
-
-func (cm *CheckpointManager) NeedsFinalize(clientID string) bool {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	hasBatches := cm.processedBatches[clientID] != nil && len(cm.processedBatches[clientID]) > 0
-	notFinalized := !cm.finalizeComplete[clientID]
-	result := hasBatches && notFinalized
-	slog.Debug("CheckpointManager NeedsFinalize", "clientID", clientID, "hasBatches", hasBatches, "notFinalized", notFinalized, "result", result)
-	return result
-}
-
-func (cm *CheckpointManager) GetClientsNeedingFinalize() []string {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	var clients []string
-	for clientID := range cm.processedBatches {
-		if len(cm.processedBatches[clientID]) > 0 && !cm.finalizeComplete[clientID] {
-			clients = append(clients, clientID)
-		}
-	}
-	slog.Debug("CheckpointManager GetClientsNeedingFinalize", "clients", clients)
-	return clients
-}
-
-func (cm *CheckpointManager) SetFinalizeComplete(clientID string) {
-	cm.mu.Lock()
-	cm.finalizeComplete[clientID] = true
-	cm.mu.Unlock()
-
-	slog.Debug("CheckpointManager SetFinalizeComplete: persisting marker", "clientID", clientID)
-	cm.persistFinalizeCompleteMarker(clientID)
-}
-
-func (cm *CheckpointManager) persistFinalizeCompleteMarker(clientID string) error {
-	seq := cm.nextSeq[clientID]
-	if seq == 0 {
-		seq = 1
-	}
-
-	entry := CheckpointLogEntry{
-		Seq:     seq,
-		Batches: nil,
-		Changes: []CheckpointChange{
-			{
-				Kind:  "finalizeComplete",
-				Key:   clientID,
-				Value: json.RawMessage(`{}`),
-			},
-		},
-	}
-
-	if err := cm.appendLogEntry(clientID, entry); err != nil {
-		return err
-	}
-
-	cm.mu.Lock()
-	cm.nextSeq[clientID] = seq + 1
-	cm.mu.Unlock()
-
-	return nil
-}
-
-func (cm *CheckpointManager) persistEofMarker(clientID string) error {
-	seq := cm.nextSeq[clientID]
-	if seq == 0 {
-		seq = 1
-	}
-
-	entry := CheckpointLogEntry{
-		Seq:     seq,
-		Batches: nil,
-		Changes: []CheckpointChange{
-			{
-				Kind:  "eofSent",
-				Key:   clientID,
-				Value: json.RawMessage(`{}`),
-			},
-		},
-	}
-
-	if err := cm.appendLogEntry(clientID, entry); err != nil {
-		return err
-	}
-
-	cm.mu.Lock()
-	cm.nextSeq[clientID] = seq + 1
-	cm.mu.Unlock()
-
-	return nil
-}
-
 func (cm *CheckpointManager) CommitBatch(clientID, batchID string, processedCount uint64, coordinator coordinator.Coordinator) error {
 	cm.mu.Lock()
 	shouldPersist := cm.batchCount[clientID] >= cm.checkpointEveryBatches
@@ -408,19 +303,6 @@ func (cm *CheckpointManager) CommitBatch(clientID, batchID string, processedCoun
 	return nil
 }
 
-/*
-	func (cm *CheckpointManager) BeforeEOF(clientID string) error {
-		cm.mu.Lock()
-		hasPending := cm.batchCount[clientID] > 0
-		cm.mu.Unlock()
-		if !hasPending {
-			return nil
-		}
-
-		slog.Debug("CheckpointManager BeforeEOF: persisting pending batches", "clientID", clientID)
-		return cm.persistAndAck(clientID)
-	}
-*/
 func (cm *CheckpointManager) FlushPendingBatches(coordinator coordinator.Coordinator, clientID string) error {
 	if coordinator.ReachedEOFAmount(clientID) {
 		slog.Debug("CheckpointManager FlushPendingBatches: triggering checkpoint", "clientID", clientID)
