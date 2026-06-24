@@ -5,7 +5,7 @@ import (
 )
 
 type Processor[T, V any] interface {
-	Process(clientID string, item T) ([]V, error)
+	Process(clientID string, item T) ([]V, bool, error)
 }
 
 type StatefulProcessor[T, V any] interface {

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"log/slog"
 	"sync/atomic"
 	"time"
@@ -13,6 +14,7 @@ import (
 )
 
 type StatefulEngine[T any, V any] struct {
+	id                int
 	receiver          r.Receiver[T]
 	sender            s.Sender[V]
 	processor         p.StatefulProcessor[T, V]
@@ -21,8 +23,9 @@ type StatefulEngine[T any, V any] struct {
 	wasStopped        atomic.Bool
 }
 
-func NewStatefulEngine[T any, V any](receiver r.Receiver[T], sender s.Sender[V], processor p.StatefulProcessor[T, V], coordinator c.Coordinator, cm *checkpoint.CheckpointManager) *StatefulEngine[T, V] {
+func NewStatefulEngine[T any, V any](workerId int, receiver r.Receiver[T], sender s.Sender[V], processor p.StatefulProcessor[T, V], coordinator c.Coordinator, cm *checkpoint.CheckpointManager) *StatefulEngine[T, V] {
 	engine := &StatefulEngine[T, V]{
+		id:                workerId,
 		receiver:          receiver,
 		sender:            sender,
 		processor:         processor,
@@ -37,9 +40,9 @@ func (e *StatefulEngine[T, V]) Run() error {
 	if e.wasStopped.Load() {
 		return nil
 	}
-
 	e.handleEofRecovery()
 
+	go e.coordinator.Run()
 	return e.receiver.Receive(e.handleEvent)
 }
 
@@ -101,8 +104,14 @@ func (e *StatefulEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 
 	for _, item := range data {
 		if err := e.processor.Process(clientID, item, e.checkpointManager); err != nil {
+			e.checkpointManager.AbortBatch(clientID)
 			return err
 		}
+	}
+
+	processed := uint64(len(data))
+	if err := e.coordinator.RecordBatch(clientID, batchID, processed, 0); err != nil {
+		return err
 	}
 
 	if err := e.checkpointManager.CommitBatch(clientID, batchID); err != nil {
@@ -112,6 +121,8 @@ func (e *StatefulEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 }
 
 func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, eofID string) error {
+	newEof := fmt.Sprintf("%s-%d", eofID, e.id)
+
 	if e.checkpointManager.NeedsFinalize(clientID) {
 		if err := e.checkpointManager.BeforeEOF(clientID); err != nil {
 			slog.Error("StatefulEngine: BeforeEOF failed", "error", err, "clientID", clientID)
@@ -126,7 +137,7 @@ func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, e
 		slog.Info("True EOF reached, DEBUG: sleeping 10s before SendEOF", "clientID", clientID)
 		time.Sleep(10 * time.Second)
 		yield := func(result V) error {
-			return e.sender.Add(clientID, result, eofID)
+			return e.sender.Add(clientID, result, newEof)
 		}
 
 		survivors, err := e.processor.Finalize(clientID, yield)
@@ -140,10 +151,9 @@ func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, e
 			return err
 		}
 
-		if e.coordinator.IsLeader() {
-			slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivors)
-			return e.sender.SendEOF(clientID, survivors, eofID)
-		}
+		slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivors, "eofID", newEof)
+		return e.sender.SendEOF(clientID, survivors, newEof)
+
 	} else {
 		slog.Info("StatefulEngine handleTrueEOF: client already finalized, skipping", "clientID", clientID, "eofID", eofID)
 	}

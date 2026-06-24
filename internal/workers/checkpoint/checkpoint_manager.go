@@ -228,15 +228,24 @@ func (cm *CheckpointManager) BeginBatch(clientID, batchID string, ack func()) (s
 	defer cm.mu.Unlock()
 
 	if cm.processedBatches[clientID] != nil && cm.processedBatches[clientID][batchID] {
-		slog.Debug("CheckpointManager BeginBatch: already processed, acking", "clientID", clientID, "batchID", batchID)
+		slog.Info("CheckpointManager BeginBatch: already processed, acking", "clientID", clientID, "batchID", batchID)
 		ack()
 		return false, nil
 	}
 
 	cm.pendingAcks[clientID] = append(cm.pendingAcks[clientID], ack)
+	cm.batchCount[clientID]++
 	slog.Debug("CheckpointManager BeginBatch: registered ack, waiting for CommitBatch", "clientID", clientID, "batchID", batchID)
 
 	return true, nil
+}
+
+func (cm *CheckpointManager) AbortBatch(clientID string) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	if cm.batchCount[clientID] > 0 {
+		cm.batchCount[clientID]--
+	}
 }
 
 func (cm *CheckpointManager) NotifyEntityChanged(clientID, entityID string) error {
@@ -371,7 +380,6 @@ func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
 	}
 	cm.processedBatches[clientID][batchID] = true
 	cm.pendingBatches[clientID] = append(cm.pendingBatches[clientID], batchID)
-	cm.batchCount[clientID]++
 	shouldPersist := cm.batchCount[clientID] >= cm.checkpointEveryBatches
 	batchCount := cm.batchCount[clientID]
 	cm.mu.Unlock()

@@ -96,6 +96,7 @@ services:
   max_bank:
     count: 2
     worker_type: MAX_BANK
+    worker_exchange_name: MAX_BANK
     env:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
       OUTPUT_QUEUE_NAME: max_bank_join_input
@@ -151,6 +152,7 @@ services:
   avg_by_type:
     count: 2
     worker_type: AVG_BY_TYPE
+    worker_exchange_name: AVG_BY_TYPE
 
     env:
       INPUT_EXCHANGE_NAME: payment_type_exchange
@@ -191,6 +193,7 @@ services:
   group_by_origin:
     count: 2
     worker_type: GROUP_BY_ORIGIN
+    worker_exchange_name: GROUP_BY_ORIGIN
 
     env:
       INPUT_EXCHANGE_NAME: group_by_origin_destination
@@ -201,6 +204,7 @@ services:
   group_by_destination:
     count: 2
     worker_type: GROUP_BY_DESTINATION
+    worker_exchange_name: GROUP_BY_DESTINATION
 
     env:
       INPUT_EXCHANGE_NAME: group_by_origin_destination

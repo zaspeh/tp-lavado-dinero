@@ -16,11 +16,11 @@ func NewFormatFilterProcessor(allowedFormats []string) *FormatFilterProcessor {
 	}
 }
 
-func (f *FormatFilterProcessor) Process(clientID string, msg *protobuf.ToConvertPeriodFiltered) ([]*protobuf.ToConvertTypeFilteredPayment, error) {
+func (f *FormatFilterProcessor) Process(clientID string, msg *protobuf.ToConvertPeriodFiltered) ([]*protobuf.ToConvertTypeFilteredPayment, bool, error) {
 	paymentFormat := msg.GetPaymentFormat()
 
 	if !f.isAllowedFormat(paymentFormat) {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	filteredMsg := &protobuf.ToConvertTypeFilteredPayment{
@@ -28,7 +28,7 @@ func (f *FormatFilterProcessor) Process(clientID string, msg *protobuf.ToConvert
 		PaymentCurrency: msg.GetPaymentCurrency(),
 		Timestamp:       msg.GetTimestamp(),
 	}
-	return []*protobuf.ToConvertTypeFilteredPayment{filteredMsg}, nil
+	return []*protobuf.ToConvertTypeFilteredPayment{filteredMsg}, false, nil
 }
 
 func (f *FormatFilterProcessor) isAllowedFormat(format string) bool {

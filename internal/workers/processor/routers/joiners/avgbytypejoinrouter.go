@@ -17,13 +17,13 @@ func NewAvgByTypeJoinRouter(routes []string) *AvgByTypeJoinRouter {
 	}
 }
 
-func (r *AvgByTypeJoinRouter) Process(_ string, item *protobuf.AvgByTypeResult) ([]sender.RoutedItem[*protobuf.AvgByTypeResult], error) {
+func (r *AvgByTypeJoinRouter) Process(_ string, item *protobuf.AvgByTypeResult) ([]sender.RoutedItem[*protobuf.AvgByTypeResult], bool, error) {
 	return []sender.RoutedItem[*protobuf.AvgByTypeResult]{
 		{
 			Route: r.selectRoute(item.GetAccount()),
 			Item:  item,
 		},
-	}, nil
+	}, false, nil
 }
 
 func (r *AvgByTypeJoinRouter) selectRoute(key string) string {

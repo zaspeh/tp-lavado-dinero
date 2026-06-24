@@ -168,7 +168,7 @@ func createInputExchangeOutputQueue(keyPrefix string) (m.Middleware, m.Middlewar
 	}
 	inputKeys := []string{keyPrefix + "." + id}
 
-	inputExchange, err := middleware.CreateExchangeMiddleware(inputExchangeName, inputKeys, momConfig, false, false, id)
+	inputExchange, err := middleware.CreateExchangeMiddleware(inputExchangeName, inputKeys, momConfig, false, false, id, os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -182,7 +182,7 @@ func createInputExchangeOutputQueue(keyPrefix string) (m.Middleware, m.Middlewar
 	return inputExchange, outputQueue, nil
 }
 
-func getCoordinator(maxBatchWeight int) (*c.EOFCoordinator, error) {
+func getCoordinator(maxBatchWeight, flowAmount int) (*c.EOFCoordinator, error) {
 	workerID, workerCount, workerExchangeName, err := getCoordinationInformationFromEnv()
 	if err != nil {
 		return nil, err
@@ -198,6 +198,7 @@ func getCoordinator(maxBatchWeight int) (*c.EOFCoordinator, error) {
 		ConnSettings:      momConfig,
 		WorkerID:          workerID,
 		WorkerCount:       workerCount,
+		ExpectedEOFs:      flowAmount,
 		MaxBatchWeight:    maxBatchWeight,
 	}
 
@@ -257,7 +258,7 @@ func createExchangeOutput(momConfig m.ConnSettings, exchangeNameKey string, work
 		exchangeKeys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
 	}
 
-	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(exchangeName, exchangeKeys, momConfig, false, false, id)
+	paymentTypeExchange, err := middleware.CreateExchangeMiddleware(exchangeName, exchangeKeys, momConfig, false, false, id, os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		return nil, nil, err
 	}

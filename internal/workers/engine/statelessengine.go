@@ -77,7 +77,7 @@ func (e *StatelessEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 
 	var survivors uint64
 	for _, item := range data {
-		results, err := e.processor.Process(clientID, item)
+		results, multiresult, err := e.processor.Process(clientID, item)
 		if err != nil {
 			return err
 		}
@@ -88,8 +88,12 @@ func (e *StatelessEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 			}
 		}
 
-		if len(results) > 0 {
-			survivors++
+		if !multiresult {
+			if len(results) > 0 {
+				survivors++
+			}
+		} else {
+			survivors += uint64(len(results))
 		}
 	}
 

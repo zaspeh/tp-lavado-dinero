@@ -17,13 +17,13 @@ func NewMaxBankRouter(routes []string) *MaxBankRouter {
 	}
 }
 
-func (r *MaxBankRouter) Process(_ string, item *protobuf.MaxBank) ([]sender.RoutedItem[*protobuf.MaxBank], error) {
+func (r *MaxBankRouter) Process(_ string, item *protobuf.MaxBank) ([]sender.RoutedItem[*protobuf.MaxBank], bool, error) {
 	return []sender.RoutedItem[*protobuf.MaxBank]{
 		{
 			Route: r.selectRoute(item.GetFromBank()),
 			Item:  item,
 		},
-	}, nil
+	}, false, nil
 }
 
 func (r *MaxBankRouter) selectRoute(bankID int32) string {

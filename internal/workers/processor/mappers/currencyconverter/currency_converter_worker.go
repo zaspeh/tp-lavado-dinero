@@ -16,24 +16,24 @@ func NewCurrencyConverterProcessor(converter Converter) *CurrencyConverterProces
 	}
 }
 
-func (w *CurrencyConverterProcessor) Process(clientID string, toConvertMsg *protobuf.ToConvertTypeFilteredPayment) ([]*protobuf.ConvertedAmount, error) {
+func (w *CurrencyConverterProcessor) Process(clientID string, toConvertMsg *protobuf.ToConvertTypeFilteredPayment) ([]*protobuf.ConvertedAmount, bool, error) {
 	currency := toConvertMsg.GetPaymentCurrency()
 	amount, err := strconv.ParseFloat(toConvertMsg.GetAmountPaid(), 64)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	timestamp := toConvertMsg.GetTimestamp()
 	convertedAmount, err := w.converter.ConvertToUSD(currency, amount, timestamp.AsTime())
 
 	if err == ErrorCurrencyNotFound {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	convertedAmountMsg := &protobuf.ConvertedAmount{Amount: convertedAmount}
-	return []*protobuf.ConvertedAmount{convertedAmountMsg}, nil
+	return []*protobuf.ConvertedAmount{convertedAmountMsg}, false, nil
 }

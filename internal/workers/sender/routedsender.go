@@ -56,7 +56,7 @@ func (s *RoutedSender[T, B]) Add(clientID string, item RoutedItem[T], batchID st
 		s.batchers[batcherKey] = batcher
 	}
 
-	batchID = namespacedID(batchID, s.namespace)
+	batchID = namespacedID(batchID, fmt.Sprintf("%s-%s", s.namespace, item.Route))
 	batcher.SetNewBatchId(batchID)
 	return batcher.Add(item.Item)
 }
@@ -83,7 +83,7 @@ func (s *RoutedSender[T, B]) Cleanup(clientID string) error {
 }
 
 func (s *RoutedSender[T, B]) SendEOF(clientID string, survivorCount uint64, eofID string) error {
-	// eofID = namespacedID(eofID, s.namespace)
+	eofID = namespacedID(eofID, s.namespace)
 	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{
 			TotalTransactions: survivorCount,

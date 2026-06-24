@@ -20,7 +20,7 @@ func NewOriginDestinationRouter(originRoutes, destinationRoutes []string) *Origi
 	}
 }
 
-func (r *OriginDestinationRouter) Process(_ string, item *protobuf.ScatterGather) ([]sender.RoutedItem[*protobuf.ScatterGather], error) {
+func (r *OriginDestinationRouter) Process(_ string, item *protobuf.ScatterGather) ([]sender.RoutedItem[*protobuf.ScatterGather], bool, error) {
 	originKey := r.selectOriginRoute(item.GetFromBank(), item.GetAccount())
 
 	destinationKey := r.selectDestinationRoute(item.GetToBank(), item.GetToAccount())
@@ -33,7 +33,7 @@ func (r *OriginDestinationRouter) Process(_ string, item *protobuf.ScatterGather
 			Route: destinationKey,
 			Item:  item,
 		},
-	}, nil
+	}, false, nil
 }
 
 func (r *OriginDestinationRouter) selectOriginRoute(bank int32, account string) string {

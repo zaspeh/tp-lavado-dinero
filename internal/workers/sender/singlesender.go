@@ -92,7 +92,7 @@ func (s *SingleSender[T, V]) Cleanup(clientID string) error {
 }
 
 func (s *SingleSender[T, V]) SendEOF(clientID string, survivorCount uint64, eofID string) error {
-	// eofID = namespacedID(eofID, s.namespace)
+	eofID = namespacedID(eofID, s.namespace)
 	eofInnerMsg := &protobuf.MoneyLaundry_EofMessage{
 		EofMessage: &protobuf.EOF{
 			TotalTransactions: survivorCount,

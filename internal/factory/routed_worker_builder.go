@@ -2,6 +2,7 @@ package factory
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/batch"
@@ -22,7 +23,7 @@ type routedProcessorFactory[T any] func(keys []string) RoutedProcessor[T]
 // RoutedProcessor es la interfaz que cumplen los routers-to-join: reciben un item
 // y devuelven uno o varios items ruteados.
 type RoutedProcessor[T any] interface {
-	Process(clientID string, item T) ([]sender.RoutedItem[T], error)
+	Process(clientID string, item T) ([]sender.RoutedItem[T], bool, error)
 }
 
 // routedProcessorAdapter envuelve un RoutedProcessor para que cumpla la interfaz
@@ -31,7 +32,7 @@ type routedProcessorAdapter[T any] struct {
 	inner RoutedProcessor[T]
 }
 
-func (a *routedProcessorAdapter[T]) Process(clientID string, item T) ([]sender.RoutedItem[T], error) {
+func (a *routedProcessorAdapter[T]) Process(clientID string, item T) ([]sender.RoutedItem[T], bool, error) {
 	return a.inner.Process(clientID, item)
 }
 
@@ -85,7 +86,7 @@ func buildRoutedToJoinWorker[T, B any](cfg routedWorkerConfig[T, B]) (*worker.Wo
 		return nil, err
 	}
 
-	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom, false, false, strconv.Itoa(id))
+	exchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom, false, false, strconv.Itoa(id), os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		inputQueue.Close()
 		return nil, err
@@ -96,7 +97,7 @@ func buildRoutedToJoinWorker[T, B any](cfg routedWorkerConfig[T, B]) (*worker.Wo
 		return nil, err
 	}
 
-	routedSender := sender.NewRoutedSender[T, B](
+	routedSender := sender.NewRoutedSender(
 		exchange,
 		cfg.Wrapper,
 		cfg.Sizer,

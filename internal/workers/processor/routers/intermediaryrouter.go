@@ -61,7 +61,7 @@ func NewIntermediaryRouter(routes []string) *IntermediaryRouter {
 	}
 }
 
-func (r *IntermediaryRouter) Process(_ string, item *protobuf.GroupedAccounts) ([]sender.RoutedItem[*protobuf.IntermediaryPair], error) {
+func (r *IntermediaryRouter) Process(_ string, item *protobuf.GroupedAccounts) ([]sender.RoutedItem[*protobuf.IntermediaryPair], bool, error) {
 	group := item.GetRelatedAccounts()
 	results := make([]sender.RoutedItem[*protobuf.IntermediaryPair], 0, len(group))
 	for _, account := range group {
@@ -73,7 +73,7 @@ func (r *IntermediaryRouter) Process(_ string, item *protobuf.GroupedAccounts) (
 			},
 		})
 	}
-	return results, nil
+	return results, true, nil
 }
 
 func (r *IntermediaryRouter) selectIntermediaryRoute(account *protobuf.Account) string {

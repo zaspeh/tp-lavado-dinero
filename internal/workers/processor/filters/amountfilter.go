@@ -14,10 +14,10 @@ func NewAmountFilterProcessor[T Amountable](amount float64) *AmountFilterProcess
 	}
 }
 
-func (p *AmountFilterProcessor[T]) Process(clientID string, item T) ([]T, error) {
+func (p *AmountFilterProcessor[T]) Process(clientID string, item T) ([]T, bool, error) {
 	if item.GetAmount() >= p.AmountToFilter {
-		return nil, nil
+		return nil, false, nil
 	}
 
-	return []T{item}, nil
+	return []T{item}, false, nil
 }

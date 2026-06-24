@@ -18,13 +18,13 @@ func NewConvertedAmountJoinRouter(routes []string) *ConvertedAmountJoinRouter {
 	}
 }
 
-func (r *ConvertedAmountJoinRouter) Process(_ string, item *protobuf.ConvertedAmount) ([]sender.RoutedItem[*protobuf.ConvertedAmount], error) {
+func (r *ConvertedAmountJoinRouter) Process(_ string, item *protobuf.ConvertedAmount) ([]sender.RoutedItem[*protobuf.ConvertedAmount], bool, error) {
 	return []sender.RoutedItem[*protobuf.ConvertedAmount]{
 		{
 			Route: r.selectRoute(strconv.FormatFloat(item.GetAmount(), 'f', 2, 64)),
 			Item:  item,
 		},
-	}, nil
+	}, false, nil
 }
 
 func (r *ConvertedAmountJoinRouter) selectRoute(key string) string {

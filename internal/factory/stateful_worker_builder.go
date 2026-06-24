@@ -5,7 +5,6 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
 	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
@@ -33,12 +32,7 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		return nil, err
 	}
 
-	workerID, err := getEnvIntStrict("ID")
-	if err != nil {
-		return nil, err
-	}
-
-	_, _, namespace, err := getCoordinationInformationFromEnv()
+	id, _, namespace, err := getCoordinationInformationFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +42,12 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 		return nil, err
 	}
 
-	newCoordinator := coordinator.NewAloneCoordinator(workerID)
+	newCoordinator, err := getCoordinator(maxBatchWeight, 1)
+	if err != nil {
+		inputExchange.Close()
+		outputQueue.Close()
+		return nil, err
+	}
 
 	receiver := receiver.NewSingleReceiver(
 		inputExchange,
@@ -67,15 +66,21 @@ func buildStatefulWorkerInputExchangeOutputQueue[T, V, R any](cfg InputExchangeO
 
 	cm, err := getCheckpointManager(cfg.processor.(checkpoint.Checkpointable))
 	if err != nil {
+		inputExchange.Close()
+		outputQueue.Close()
+		newCoordinator.Close()
 		return nil, err
 	}
 
 	heartbeatPublisher, err := buildHeartbeatPublisher()
 	if err != nil {
+		inputExchange.Close()
+		outputQueue.Close()
+		newCoordinator.Close()
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, cfg.processor, newCoordinator, cm)
+	engine := engine.NewStatefulEngine(id, receiver, sender, cfg.processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil

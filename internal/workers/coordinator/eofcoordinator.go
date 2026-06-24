@@ -40,7 +40,7 @@ type EOFCoordinator struct {
 
 func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 	subscriptionKey := []string{fmt.Sprintf("%s.%d", config.PeersExchangeName, config.WorkerID)}
-	exchange, err := m.CreateExchangeMiddleware(config.PeersExchangeName, subscriptionKey, config.ConnSettings, true, true, strconv.Itoa(config.WorkerID))
+	exchange, err := m.CreateExchangeMiddleware(config.PeersExchangeName, subscriptionKey, config.ConnSettings, true, true, strconv.Itoa(config.WorkerID), "")
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64, e
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	slog.Info("Handling local EOF", "clientID", clientID, "expectedTotal", expectedTotal)
+	slog.Info("Handling local EOF", "clientID", clientID, "expectedTotal", expectedTotal, "eofID", eofID)
 	state := c.getClientState(clientID)
 
 	if state.hasSeenEOF(eofID) {
@@ -302,6 +302,7 @@ func (c *EOFCoordinator) responseToWakeUp(items []*protobuf.BatchInformation, cl
 func (c *EOFCoordinator) handleRemoteEOF(msg *protobuf.EOFCoordination) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	slog.Info("Handling remote EOF", "clientID", msg.GetClientId(), "eofID", msg.GetEofID(), "expectedTotal", msg.GetExpectedTotal())
 
 	clientID := msg.GetClientId()
 	eofID := msg.GetEofID()
@@ -386,7 +387,6 @@ func (c *EOFCoordinator) sendEOF(key, clientID, eofID string, expectedTotal uint
 }
 
 func (c *EOFCoordinator) broadcastOwnBatches(clientID string, state *clientState) error {
-	// # TODO: max weight
 	batchOfInformation := batch.New(c.innerBatchWeight, protowrappers.ProtoSizer[*protobuf.BatchInformation](), protowrappers.FalseWrap)
 	onflush := func(items []*protobuf.BatchInformation, batchID string) error {
 		return c.broadcastBatch(items, clientID)
@@ -428,7 +428,7 @@ func (c *EOFCoordinator) getClientState(clientID string) *clientState {
 func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 	processed, totalSurvivors := state.totals()
 	if !state.isReadyToFlush(c.expectedEOFs) {
-		slog.Debug("Not ready to flush", "clientID", clientID, "eofCount", state.eofCount,
+		slog.Info("Not ready to flush", "clientID", clientID, "eofCount", state.eofCount,
 			"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", state.expectedTotal)
 		return nil
 	}

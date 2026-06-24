@@ -92,7 +92,7 @@ func buildStatelessWorkerInputQueueOutputQueue[T, V, R any](cfg InputQueueOutput
 		return nil, err
 	}
 
-	coordinator, err := getCoordinator(cfg.MaxBatchWeight)
+	coordinator, err := getCoordinator(cfg.MaxBatchWeight, 1)
 	if err != nil {
 		inputQueue.Close()
 		outputQueue.Close()

@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"os"
 	"strconv"
 
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -8,7 +9,6 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protowrappers"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers"
-	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/engine"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/processor/aggregators/aggregatebyintermediary"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/receiver"
@@ -32,7 +32,7 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 		return nil, err
 	}
 	originInputExchangeKeys := []string{originInputExchangeName + "." + strconv.Itoa(id)}
-	originInputExchange, err := middleware.CreateExchangeMiddleware(originInputExchangeName, originInputExchangeKeys, mom, false, false, strconv.Itoa(id))
+	originInputExchange, err := middleware.CreateExchangeMiddleware(originInputExchangeName, originInputExchangeKeys, mom, false, false, strconv.Itoa(id), os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 		return nil, err
 	}
 	destinationInputExchangeKeys := []string{destinationInputExchangeName + "." + strconv.Itoa(id)}
-	destinationInputExchange, err := middleware.CreateExchangeMiddleware(destinationInputExchangeName, destinationInputExchangeKeys, mom, false, false, strconv.Itoa(id))
+	destinationInputExchange, err := middleware.CreateExchangeMiddleware(destinationInputExchangeName, destinationInputExchangeKeys, mom, false, false, strconv.Itoa(id), os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		originInputExchange.Close()
 		return nil, err
@@ -64,7 +64,15 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	newCoordinator := coordinator.NewMultiEOFCoordinator(id, 2)
+	flowAmount := 2 // hardcoded because we have two input exchanges: origin and destination
+	newCoordinator, err := getCoordinator(maxBatchWeight, flowAmount)
+
+	if err != nil {
+		originInputExchange.Close()
+		destinationInputExchange.Close()
+		outputQueue.Close()
+		return nil, err
+	}
 
 	inputsIDs := []string{"origin", "destination"}
 
@@ -85,7 +93,7 @@ func buildAggregateByIntermediaryWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	engine := engine.NewStatefulEngine(receiver, sender, processor, newCoordinator, cm)
+	engine := engine.NewStatefulEngine(id, receiver, sender, processor, newCoordinator, cm)
 	worker := worker.NewWorker(heartbeatPublisher)
 	worker.AddEngine(engine)
 	return worker, nil

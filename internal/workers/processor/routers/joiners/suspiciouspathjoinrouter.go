@@ -19,14 +19,14 @@ func NewSuspiciousPathToJoinRouter(routes []string) *SuspiciousPathToJoinRouter 
 	}
 }
 
-func (r *SuspiciousPathToJoinRouter) Process(_ string, item *protobuf.SuspiciousPath) ([]sender.RoutedItem[*protobuf.SuspiciousPath], error) {
+func (r *SuspiciousPathToJoinRouter) Process(_ string, item *protobuf.SuspiciousPath) ([]sender.RoutedItem[*protobuf.SuspiciousPath], bool, error) {
 	slog.Debug("Routing suspicious path", "origin_bank", item.GetOrigin().GetBank(), "origin_account", item.GetOrigin().GetAccount(), "destination_bank", item.GetDestination().GetBank(), "destination_account", item.GetDestination().GetAccount())
 	return []sender.RoutedItem[*protobuf.SuspiciousPath]{
 		{
 			Route: r.selectSouspiciousPathRoute(item.GetOrigin()),
 			Item:  item,
 		},
-	}, nil
+	}, false, nil
 }
 
 func (r *SuspiciousPathToJoinRouter) selectSouspiciousPathRoute(origin *protobuf.Account) string {

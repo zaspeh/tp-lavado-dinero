@@ -18,13 +18,13 @@ func NewRouterProcessor[T any](routes []string, keySelector func(T) string) *Rou
 	}
 }
 
-func (r *RouterProcessor[T]) Process(_ string, item T) ([]sender.RoutedItem[T], error) {
+func (r *RouterProcessor[T]) Process(_ string, item T) ([]sender.RoutedItem[T], bool, error) {
 	return []sender.RoutedItem[T]{
 		{
 			Route: r.selectRoute(r.keySelector(item)),
 			Item:  item,
 		},
-	}, nil
+	}, false, nil
 }
 
 func (r *RouterProcessor[T]) selectRoute(key string) string {

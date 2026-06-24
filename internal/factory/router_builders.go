@@ -2,6 +2,7 @@ package factory
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	m "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/middleware"
@@ -54,7 +55,7 @@ func buildBankRouterWorker() (workers.Worker, error) {
 		maxBankExchangeKeys[i] = fmt.Sprintf("%s.%d", maxBankExchangeName, i)
 	}
 
-	maxBankExchange, err := m.CreateExchangeMiddleware(maxBankExchangeName, maxBankExchangeKeys, mom, false, false, strconv.Itoa(id))
+	maxBankExchange, err := m.CreateExchangeMiddleware(maxBankExchangeName, maxBankExchangeKeys, mom, false, false, strconv.Itoa(id), os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +131,7 @@ func buildOriginDestinationRouterWorker() (workers.Worker, error) {
 		originDestinationRouterKeys[groupByOriginoutputWorkerAmount+i] = fmt.Sprintf("destination.%d", i)
 	}
 
-	groupByExchange, err := m.CreateExchangeMiddleware(groupByExchangeName, originDestinationRouterKeys, mom, false, false, strconv.Itoa(id))
+	groupByExchange, err := m.CreateExchangeMiddleware(groupByExchangeName, originDestinationRouterKeys, mom, false, false, strconv.Itoa(id), os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func buildPaymentTypeRouterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	coordinator, err := getCoordinator(maxBatchWeight)
+	coordinator, err := getCoordinator(maxBatchWeight, 1)
 	if err != nil {
 		inputQueue.Close()
 		paymentTypeExchange.Close()
@@ -281,7 +282,7 @@ func buildIntermediaryRouterWorker() (workers.Worker, error) {
 		keys[i] = fmt.Sprintf("%s.%d", exchangeName, i)
 	}
 
-	AggregateByIntermediaryExchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom, false, false, strconv.Itoa(id))
+	AggregateByIntermediaryExchange, err := m.CreateExchangeMiddleware(exchangeName, keys, mom, false, false, strconv.Itoa(id), os.Getenv("WORKER_TYPE"))
 	if err != nil {
 		return nil, err
 	}

@@ -26,9 +26,9 @@ func NewToConvertPeriodFilterProcessor(period Period) *ToConvertPeriodFilterProc
 	}
 }
 
-func (p *ToConvertPeriodFilterProcessor) Process(_ string, item *protobuf.ToConvertTransaction) ([]*protobuf.ToConvertPeriodFiltered, error) {
+func (p *ToConvertPeriodFilterProcessor) Process(_ string, item *protobuf.ToConvertTransaction) ([]*protobuf.ToConvertPeriodFiltered, bool, error) {
 	if !p.period.Contains(item.GetTimestamp().AsTime()) {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	return []*protobuf.ToConvertPeriodFiltered{
@@ -38,7 +38,7 @@ func (p *ToConvertPeriodFilterProcessor) Process(_ string, item *protobuf.ToConv
 			PaymentFormat:   item.GetPaymentFormat(),
 			Timestamp:       item.GetTimestamp(),
 		},
-	}, nil
+	}, false, nil
 }
 
 // ------------------------------------------------
@@ -53,9 +53,9 @@ func NewScatterGatherPeriodFilterProcessor(period Period) *ScatterGatherPeriodFi
 	}
 }
 
-func (p *ScatterGatherPeriodFilterProcessor) Process(_ string, item *protobuf.PeriodFilter) ([]*protobuf.ScatterGather, error) {
+func (p *ScatterGatherPeriodFilterProcessor) Process(_ string, item *protobuf.PeriodFilter) ([]*protobuf.ScatterGather, bool, error) {
 	if !p.period.Contains(item.GetTimestamp().AsTime()) {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	return []*protobuf.ScatterGather{
@@ -65,7 +65,7 @@ func (p *ScatterGatherPeriodFilterProcessor) Process(_ string, item *protobuf.Pe
 			Account:   item.GetAccount(),
 			ToAccount: item.GetToAccount(),
 		},
-	}, nil
+	}, false, nil
 }
 
 // -----------------------------------------------
@@ -82,21 +82,21 @@ func NewAvgByTypePeriodFilterProcessor(firstPeriod, secondPeriod Period) *AvgByT
 	}
 }
 
-func (p *AvgByTypePeriodFilterProcessor) Process(_ string, item *protobuf.PeriodFilter) ([]*protobuf.AvgByTypeTransaction, error) {
+func (p *AvgByTypePeriodFilterProcessor) Process(_ string, item *protobuf.PeriodFilter) ([]*protobuf.AvgByTypeTransaction, bool, error) {
 	timestamp := item.GetTimestamp().AsTime()
 	if p.firstPeriod.Contains(timestamp) {
 		return []*protobuf.AvgByTypeTransaction{
 			p.buildTransaction(item, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_FIRST),
-		}, nil
+		}, false, nil
 	}
 
 	if p.secondPeriod.Contains(timestamp) {
 		return []*protobuf.AvgByTypeTransaction{
 			p.buildTransaction(item, protobuf.AvgByTypePeriod_AVGBYTYPE_PERIOD_SECOND),
-		}, nil
+		}, false, nil
 	}
 
-	return nil, nil
+	return nil, false, nil
 }
 
 func (p *AvgByTypePeriodFilterProcessor) buildTransaction(item *protobuf.PeriodFilter, period protobuf.AvgByTypePeriod) *protobuf.AvgByTypeTransaction {

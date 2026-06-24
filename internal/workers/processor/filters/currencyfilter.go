@@ -12,10 +12,10 @@ func NewCurrencyFilterProcessor(currencyToFilter string) *CurrencyFilterProcesso
 	}
 }
 
-func (f *CurrencyFilterProcessor) Process(clientID string, msg *protobuf.Transaction) ([]*protobuf.Transaction, error) {
+func (f *CurrencyFilterProcessor) Process(clientID string, msg *protobuf.Transaction) ([]*protobuf.Transaction, bool, error) {
 	paymentCurrency := msg.GetPaymentCurrency()
 	if paymentCurrency == f.currencyToFilter {
-		return []*protobuf.Transaction{msg}, nil
+		return []*protobuf.Transaction{msg}, false, nil
 	}
-	return nil, nil
+	return nil, false, nil
 }

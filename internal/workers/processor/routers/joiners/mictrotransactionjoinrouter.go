@@ -18,14 +18,14 @@ func NewMicrotransactionJoinRouter(routes []string) *MicrotransactionJoinRouter 
 	}
 }
 
-func (r *MicrotransactionJoinRouter) Process(_ string, item *protobuf.Microtransaction) ([]sender.RoutedItem[*protobuf.Microtransaction], error) {
+func (r *MicrotransactionJoinRouter) Process(_ string, item *protobuf.Microtransaction) ([]sender.RoutedItem[*protobuf.Microtransaction], bool, error) {
 	slog.Debug("Routing microtransaction", "transaction_id", item.GetAccount(), "amount", item.GetAmount())
 	return []sender.RoutedItem[*protobuf.Microtransaction]{
 		{
 			Route: r.selectRoute(item.GetAccount()),
 			Item:  item,
 		},
-	}, nil
+	}, false, nil
 }
 
 func (r *MicrotransactionJoinRouter) selectRoute(key string) string {

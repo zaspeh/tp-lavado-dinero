@@ -47,7 +47,7 @@ func buildCurrencyFilterWorker() (workers.Worker, error) {
 		return nil, err
 	}
 
-	coordinator, err := getCoordinator(maxBatchWeight)
+	coordinator, err := getCoordinator(maxBatchWeight, 1)
 	if err != nil {
 		closeQueues(queues)
 		return nil, err
