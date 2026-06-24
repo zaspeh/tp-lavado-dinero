@@ -3,9 +3,10 @@ package checkpoint
 import "encoding/json"
 
 type CheckpointLogEntry struct {
-	Seq     uint64             `json:"seq"`
-	Batches []string           `json:"batches"`
-	Changes []CheckpointChange `json:"changes"`
+	Seq             uint64             `json:"seq"`
+	Batches         []string           `json:"batches"`
+	Changes         []CheckpointChange `json:"changes"`
+	ProcessedCounts []uint64           `json:"processedCounts"`
 }
 
 type CheckpointChange struct {

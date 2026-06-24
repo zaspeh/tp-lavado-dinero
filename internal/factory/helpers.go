@@ -322,9 +322,5 @@ func getCheckpointManager(cp checkpoint.Checkpointable) (*checkpoint.CheckpointM
 		CheckpointEveryBatches: checkpointEveryBatches,
 	})
 
-	if err := cm.LoadState(); err != nil {
-		return nil, err
-	}
-
 	return cm, nil
 }

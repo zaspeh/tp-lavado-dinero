@@ -62,6 +62,10 @@ func NewEOFCoordinator(config EOFCoordinatorConfig) (*EOFCoordinator, error) {
 		exchange.Close()
 		return nil, err
 	}
+	if err := exchange.SetUp(); err != nil {
+		exchange.Close()
+		return nil, err
+	}
 
 	coord := &EOFCoordinator{
 		workerID:         config.WorkerID,
@@ -119,10 +123,6 @@ func (c *EOFCoordinator) SetFlushHandler(handler FlushHandler) {
 }
 
 func (c *EOFCoordinator) Run() error {
-	if err := c.exchange.SetUp(); err != nil {
-		return err
-	}
-
 	if err := c.wakeUpNotification(); err != nil {
 		return err
 	}
@@ -432,12 +432,23 @@ func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 			"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", state.expectedTotal)
 		return nil
 	}
+	slog.Info("READY TO flush", "clientID", clientID, "eofCount", state.eofCount,
+		"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", state.expectedTotal)
 
 	if err := c.flushHandler(clientID, totalSurvivors, state.lastEOFID); err != nil {
 		return err
 	}
 	state.flushed = true
 	return nil
+}
+
+func (c *EOFCoordinator) ReachedEOFAmount(clientID string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	state := c.getClientState(clientID)
+
+	return state.hasAllEOFs(c.expectedEOFs)
 }
 
 func (c *EOFCoordinator) Close() error {

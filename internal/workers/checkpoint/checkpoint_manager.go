@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
 )
 
 const legacyEntityChangeKind = "entity"
@@ -30,6 +32,7 @@ type CheckpointManager struct {
 	pendingAcks      map[string][]func()
 	eofSent          map[string]bool
 	finalizeComplete map[string]bool
+	processedCount   map[string]map[string]uint64
 }
 
 type CheckpointManagerConfig struct {
@@ -66,6 +69,7 @@ func NewCheckpointManager(checkpointConfig *CheckpointManagerConfig) *Checkpoint
 		pendingAcks:            make(map[string][]func()),
 		eofSent:                make(map[string]bool),
 		finalizeComplete:       make(map[string]bool),
+		processedCount:         make(map[string]map[string]uint64),
 	}
 }
 
@@ -122,7 +126,7 @@ func (cm *CheckpointManager) SetCheckpointEveryBatches(n int) {
 	cm.checkpointEveryBatches = n
 }
 
-func (cm *CheckpointManager) LoadState() error {
+func (cm *CheckpointManager) LoadState(coordinator coordinator.Coordinator) error {
 	slog.Debug("CheckpointManager LoadState starting", "workerName", cm.workerName, "workerID", cm.workerID)
 
 	if err := os.MkdirAll(cm.stateDir(), 0755); err != nil {
@@ -140,7 +144,7 @@ func (cm *CheckpointManager) LoadState() error {
 		}
 
 		clientID := clientEntry.Name()
-		if err := cm.loadClientState(clientID); err != nil {
+		if err := cm.loadClientState(clientID, coordinator); err != nil {
 			return err
 		}
 	}
@@ -149,7 +153,7 @@ func (cm *CheckpointManager) LoadState() error {
 	return nil
 }
 
-func (cm *CheckpointManager) loadClientState(clientID string) error {
+func (cm *CheckpointManager) loadClientState(clientID string, coordinator coordinator.Coordinator) error {
 	// Snapshot support is intentionally left for a future iteration.
 	// Expected path: <client-state-dir>/snapshot.json
 
@@ -182,8 +186,12 @@ func (cm *CheckpointManager) loadClientState(clientID string) error {
 			break
 		}
 
-		for _, batchID := range entry.Batches {
+		for i, batchID := range entry.Batches {
 			batches[batchID] = true
+			err := coordinator.RecordBatch(clientID, batchID, entry.ProcessedCounts[i], 0)
+			if err != nil {
+				return err
+			}
 		}
 		for _, change := range entry.Changes {
 			if change.Kind == "eofSent" {
@@ -232,6 +240,13 @@ func (cm *CheckpointManager) BeginBatch(clientID, batchID string, ack func()) (s
 		ack()
 		return false, nil
 	}
+
+	if cm.processedBatches[clientID] == nil {
+		cm.processedBatches[clientID] = make(map[string]bool)
+	}
+	cm.processedBatches[clientID][batchID] = true
+
+	cm.pendingBatches[clientID] = append(cm.pendingBatches[clientID], batchID)
 
 	cm.pendingAcks[clientID] = append(cm.pendingAcks[clientID], ack)
 	cm.batchCount[clientID]++
@@ -373,38 +388,49 @@ func (cm *CheckpointManager) persistEofMarker(clientID string) error {
 	return nil
 }
 
-func (cm *CheckpointManager) CommitBatch(clientID, batchID string) error {
+func (cm *CheckpointManager) CommitBatch(clientID, batchID string, processedCount uint64, coordinator coordinator.Coordinator) error {
 	cm.mu.Lock()
-	if cm.processedBatches[clientID] == nil {
-		cm.processedBatches[clientID] = make(map[string]bool)
-	}
-	cm.processedBatches[clientID][batchID] = true
-	cm.pendingBatches[clientID] = append(cm.pendingBatches[clientID], batchID)
 	shouldPersist := cm.batchCount[clientID] >= cm.checkpointEveryBatches
 	batchCount := cm.batchCount[clientID]
+
+	if cm.processedCount[clientID] == nil {
+		cm.processedCount[clientID] = make(map[string]uint64)
+	}
+	cm.processedCount[clientID][batchID] = processedCount
 	cm.mu.Unlock()
 
 	slog.Debug("CheckpointManager CommitBatch", "clientID", clientID, "batchID", batchID, "batchCount", batchCount)
-	if shouldPersist {
+	if shouldPersist || coordinator.ReachedEOFAmount(clientID) {
 		slog.Debug("CheckpointManager CommitBatch: triggering checkpoint", "clientID", clientID, "batchCount", batchCount)
-		return cm.persistAndAck(clientID)
+		return cm.persistAndAck(clientID, coordinator)
+
 	}
 	return nil
 }
 
-func (cm *CheckpointManager) BeforeEOF(clientID string) error {
-	cm.mu.Lock()
-	hasPending := cm.batchCount[clientID] > 0
-	cm.mu.Unlock()
-	if !hasPending {
-		return nil
-	}
+/*
+	func (cm *CheckpointManager) BeforeEOF(clientID string) error {
+		cm.mu.Lock()
+		hasPending := cm.batchCount[clientID] > 0
+		cm.mu.Unlock()
+		if !hasPending {
+			return nil
+		}
 
-	slog.Debug("CheckpointManager BeforeEOF: persisting pending batches", "clientID", clientID)
-	return cm.persistAndAck(clientID)
+		slog.Debug("CheckpointManager BeforeEOF: persisting pending batches", "clientID", clientID)
+		return cm.persistAndAck(clientID)
+	}
+*/
+func (cm *CheckpointManager) FlushPendingBatches(coordinator coordinator.Coordinator, clientID string) error {
+	if coordinator.ReachedEOFAmount(clientID) {
+		slog.Debug("CheckpointManager FlushPendingBatches: triggering checkpoint", "clientID", clientID)
+		return cm.persistAndAck(clientID, coordinator)
+	}
+	return nil
+
 }
 
-func (cm *CheckpointManager) persistAndAck(clientID string) error {
+func (cm *CheckpointManager) persistAndAck(clientID string, coordinator coordinator.Coordinator) error {
 	cm.mu.Lock()
 	if cm.batchCount[clientID] == 0 {
 		cm.mu.Unlock()
@@ -420,14 +446,26 @@ func (cm *CheckpointManager) persistAndAck(clientID string) error {
 		return err
 	}
 
+	processedCount := make([]uint64, 0, len(cm.processedCount[clientID]))
+
+	for _, count := range cm.processedCount[clientID] {
+		processedCount = append(processedCount, count)
+
+	}
+
 	entry := CheckpointLogEntry{
-		Seq:     seq,
-		Batches: batches,
-		Changes: changes,
+		Seq:             seq,
+		Batches:         batches,
+		Changes:         changes,
+		ProcessedCounts: processedCount,
 	}
 	if err := cm.appendLogEntry(clientID, entry); err != nil {
 		cm.restoreChanges(clientID, changes)
 		return err
+	}
+
+	for batchID, count := range cm.processedCount[clientID] {
+		coordinator.RecordBatch(clientID, batchID, count, 0)
 	}
 
 	cm.mu.Lock()
@@ -437,6 +475,8 @@ func (cm *CheckpointManager) persistAndAck(clientID string) error {
 	cm.dirtyEntities[clientID] = nil
 	acks := cm.pendingAcks[clientID]
 	cm.pendingAcks[clientID] = nil
+	cm.processedCount[clientID] = make(map[string]uint64)
+
 	cm.mu.Unlock()
 
 	for _, ack := range acks {

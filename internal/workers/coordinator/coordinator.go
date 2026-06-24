@@ -13,4 +13,5 @@ type Coordinator interface {
 	IsLeader() bool
 	SetFlushHandler(handler FlushHandler)
 	HandleLocalEOF(clientID string, eofCount uint64, eventID string) error
+	ReachedEOFAmount(clientID string) bool
 }
