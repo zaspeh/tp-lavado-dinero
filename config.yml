@@ -163,11 +163,11 @@ services:
     env:
       INPUT_QUEUE_NAME: avg_by_type_router_to_join_input
       OUTPUT_EXCHANGE_NAME: avg_by_type_join_input
-      OUTPUT_WORKER_AMOUNT: 2
+      OUTPUT_WORKER_AMOUNT: 1
       EXPECTED_EOF_AMOUNT: 1
 
   avg_by_type_join:
-    count: 2
+    count: 1
     worker_type: AVG_BY_TYPE_JOIN
 
     env:
@@ -240,7 +240,7 @@ services:
       DESTINATION_INPUT_EXCHANGE_NAME: destination_intermediary_aggregation
 
       OUTPUT_QUEUE_NAME: suspicious_path_router_join_input
-
+      OUTPUT_WORKER_AMOUNT: 2
       CHECKPOINT_EVERY_BATCHES: 100
 
   suspicious_path_router_to_join:

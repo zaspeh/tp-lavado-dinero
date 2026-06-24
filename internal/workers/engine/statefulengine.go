@@ -3,6 +3,7 @@ package engine
 import (
 	"log/slog"
 	"sync/atomic"
+	"time"
 
 	checkpoint "github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 	c "github.com/zaspeh/tp-lavado-dinero/internal/workers/coordinator"
@@ -36,7 +37,18 @@ func (e *StatefulEngine[T, V]) Run() error {
 	if e.wasStopped.Load() {
 		return nil
 	}
+
+	e.handleEofRecovery()
+
 	return e.receiver.Receive(e.handleEvent)
+}
+
+func (e *StatefulEngine[T, V]) handleEofRecovery() {
+	clients := e.checkpointManager.GetClientsNeedingFinalize()
+	for _, clientID := range clients {
+		slog.Info("StatefulEngine: recovering EOF for client", "clientID", clientID)
+		e.handleTrueEOF(clientID, 0, "recovery-eof-id")
+	}
 }
 
 func (e *StatefulEngine[T, V]) Shutdown() {
@@ -100,27 +112,40 @@ func (e *StatefulEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 }
 
 func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, eofID string) error {
-	if err := e.checkpointManager.BeforeEOF(clientID); err != nil {
-		slog.Error("StatefulEngine: BeforeEOF failed", "error", err, "clientID", clientID)
-		return err
-	}
+	if e.checkpointManager.NeedsFinalize(clientID) {
+		if err := e.checkpointManager.BeforeEOF(clientID); err != nil {
+			slog.Error("StatefulEngine: BeforeEOF failed", "error", err, "clientID", clientID)
+			return err
+		}
 
-	yield := func(result V) error {
-		return e.sender.Add(clientID, result, eofID)
-	}
+		if err := e.checkpointManager.SetEofSent(clientID); err != nil {
+			slog.Error("StatefulEngine: SetEofSent failed", "error", err, "clientID", clientID)
+			return err
+		}
 
-	survivors, err := e.processor.Finalize(clientID, yield)
-	if err != nil {
-		return err
-	}
+		slog.Info("True EOF reached, DEBUG: sleeping 10s before SendEOF", "clientID", clientID)
+		time.Sleep(10 * time.Second)
+		yield := func(result V) error {
+			return e.sender.Add(clientID, result, eofID)
+		}
 
-	if err := e.sender.Flush(clientID); err != nil {
-		return err
-	}
+		survivors, err := e.processor.Finalize(clientID, yield)
+		if err != nil {
+			return err
+		}
 
-	if e.coordinator.IsLeader() {
-		slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivors)
-		return e.sender.SendEOF(clientID, survivors, eofID)
+		e.checkpointManager.SetFinalizeComplete(clientID)
+
+		if err := e.sender.Flush(clientID); err != nil {
+			return err
+		}
+
+		if e.coordinator.IsLeader() {
+			slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivors)
+			return e.sender.SendEOF(clientID, survivors, eofID)
+		}
+	} else {
+		slog.Info("StatefulEngine handleTrueEOF: client already finalized, skipping", "clientID", clientID, "eofID", eofID)
 	}
 
 	return nil
