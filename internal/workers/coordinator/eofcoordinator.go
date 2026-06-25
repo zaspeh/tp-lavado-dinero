@@ -150,7 +150,7 @@ func (c *EOFCoordinator) RecordBatch(clientID, batchID string, processed, surviv
 
 	state := c.getClientState(clientID)
 	if state.hasOwnBatch(batchID) {
-		return c.tryFlush(clientID, state)
+		return nil
 	}
 
 	record := BatchRecord{BatchID: batchID, Processed: processed, Survivors: survivors}

@@ -122,7 +122,7 @@ func (e *StatelessEngine[T, V]) handleTrueEOF(clientID string, survivorCount uin
 	if !e.coordinator.IsLeader() {
 		return nil
 	}
-	slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivorCount)
+	slog.Info("True EOF reached, sending EOF", "clientID", clientID, "survivorCount", survivorCount, "eofID", eofID)
 	return e.sender.SendEOF(clientID, survivorCount, eofID)
 }
 

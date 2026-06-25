@@ -50,6 +50,7 @@ type ClientConnection struct {
 	micropaymentsCount   int64
 	converterJoinAumount int
 	seenResults          map[string]struct{}
+	cleaned              bool
 }
 
 func New(config ClientConnectionConfig) (*ClientConnection, error) {
@@ -98,6 +99,7 @@ func New(config ClientConnectionConfig) (*ClientConnection, error) {
 		micropaymentsCount:   0,
 		converterJoinAumount: config.ConverterJoinAmount,
 		seenResults:          make(map[string]struct{}),
+		cleaned:              false,
 	}, nil
 }
 
@@ -169,18 +171,9 @@ func (cc *ClientConnection) cleanup() {
 		slog.Error("error broadcasting cleanup", "clientID", cc.id, "err", err)
 	}
 
-	cc.seenResults = make(map[string]struct{})
-	cc.transactionCounter = 0
-	cc.accountsCounter = 0
-	cc.micropaymentsCount = 0
-	cc.converterJoinAumount = 0
-	cc.EOFamountReceived = 0
+	slog.Info("cleanupMessageBroadcasted", "clientID", cc.id)
+	cc.handleCleanUpMessage()
 
-	cc.transactionBatcher.SetNewBatchId(batch.DefaultBatchId)
-	cc.rawDataBatcher.SetNewBatchId(batch.DefaultBatchId)
-	cc.accountBatcher.SetNewBatchId(batch.DefaultBatchId)
-
-	slog.Info("client state cleaned", "clientID", cc.id)
 }
 
 func (cc *ClientConnection) isResultSeen(batchID string) bool {
@@ -341,12 +334,14 @@ func (cc *ClientConnection) handleResult(msg m.Message, ack, nack func()) {
 	}
 
 	if moneyLaundry.GetType() == protobuf.MessageType_CLEANUP {
+
+		cc.handleCleanUpMessage()
 		ack()
 		return
 	}
 
 	batchID := moneyLaundry.GetBatchID()
-	if cc.isResultSeen(batchID) {
+	if cc.isResultSeen(batchID) || cc.cleaned {
 		slog.Debug("Skipping duplicate result", "clientID", cc.id, "batchID", batchID)
 		ack()
 		return
@@ -382,8 +377,6 @@ func (cc *ClientConnection) handleEOFFromWorker(ack, nack func()) {
 			nack()
 			return
 		}
-		cc.seenResults = make(map[string]struct{})
-		slog.Info("cleaned seenResults for client", "clientID", cc.id)
 	}
 	ack()
 }
@@ -467,7 +460,7 @@ func (cc *ClientConnection) handleConvertedMicroPaymentResult(moneyLaundering *p
 }
 
 func (cc *ClientConnection) handleSuspiciousAccountBatch(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
-	slog.Debug("Handling SuspiciousAccount Batch", "clientID", moneyLaundering.GetClientID(), "batchID", moneyLaundering.GetBatchID())
+	slog.Info("Handling SuspiciousAccount Batch", "clientID", moneyLaundering.GetClientID(), "batchID", moneyLaundering.GetBatchID())
 	externalMsg, err := messagehandler.ProtoToSuspiciousAccounts(moneyLaundering)
 
 	if err != nil {
@@ -505,4 +498,20 @@ func (cc *ClientConnection) Close() error {
 		return err
 	}
 	return cc.protocol.Close()
+}
+
+func (cc *ClientConnection) handleCleanUpMessage() {
+	cc.seenResults = make(map[string]struct{})
+	cc.transactionCounter = 0
+	cc.accountsCounter = 0
+	cc.micropaymentsCount = 0
+	cc.converterJoinAumount = 0
+	cc.EOFamountReceived = 0
+
+	cc.transactionBatcher.SetNewBatchId(batch.DefaultBatchId)
+	cc.rawDataBatcher.SetNewBatchId(batch.DefaultBatchId)
+	cc.accountBatcher.SetNewBatchId(batch.DefaultBatchId)
+	cc.cleaned = true
+
+	slog.Info("client state cleaned CleanUp Message cycle completed", "clientID", cc.id)
 }

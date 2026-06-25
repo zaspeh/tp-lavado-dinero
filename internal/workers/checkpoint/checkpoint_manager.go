@@ -234,7 +234,7 @@ func (cm *CheckpointManager) CommitBatch(clientID, batchID string, processedCoun
 
 	slog.Debug("CheckpointManager CommitBatch", "clientID", clientID, "batchID", batchID, "batchCount", batchCount)
 	if shouldPersist || coordinator.ReachedEOFAmount(clientID) {
-		slog.Debug("CheckpointManager CommitBatch: triggering checkpoint", "clientID", clientID, "batchCount", batchCount)
+		slog.Info("CheckpointManager CommitBatch: triggering checkpoint", "clientID", clientID, "batchCount", batchCount)
 		return cm.persistAndAck(clientID, coordinator)
 
 	}
@@ -243,7 +243,7 @@ func (cm *CheckpointManager) CommitBatch(clientID, batchID string, processedCoun
 
 func (cm *CheckpointManager) FlushPendingBatches(coordinator coordinator.Coordinator, clientID string) error {
 	if coordinator.ReachedEOFAmount(clientID) {
-		slog.Debug("CheckpointManager FlushPendingBatches: triggering checkpoint", "clientID", clientID)
+		slog.Info("CheckpointManager FlushPendingBatches: triggering checkpoint", "clientID", clientID)
 		return cm.persistAndAck(clientID, coordinator)
 	}
 	return nil
