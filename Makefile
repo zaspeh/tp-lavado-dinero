@@ -1,9 +1,10 @@
-.PHONY: generate up down logs clean small_test medium_test chaos real_chaos 
+.PHONY: generate up down logs clean small_test medium_test chaos real_chaos catastrophe
 
 COMPOSE_FILE=Compose.yml
 GENERATOR_SCRIPT=scripts/generate-compose.py
 TEST_SCRIPT=scripts/verify_outputs.py
 CHAOS_SCRIPT=scripts/chaos_monkey.py
+HYPERVISOR_CONTAINER=fault_hypervisor
 
 generate:
 	@python3 $(GENERATOR_SCRIPT)
@@ -34,3 +35,6 @@ chaos:
 
 real_chaos:
 	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) $(if $(TARGET),--target $(TARGET)) --kill
+
+catastrophe:
+	docker exec $(HYPERVISOR_CONTAINER) sh -c 'docker kill $$(docker ps -q)'
