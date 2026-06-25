@@ -460,7 +460,6 @@ func (cc *ClientConnection) handleConvertedMicroPaymentResult(moneyLaundering *p
 }
 
 func (cc *ClientConnection) handleSuspiciousAccountBatch(moneyLaundering *protobuf.MoneyLaundry, ack, nack func()) {
-	slog.Info("Handling SuspiciousAccount Batch", "clientID", moneyLaundering.GetClientID(), "batchID", moneyLaundering.GetBatchID())
 	externalMsg, err := messagehandler.ProtoToSuspiciousAccounts(moneyLaundering)
 
 	if err != nil {

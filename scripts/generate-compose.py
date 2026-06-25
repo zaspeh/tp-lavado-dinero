@@ -82,8 +82,8 @@ def build_client(cfg, i, log_level):
             f'ID={i}',
             'SERVER_HOST=gateway',
             f'SERVER_PORT={gateway_port}',
-            f'INPUT_FILE_TRANSACTIONS=/datasets/client_{i}_transactions.csv',
-            f'INPUT_FILE_ACCOUNTS=/datasets/client_{i}_accounts.csv',
+            f'INPUT_FILE_TRANSACTIONS=/datasets/client_{1}_transactions.csv',
+            f'INPUT_FILE_ACCOUNTS=/datasets/client_{1}_accounts.csv',
             'OUTPUT_DIR=/outputs',
             f'MAX_BATCH_WEIGHT={max_batch_weight}',
             f'LOG_LEVEL={log_level}'
