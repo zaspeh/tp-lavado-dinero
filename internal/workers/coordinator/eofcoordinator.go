@@ -112,8 +112,7 @@ func (c *EOFCoordinator) restoreFromStorage() error {
 	for clientID, clientEOFs := range eofs {
 		state := c.getClientState(clientID)
 		for eofID, expectedTotal := range clientEOFs {
-			// El valor se completa cuando un peer reenvía el EOF al despertar.
-			state.markEOFSeen(eofID, expectedTotal)
+			state.addOwnEOF(eofID, expectedTotal)
 		}
 	}
 
@@ -151,7 +150,7 @@ func (c *EOFCoordinator) RecordBatch(clientID, batchID string, processed, surviv
 
 	state := c.getClientState(clientID)
 	if state.hasOwnBatch(batchID) {
-		return nil
+		return c.tryFlush(clientID, state)
 	}
 
 	record := BatchRecord{BatchID: batchID, Processed: processed, Survivors: survivors}
@@ -179,25 +178,25 @@ func (c *EOFCoordinator) HandleLocalEOF(clientID string, expectedTotal uint64, e
 	slog.Info("Handling local EOF", "clientID", clientID, "expectedTotal", expectedTotal, "eofID", eofID)
 	state := c.getClientState(clientID)
 
-	if state.hasSeenEOF(eofID) {
+	if state.hasOwnEOF(eofID) {
 		slog.Debug("Ignoring duplicate local EOF", "clientID", clientID, "eofID", eofID)
 		return nil
 	}
+
+	if err := c.storage.WriteEOF(clientID, eofID, expectedTotal); err != nil {
+		return err
+	}
+	state.addOwnEOF(eofID, expectedTotal)
 
 	if err := c.broadcastEOF(clientID, eofID, expectedTotal); err != nil {
 		return err
 	}
 
-	if state.wouldHaveAllEOFs(c.expectedEOFs) {
+	if state.hasAllEOFs(c.expectedEOFs) {
 		if err := c.broadcastOwnBatches(clientID, state); err != nil {
 			return err
 		}
 	}
-	if err := c.storage.WriteEOF(clientID, eofID, expectedTotal); err != nil {
-		return err
-	}
-
-	state.markEOFSeen(eofID, expectedTotal)
 
 	return c.tryFlush(clientID, state)
 }
@@ -251,7 +250,7 @@ func (c *EOFCoordinator) handleWakeUp(msg *protobuf.EOFCoordination) error {
 	key := fmt.Sprintf("%s.%d", c.workerName, msg.GetSenderId())
 
 	for clientID, state := range c.clients {
-		for eofID, expectedTotal := range state.seenEOFs {
+		for eofID, expectedTotal := range state.ownEOFs {
 			if err := c.sendEOF(key, clientID, eofID, expectedTotal); err != nil {
 				return err
 			}
@@ -312,23 +311,24 @@ func (c *EOFCoordinator) handleRemoteEOF(msg *protobuf.EOFCoordination) error {
 
 	clientID := msg.GetClientId()
 	eofID := msg.GetEofID()
+	peerID := int(msg.GetSenderId())
 	state := c.getClientState(clientID)
 	if c.cleanedClients[clientID] {
 		return nil
 	}
 
-	if state.hasSeenEOF(eofID) {
+	if state.hasPeerEOF(peerID, eofID) {
 		slog.Debug("Ignoring duplicate remote EOF", "clientID", clientID, "eofID", eofID)
 		return nil
 	}
 
-	if state.wouldHaveAllEOFs(c.expectedEOFs) {
+	state.addPeerEOF(peerID, eofID, msg.GetExpectedTotal())
+
+	if state.hasAllEOFs(c.expectedEOFs) {
 		if err := c.broadcastOwnBatches(clientID, state); err != nil {
 			return err
 		}
 	}
-
-	state.markEOFSeen(eofID, msg.GetExpectedTotal())
 
 	return c.tryFlush(clientID, state)
 }
@@ -440,13 +440,14 @@ func (c *EOFCoordinator) getClientState(clientID string) *clientState {
 
 func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 	processed, totalSurvivors := state.totals()
+	eofCount, expectedTotal := state.eofTotals()
 	if !state.isReadyToFlush(c.expectedEOFs) {
-		slog.Info("Not ready to flush", "clientID", clientID, "eofCount", state.eofCount,
-			"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", state.expectedTotal)
+		slog.Info("Not ready to flush", "clientID", clientID, "eofCount", eofCount,
+			"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", expectedTotal)
 		return nil
 	}
-	slog.Info("READY TO flush", "clientID", clientID, "eofCount", state.eofCount,
-		"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", state.expectedTotal)
+	slog.Info("READY TO flush", "clientID", clientID, "eofCount", eofCount,
+		"expectedEOFs", c.expectedEOFs, "processed", processed, "expectedTotal", expectedTotal)
 
 	if err := c.flushHandler(clientID, totalSurvivors, state.lastEOFID); err != nil {
 		return err

@@ -111,7 +111,7 @@ func (p *ScatterGatherJoinProcessor) Cleanup(clientID string) error {
 	return nil
 }
 
-// Checkpoint integration (ChangeCheckpointable / RestorableChangeCheckpointable)
+// Checkpoint integration.
 func (p *ScatterGatherJoinProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
 	return p.tracker.DrainChanges(clientID)
 }

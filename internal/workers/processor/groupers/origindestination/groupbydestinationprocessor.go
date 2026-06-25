@@ -9,27 +9,15 @@ import (
 
 type GroupByDestinationProcessor struct {
 	destinationStores map[string]*AccountStore
-}
-
-type destStoreEntity struct {
-	Destinations []destStoreEntry `json:"destinations"`
-}
-
-type destStoreEntry struct {
-	DestBank    int32        `json:"destBank"`
-	DestAccount string       `json:"destAccount"`
-	Origins     []origEntity `json:"origins"`
-}
-
-type origEntity struct {
-	OrigBank    int32  `json:"origBank"`
-	OrigAccount string `json:"origAccount"`
+	tracker           *AccountStoreCheckpointTracker
 }
 
 func NewGroupByDestinationProcessor() *GroupByDestinationProcessor {
-	return &GroupByDestinationProcessor{
+	processor := &GroupByDestinationProcessor{
 		destinationStores: make(map[string]*AccountStore),
 	}
+	processor.tracker = NewAccountStoreCheckpointTracker(processor.getOrCreateStore)
+	return processor
 }
 
 func (p *GroupByDestinationProcessor) Process(clientID string, scatterGatherMsg *protobuf.ScatterGather, cm *checkpoint.CheckpointManager) error {
@@ -45,11 +33,9 @@ func (p *GroupByDestinationProcessor) Process(clientID string, scatterGatherMsg 
 		Account: scatterGatherMsg.GetToAccount(),
 	}
 
-	store.Add(destination, origin)
-
-	//if cm != nil {
-	//	cm.NotifyEntityChanged(clientID, "destinations")
-	//}
+	if store.Add(destination, origin) {
+		p.tracker.MarkRelationAdded(clientID, destination, origin)
+	}
 
 	return nil
 }
@@ -99,6 +85,7 @@ func (w *GroupByDestinationProcessor) Finalize(clientID string, yield func(resul
 	}
 
 	store.Clear()
+	w.tracker.ClearClient(clientID)
 	delete(w.destinationStores, clientID)
 	return uint64(totalGroups), nil
 }
@@ -106,69 +93,23 @@ func (w *GroupByDestinationProcessor) Finalize(clientID string, yield func(resul
 func (w *GroupByDestinationProcessor) Cleanup(clientID string) error {
 	store := w.getOrCreateStore(clientID)
 	store.Clear()
+	w.tracker.ClearClient(clientID)
 	delete(w.destinationStores, clientID)
 	return nil
 }
 
-func (w *GroupByDestinationProcessor) ListEntities(clientID string) ([]string, error) {
-	// if _, ok := w.destinationStores[clientID]; !ok {
-	// 	return nil, nil
-	// }
-	return []string{"destinations"}, nil
-}
-
-func (w *GroupByDestinationProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	// if entityID != "destinations" {
-	// 	return nil, fmt.Errorf("unknown entity: %s", entityID)
-	// }
-
-	// store := w.destinationStores[clientID]
-	// if store == nil {
-	// 	return nil, fmt.Errorf("store not found for client: %s", clientID)
-	// }
-
-	// data := store.GetData()
-	// entries := make([]destStoreEntry, 0)
-	// for dest, originsMap := range data {
-	// 	origins := make([]origEntity, 0, len(originsMap))
-	// 	for orig := range originsMap {
-	// 		origins = append(origins, origEntity{
-	// 			OrigBank:    orig.Bank,
-	// 			OrigAccount: orig.Account,
-	// 		})
-	// 	}
-	// 	entries = append(entries, destStoreEntry{
-	// 		DestBank:    dest.Bank,
-	// 		DestAccount: dest.Account,
-	// 		Origins:     origins,
-	// 	})
-	// }
-
-	// return json.Marshal(entries)
-	return []byte{}, nil
-}
-
-func (w *GroupByDestinationProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	// if entityID != "destinations" {
-	// 	return fmt.Errorf("unknown entity: %s", entityID)
-	// }
-
-	// var entries []destStoreEntry
-	// if err := json.Unmarshal(data, &entries); err != nil {
-	// 	return err
-	// }
-
-	// store := w.getOrCreateStore(clientID)
-	// for _, e := range entries {
-	// 	for _, o := range e.Origins {
-	// 		store.Add(Account{Bank: e.DestBank, Account: e.DestAccount}, Account{Bank: o.OrigBank, Account: o.OrigAccount})
-	// 	}
-	// }
-
-	return nil
-}
-
 func (w *GroupByDestinationProcessor) ClearClientState(clientID string) error {
-	//return w.Cleanup(clientID)
-	return nil
+	return w.Cleanup(clientID)
+}
+
+func (w *GroupByDestinationProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
+	return w.tracker.DrainChanges(clientID)
+}
+
+func (w *GroupByDestinationProcessor) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
+	return w.tracker.RestoreChanges(clientID, changes)
+}
+
+func (w *GroupByDestinationProcessor) ApplyChange(clientID string, change checkpoint.CheckpointChange) error {
+	return w.tracker.ApplyChange(clientID, change)
 }

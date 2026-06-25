@@ -42,8 +42,8 @@ func (e *StatefulEngine[T, V]) Run() error {
 		return nil
 	}
 
-	go e.coordinator.Run()
 	e.checkpointManager.LoadState(e.coordinator)
+	go e.coordinator.Run()
 	return e.receiver.Receive(e.handleEvent)
 }
 
@@ -117,7 +117,7 @@ func (e *StatefulEngine[T, V]) handleDataMessage(event r.Event[T]) error {
 	return nil
 }
 
-func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, eofCount uint64, eofID string) error {
+func (e *StatefulEngine[T, V]) handleTrueEOF(clientID string, _ uint64, eofID string) error {
 	newEof := fmt.Sprintf("%s-%d", eofID, e.id)
 	yield := func(result V) error {
 		return e.sender.Add(clientID, result, newEof)

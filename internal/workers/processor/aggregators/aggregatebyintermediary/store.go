@@ -16,11 +16,11 @@ func NewIntermediaryStore() *IntermediaryStore {
 	}
 }
 
-func (s *IntermediaryStore) AddOrigin(intermediary model.Account, origin model.Account) {
+func (s *IntermediaryStore) AddOrigin(intermediary model.Account, origin model.Account) bool {
 	relations := s.getOrCreateRelations(intermediary)
 
 	if _, exists := relations.Origins[origin]; exists {
-		return
+		return false
 	}
 
 	for destination := range relations.Destinations {
@@ -32,13 +32,14 @@ func (s *IntermediaryStore) AddOrigin(intermediary model.Account, origin model.A
 	}
 
 	relations.Origins[origin] = struct{}{}
+	return true
 }
 
-func (s *IntermediaryStore) AddDestination(intermediary model.Account, destination model.Account) {
+func (s *IntermediaryStore) AddDestination(intermediary model.Account, destination model.Account) bool {
 	relations := s.getOrCreateRelations(intermediary)
 
 	if _, exists := relations.Destinations[destination]; exists {
-		return
+		return false
 	}
 
 	for origin := range relations.Origins {
@@ -50,6 +51,7 @@ func (s *IntermediaryStore) AddDestination(intermediary model.Account, destinati
 	}
 
 	relations.Destinations[destination] = struct{}{}
+	return true
 }
 
 func (s *IntermediaryStore) getOrCreateRelations(
@@ -84,10 +86,3 @@ func (s *IntermediaryStore) Clear() {
 	s.relations = make(map[model.Account]*IntermediaryRelations)
 	s.pairs = make(map[model.OriginDestinationPair]int)
 }
-
-// func (s *IntermediaryStore) AddPairWithCount(pair model.OriginDestinationPair, count int) {
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-
-// 	s.pairs[pair] = count
-// }

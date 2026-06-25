@@ -3,7 +3,6 @@ package avgbytype
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
@@ -21,22 +20,26 @@ type period1StatsCheckpointValue struct {
 }
 
 type period2TxsCheckpointValue struct {
-	Format      string `json:"format"`
-	Account     string `json:"account"`
-	AmountPaid  string `json:"amountPaid"`
+	Format     string `json:"format"`
+	Account    string `json:"account"`
+	AmountPaid string `json:"amountPaid"`
 }
 
 type AvgByTypeCheckpointTracker struct {
-	storeForClient func(clientID string) *clientState
-	dirtyPeriod1   map[string]map[string]bool
-	dirtyPeriod2   map[string]map[string]bool
+	storeForClient              func(clientID string) *clientState
+	dirtyPeriod1                map[string]map[string]bool
+	dirtyPeriod2                map[string]map[string]bool
+	lastCheckpointedPeriod2Idx  map[string]map[string]int
+	pendingCheckpointPeriod2Idx map[string]map[string]int
 }
 
 func NewAvgByTypeCheckpointTracker(storeForClient func(clientID string) *clientState) *AvgByTypeCheckpointTracker {
 	return &AvgByTypeCheckpointTracker{
-		storeForClient: storeForClient,
-		dirtyPeriod1:   make(map[string]map[string]bool),
-		dirtyPeriod2:   make(map[string]map[string]bool),
+		storeForClient:              storeForClient,
+		dirtyPeriod1:                make(map[string]map[string]bool),
+		dirtyPeriod2:                make(map[string]map[string]bool),
+		lastCheckpointedPeriod2Idx:  make(map[string]map[string]int),
+		pendingCheckpointPeriod2Idx: make(map[string]map[string]int),
 	}
 }
 
@@ -81,7 +84,13 @@ func (t *AvgByTypeCheckpointTracker) DrainChanges(clientID string) ([]checkpoint
 	if formats, ok := t.dirtyPeriod2[clientID]; ok {
 		for format := range formats {
 			if txs, exists := state.period2Transactions[format]; exists {
-				for _, tx := range txs {
+				from := t.lastCheckpointedIndex(clientID, format)
+				if from > len(txs) {
+					from = len(txs)
+				}
+				t.setPendingCheckpointIndex(clientID, format, from)
+				for i := from; i < len(txs); i++ {
+					tx := txs[i]
 					value, err := json.Marshal(period2TxsCheckpointValue{
 						Format:     format,
 						Account:    tx.GetAccount(),
@@ -92,10 +101,11 @@ func (t *AvgByTypeCheckpointTracker) DrainChanges(clientID string) ([]checkpoint
 					}
 					changes = append(changes, checkpoint.CheckpointChange{
 						Kind:  checkpointKindPeriod2Txs,
-						Key:   fmt.Sprintf("%s:%s", format, tx.GetAccount()),
+						Key:   fmt.Sprintf("%s:%d", format, i),
 						Value: json.RawMessage(value),
 					})
 				}
+				t.setLastCheckpointedIndex(clientID, format, len(txs))
 			}
 		}
 	}
@@ -106,40 +116,29 @@ func (t *AvgByTypeCheckpointTracker) DrainChanges(clientID string) ([]checkpoint
 }
 
 func (t *AvgByTypeCheckpointTracker) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
-	state := t.storeForClient(clientID)
+	period2Formats := make(map[string]struct{})
 
 	for _, change := range changes {
 		switch change.Kind {
 		case checkpointKindPeriod1Stats:
 			var value period1StatsCheckpointValue
-			if err := json.Unmarshal(change.Value, &value); err != nil {
-				slog.Error("AvgByTypeCheckpointTracker RestoreChanges: failed to unmarshal period1Stats", "clientID", clientID, "error", err)
-				return err
+			if err := json.Unmarshal(change.Value, &value); err == nil {
+				t.MarkPeriod1Changed(clientID, value.Format)
 			}
-			if state.period1Stats == nil {
-				state.period1Stats = make(map[string]*AvgByTypeStats)
-			}
-			state.period1Stats[value.Format] = &AvgByTypeStats{
-				Sum:   value.Sum,
-				Count: value.Count,
-			}
-			t.MarkPeriod1Changed(clientID, value.Format)
 
 		case checkpointKindPeriod2Txs:
 			var value period2TxsCheckpointValue
-			if err := json.Unmarshal(change.Value, &value); err != nil {
-				slog.Error("AvgByTypeCheckpointTracker RestoreChanges: failed to unmarshal period2Txs", "clientID", clientID, "error", err)
-				return err
+			if err := json.Unmarshal(change.Value, &value); err == nil {
+				t.MarkPeriod2Changed(clientID, value.Format)
+				period2Formats[value.Format] = struct{}{}
 			}
-			if state.period2Transactions == nil {
-				state.period2Transactions = make(map[string][]*protobuf.AvgByTypeTransaction)
-			}
-			tx := &protobuf.AvgByTypeTransaction{
-				Account:    value.Account,
-				AmountPaid: value.AmountPaid,
-			}
-			state.period2Transactions[value.Format] = append(state.period2Transactions[value.Format], tx)
-			t.MarkPeriod2Changed(clientID, value.Format)
+		}
+	}
+
+	for format := range period2Formats {
+		if previous, ok := t.pendingCheckpointIndex(clientID, format); ok {
+			t.setLastCheckpointedIndex(clientID, format, previous)
+			t.clearPendingCheckpointIndex(clientID, format)
 		}
 	}
 	return nil
@@ -152,7 +151,6 @@ func (t *AvgByTypeCheckpointTracker) ApplyChange(clientID string, change checkpo
 	case checkpointKindPeriod1Stats:
 		var value period1StatsCheckpointValue
 		if err := json.Unmarshal(change.Value, &value); err != nil {
-			slog.Error("AvgByTypeCheckpointTracker ApplyChange: failed to unmarshal period1Stats", "clientID", clientID, "error", err)
 			return err
 		}
 		if state.period1Stats == nil {
@@ -166,7 +164,6 @@ func (t *AvgByTypeCheckpointTracker) ApplyChange(clientID string, change checkpo
 	case checkpointKindPeriod2Txs:
 		var value period2TxsCheckpointValue
 		if err := json.Unmarshal(change.Value, &value); err != nil {
-			slog.Error("AvgByTypeCheckpointTracker ApplyChange: failed to unmarshal period2Txs", "clientID", clientID, "error", err)
 			return err
 		}
 		if state.period2Transactions == nil {
@@ -177,11 +174,10 @@ func (t *AvgByTypeCheckpointTracker) ApplyChange(clientID string, change checkpo
 			AmountPaid: value.AmountPaid,
 		}
 		state.period2Transactions[value.Format] = append(state.period2Transactions[value.Format], tx)
+		t.setLastCheckpointedIndex(clientID, value.Format, len(state.period2Transactions[value.Format]))
 
 	default:
-		err := fmt.Errorf("unknown avgbytype checkpoint change kind: %s", change.Kind)
-		slog.Error("AvgByTypeCheckpointTracker ApplyChange: unknown change kind", "clientID", clientID, "kind", change.Kind, "error", err)
-		return err
+		return fmt.Errorf("unknown avgbytype checkpoint change kind: %s", change.Kind)
 	}
 	return nil
 }
@@ -189,4 +185,45 @@ func (t *AvgByTypeCheckpointTracker) ApplyChange(clientID string, change checkpo
 func (t *AvgByTypeCheckpointTracker) ClearClient(clientID string) {
 	delete(t.dirtyPeriod1, clientID)
 	delete(t.dirtyPeriod2, clientID)
+	delete(t.lastCheckpointedPeriod2Idx, clientID)
+	delete(t.pendingCheckpointPeriod2Idx, clientID)
+}
+
+func (t *AvgByTypeCheckpointTracker) lastCheckpointedIndex(clientID, format string) int {
+	if t.lastCheckpointedPeriod2Idx[clientID] == nil {
+		return 0
+	}
+	return t.lastCheckpointedPeriod2Idx[clientID][format]
+}
+
+func (t *AvgByTypeCheckpointTracker) setLastCheckpointedIndex(clientID, format string, index int) {
+	if t.lastCheckpointedPeriod2Idx[clientID] == nil {
+		t.lastCheckpointedPeriod2Idx[clientID] = make(map[string]int)
+	}
+	t.lastCheckpointedPeriod2Idx[clientID][format] = index
+}
+
+func (t *AvgByTypeCheckpointTracker) setPendingCheckpointIndex(clientID, format string, index int) {
+	if t.pendingCheckpointPeriod2Idx[clientID] == nil {
+		t.pendingCheckpointPeriod2Idx[clientID] = make(map[string]int)
+	}
+	t.pendingCheckpointPeriod2Idx[clientID][format] = index
+}
+
+func (t *AvgByTypeCheckpointTracker) pendingCheckpointIndex(clientID, format string) (int, bool) {
+	if t.pendingCheckpointPeriod2Idx[clientID] == nil {
+		return 0, false
+	}
+	index, ok := t.pendingCheckpointPeriod2Idx[clientID][format]
+	return index, ok
+}
+
+func (t *AvgByTypeCheckpointTracker) clearPendingCheckpointIndex(clientID, format string) {
+	if t.pendingCheckpointPeriod2Idx[clientID] == nil {
+		return
+	}
+	delete(t.pendingCheckpointPeriod2Idx[clientID], format)
+	if len(t.pendingCheckpointPeriod2Idx[clientID]) == 0 {
+		delete(t.pendingCheckpointPeriod2Idx, clientID)
+	}
 }

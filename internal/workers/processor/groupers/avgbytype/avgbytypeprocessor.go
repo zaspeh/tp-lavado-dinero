@@ -19,8 +19,8 @@ type clientState struct {
 }
 
 type AvgByTypeProcessor struct {
-	clients  map[string]*clientState
-	tracker  *AvgByTypeCheckpointTracker
+	clients map[string]*clientState
+	tracker *AvgByTypeCheckpointTracker
 }
 
 func NewAvgByTypeProcessor() *AvgByTypeProcessor {
@@ -66,9 +66,6 @@ func (p *AvgByTypeProcessor) processFirstPeriod(state *clientState, tx *protobuf
 	stats.Sum += amount
 	stats.Count++
 
-	if cm != nil {
-		cm.NotifyEntityChanged(clientID, "period1")
-	}
 	p.tracker.MarkPeriod1Changed(clientID, paymentFormat)
 	return nil
 }
@@ -81,9 +78,6 @@ func (p *AvgByTypeProcessor) processSecondPeriod(state *clientState, tx *protobu
 
 	state.period2Transactions[paymentFormat] = append(state.period2Transactions[paymentFormat], tx)
 
-	if cm != nil {
-		cm.NotifyEntityChanged(clientID, "period2")
-	}
 	p.tracker.MarkPeriod2Changed(clientID, paymentFormat)
 	return nil
 }

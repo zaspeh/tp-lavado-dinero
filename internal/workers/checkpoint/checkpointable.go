@@ -17,25 +17,7 @@ type CheckpointChange struct {
 
 type Checkpointable interface {
 	ClearClientState(clientID string) error
-}
-
-type ChangeCheckpointable interface {
-	Checkpointable
 	DrainChanges(clientID string) ([]CheckpointChange, error)
-	ApplyChange(clientID string, change CheckpointChange) error
-}
-
-type NamedCheckpointable interface {
-	CheckpointParticipantName() string
-}
-
-type RestorableChangeCheckpointable interface {
 	RestoreChanges(clientID string, changes []CheckpointChange) error
-}
-
-type EntityCheckpointable interface {
-	Checkpointable
-	SerializeEntity(clientID, entityID string) ([]byte, error)
-	LoadEntity(clientID, entityID string, data []byte) error
-	ListEntities(clientID string) ([]string, error)
+	ApplyChange(clientID string, change CheckpointChange) error
 }

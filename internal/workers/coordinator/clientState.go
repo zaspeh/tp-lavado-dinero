@@ -1,7 +1,7 @@
 package coordinator
 
 import (
-	"log/slog"
+	"maps"
 )
 
 type clientState struct {
@@ -9,10 +9,9 @@ type clientState struct {
 	peerBatches map[int]map[string]BatchRecord // batches del resto de los peers, no locales
 
 	// Estados eof
-	seenEOFs      map[string]uint64
-	eofCount      uint32
-	expectedTotal uint64
-	lastEOFID     string
+	ownEOFs   map[string]uint64
+	peerEOFs  map[int]map[string]uint64
+	lastEOFID string
 
 	flushed bool
 }
@@ -21,7 +20,8 @@ func newClientState() *clientState {
 	return &clientState{
 		ownBatches:  make(map[string]BatchRecord),
 		peerBatches: make(map[int]map[string]BatchRecord),
-		seenEOFs:    make(map[string]uint64),
+		ownEOFs:     make(map[string]uint64),
+		peerEOFs:    make(map[int]map[string]uint64),
 	}
 }
 
@@ -41,15 +41,29 @@ func (cs *clientState) addPeerBatch(peerID int, record BatchRecord) {
 	cs.peerBatches[peerID][record.BatchID] = record
 }
 
-func (cs *clientState) hasSeenEOF(eofID string) bool {
-	_, ok := cs.seenEOFs[eofID]
+func (cs *clientState) hasOwnEOF(eofID string) bool {
+	_, ok := cs.ownEOFs[eofID]
 	return ok
 }
 
-func (cs *clientState) markEOFSeen(eofID string, expectedTotal uint64) {
-	cs.seenEOFs[eofID] = expectedTotal
-	cs.expectedTotal += expectedTotal
-	cs.eofCount++
+func (cs *clientState) hasPeerEOF(peerID int, eofID string) bool {
+	if cs.peerEOFs[peerID] == nil {
+		return false
+	}
+	_, ok := cs.peerEOFs[peerID][eofID]
+	return ok
+}
+
+func (cs *clientState) addOwnEOF(eofID string, expectedTotal uint64) {
+	cs.ownEOFs[eofID] = expectedTotal
+	cs.lastEOFID = eofID
+}
+
+func (cs *clientState) addPeerEOF(peerID int, eofID string, expectedTotal uint64) {
+	if cs.peerEOFs[peerID] == nil {
+		cs.peerEOFs[peerID] = make(map[string]uint64)
+	}
+	cs.peerEOFs[peerID][eofID] = expectedTotal
 	cs.lastEOFID = eofID
 }
 
@@ -81,24 +95,40 @@ func (cs *clientState) totals() (uint64, uint64) {
 	return processed, survivors
 }
 
+func (cs *clientState) eofTotals() (uint32, uint64) {
+	counted := make(map[string]uint64)
+
+	maps.Copy(counted, cs.ownEOFs)
+
+	for _, peerEOFs := range cs.peerEOFs {
+		for eofID, expectedTotal := range peerEOFs {
+			if _, exists := counted[eofID]; exists {
+				continue
+			}
+			counted[eofID] = expectedTotal
+		}
+	}
+
+	var expectedTotal uint64
+	for _, total := range counted {
+		expectedTotal += total
+	}
+	return uint32(len(counted)), expectedTotal
+}
+
 func (cs *clientState) isReadyToFlush(expectedEOFs uint32) bool {
 	if cs.flushed {
 		return false
 	}
 	if !cs.hasAllEOFs(expectedEOFs) {
-		slog.Debug("Not ready to flush: not all EOFs", "eofCount", cs.eofCount, "expectedEOFs", expectedEOFs)
 		return false
 	}
 	processed, _ := cs.totals()
-	slog.Debug("isReadyToFlush check", "processed", processed, "expectedTotal", cs.expectedTotal)
-	return processed >= cs.expectedTotal
+	_, expectedTotal := cs.eofTotals()
+	return processed >= expectedTotal
 }
 
 func (cs *clientState) hasAllEOFs(expectedEOFs uint32) bool {
-	return cs.eofCount >= expectedEOFs
-}
-
-// TODO: metodo parche no deberia ser necesario suarlo
-func (cs *clientState) wouldHaveAllEOFs(expectedEOFs uint32) bool {
-	return cs.eofCount+1 >= expectedEOFs
+	eofCount, _ := cs.eofTotals()
+	return eofCount >= expectedEOFs
 }

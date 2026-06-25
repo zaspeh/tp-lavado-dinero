@@ -164,7 +164,7 @@ func (t *ScatterGatherCheckpointTracker) ApplyChange(clientID string, change che
 		}
 		// if Count==0 treat as deletion
 		if v.Count == 0 {
-			// best-effort: rebuild from snapshot copying, removal will be reflected when SerializeEntity is called
+			// Best-effort: rebuild from the checkpoint changes available in memory.
 			// We don't have direct deletion API; set pair count to 0
 			store.SetPairCount(model.OriginDestinationPair{
 				Origin:      model.Account{Bank: v.OriginBank, Account: v.OriginAccount},

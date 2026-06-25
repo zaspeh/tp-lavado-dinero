@@ -8,29 +8,17 @@ import (
 	"github.com/zaspeh/tp-lavado-dinero/internal/workers/checkpoint"
 )
 
-type storeEntity struct {
-	Relations map[string][]string `json:"relations"`
-	Pairs     []pairEntity        `json:"pairs"`
-}
-
-type pairEntity struct {
-	OriginBank          int32  `json:"originBank"`
-	OriginAccount       string `json:"originAccount"`
-	DestBank            int32  `json:"destBank"`
-	DestAccount         string `json:"destAccount"`
-	IntermediaryBank    int32  `json:"intermediaryBank"`
-	IntermediaryAccount string `json:"intermediaryAccount"`
-	Count               int    `json:"count"`
-}
-
 type AggregateByIntermediaryProcessor struct {
-	stores map[string]*IntermediaryStore
+	stores  map[string]*IntermediaryStore
+	tracker *AggregateByIntermediaryCheckpointTracker
 }
 
 func NewAggregateByIntermediaryProcessor() *AggregateByIntermediaryProcessor {
-	return &AggregateByIntermediaryProcessor{
+	processor := &AggregateByIntermediaryProcessor{
 		stores: make(map[string]*IntermediaryStore),
 	}
+	processor.tracker = NewAggregateByIntermediaryCheckpointTracker(processor.getOrCreateStore)
+	return processor
 }
 
 func (p *AggregateByIntermediaryProcessor) Process(clientID string, msg IntermediaryPairEvent, cm *checkpoint.CheckpointManager) error {
@@ -47,14 +35,18 @@ func (p *AggregateByIntermediaryProcessor) Process(clientID string, msg Intermed
 			Account: msg.Pair.GetAccount().GetAccount(),
 		}
 
-		store.AddOrigin(intermediary, origin)
+		if store.AddOrigin(intermediary, origin) {
+			p.tracker.MarkOriginAdded(clientID, intermediary, origin)
+		}
 	} else {
 		destination := model.Account{
 			Bank:    msg.Pair.GetAccount().GetBank(),
 			Account: msg.Pair.GetAccount().GetAccount(),
 		}
 
-		store.AddDestination(intermediary, destination)
+		if store.AddDestination(intermediary, destination) {
+			p.tracker.MarkDestinationAdded(clientID, intermediary, destination)
+		}
 	}
 
 	slog.Debug("Origin intermediary pair: ", "Account", msg.Pair.GetAccount().GetAccount(), "Intermediary", msg.Pair.GetIntermediary().GetAccount())
@@ -75,6 +67,7 @@ func (p *AggregateByIntermediaryProcessor) Finalize(clientID string, yield func(
 	store := p.getOrCreateStore(clientID)
 	defer func() {
 		store.Clear()
+		p.tracker.ClearClient(clientID)
 		delete(p.stores, clientID)
 	}()
 
@@ -110,123 +103,22 @@ func (p *AggregateByIntermediaryProcessor) Cleanup(clientID string) error {
 	store := p.getOrCreateStore(clientID)
 	store.Clear()
 	delete(p.stores, clientID)
+	p.tracker.ClearClient(clientID)
 	return nil
 }
-
-func (p *AggregateByIntermediaryProcessor) ListEntities(clientID string) ([]string, error) {
-	// p.storesMu.RLock()
-	// defer p.storesMu.RUnlock()
-
-	// if _, ok := p.stores[clientID]; !ok {
-	// 	return nil, nil
-	// }
-	return []string{"store"}, nil
-}
-
-func (p *AggregateByIntermediaryProcessor) SerializeEntity(clientID, entityID string) ([]byte, error) {
-	// if entityID != "store" {
-	// 	return nil, fmt.Errorf("unknown entity: %s", entityID)
-	// }
-
-	// p.storesMu.RLock()
-	// defer p.storesMu.RUnlock()
-
-	// store := p.stores[clientID]
-	// if store == nil {
-	// 	return nil, fmt.Errorf("store not found for client: %s", clientID)
-	// }
-
-	// entities := storeEntity{
-	// 	Relations: make(map[string][]string),
-	// 	Pairs:    make([]pairEntity, 0),
-	// }
-
-	// for intermediary, relations := range store.relations {
-	// 	key := fmt.Sprintf("%d:%s", intermediary.Bank, intermediary.Account)
-	// 	for origin := range relations.Origins {
-	// 		entities.Relations[key] = append(entities.Relations[key], fmt.Sprintf("O:%d:%s", origin.Bank, origin.Account))
-	// 	}
-	// 	for dest := range relations.Destinations {
-	// 		entities.Relations[key] = append(entities.Relations[key], fmt.Sprintf("D:%d:%s", dest.Bank, dest.Account))
-	// 	}
-	// }
-
-	// for pair, count := range store.pairs {
-	// 	entities.Pairs = append(entities.Pairs, pairEntity{
-	// 		OriginBank:      pair.Origin.Bank,
-	// 		OriginAccount:   pair.Origin.Account,
-	// 		DestBank:        pair.Destination.Bank,
-	// 		DestAccount:     pair.Destination.Account,
-	// 		Count:           count,
-	// 	})
-	// }
-
-	// return json.Marshal(entities)
-	return []byte{}, nil
-}
-
-func (p *AggregateByIntermediaryProcessor) LoadEntity(clientID, entityID string, data []byte) error {
-	// if entityID != "store" {
-	// 	return fmt.Errorf("unknown entity: %s", entityID)
-	// }
-
-	// var entities storeEntity
-	// if err := json.Unmarshal(data, &entities); err != nil {
-	// 	return err
-	// }
-
-	// p.storesMu.Lock()
-	// defer p.storesMu.Unlock()
-
-	// store := p.getOrCreateStore(clientID)
-
-	// for key, values := range entities.Relations {
-	// 	var iBank int32
-	// 	var iAccount string
-	// 	parts := splitFirst(key, ":")
-	// 	fmt.Sscanf(parts[0], "%d", &iBank)
-	// 	iAccount = parts[1]
-	// 	intermediary := model.Account{Bank: iBank, Account: iAccount}
-
-	// 	for _, v := range values {
-	// 		var aBank int32
-	// 		var aAccount string
-	// 		if v[0] == 'O' {
-	// 			rest := v[2:]
-	// 			parts := splitFirst(rest, ":")
-	// 			fmt.Sscanf(parts[0], "%d", &aBank)
-	// 			aAccount = parts[1]
-	// 			store.AddOrigin(intermediary, model.Account{Bank: aBank, Account: aAccount})
-	// 		} else if v[0] == 'D' {
-	// 			rest := v[2:]
-	// 			parts := splitFirst(rest, ":")
-	// 			fmt.Sscanf(parts[0], "%d", &aBank)
-	// 			aAccount = parts[1]
-	// 			store.AddDestination(intermediary, model.Account{Bank: aBank, Account: aAccount})
-	// 		}
-	// 	}
-	// }
-
-	// for _, pair := range entities.Pairs {
-	// 	store.AddPairWithCount(model.OriginDestinationPair{
-	// 		Origin:      model.Account{Bank: pair.OriginBank, Account: pair.OriginAccount},
-	// 		Destination: model.Account{Bank: pair.DestBank, Account: pair.DestAccount},
-	// 	}, pair.Count)
-	// }
-
-	return nil
-}
-
-// func splitFirst(s, sep string) [2]string {
-// 	for i := 0; i < len(s); i++ {
-// 		if s[i] == sep[0] {
-// 			return [2]string{s[:i], s[i+1:]}
-// 		}
-// 	}
-// 	return [2]string{s, ""}
-// }
 
 func (p *AggregateByIntermediaryProcessor) ClearClientState(clientID string) error {
-	//return p.Cleanup(clientID)
-	return nil
+	return p.Cleanup(clientID)
+}
+
+func (p *AggregateByIntermediaryProcessor) DrainChanges(clientID string) ([]checkpoint.CheckpointChange, error) {
+	return p.tracker.DrainChanges(clientID)
+}
+
+func (p *AggregateByIntermediaryProcessor) RestoreChanges(clientID string, changes []checkpoint.CheckpointChange) error {
+	return p.tracker.RestoreChanges(clientID, changes)
+}
+
+func (p *AggregateByIntermediaryProcessor) ApplyChange(clientID string, change checkpoint.CheckpointChange) error {
+	return p.tracker.ApplyChange(clientID, change)
 }

@@ -6,13 +6,13 @@ import time
 
 STATEFUL_TYPES = {
    "microtransaction_join",
-   #"max_bank",
+   "max_bank",
    "max_bank_join",
-   #"avg_by_type",
+   "avg_by_type",
    "avg_by_type_join",
-   #"group_by_origin",
-   #"group_by_destination",
-   #"aggregate_by_intermediary",
+   "group_by_origin",
+   "group_by_destination",
+   "aggregate_by_intermediary",
    "scatter_gather_join",
    "converter_join",
 }
