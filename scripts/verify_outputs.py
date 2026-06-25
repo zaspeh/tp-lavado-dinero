@@ -7,7 +7,7 @@ import pandas as pd
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 EXPECTED_DIR = ROOT_DIR / "expected_outputs" / "expected_hi_small"
-OUTPUTS_DIR = ROOT_DIR / "outputs" / "client_1"
+OUTPUTS_DIR = ROOT_DIR / "outputs" / "client_0"
 
 def get_queries_spec(expected_dir) -> dict:
     query_specs = {

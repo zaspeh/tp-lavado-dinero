@@ -102,6 +102,11 @@ func (c *EOFCoordinator) restoreFromStorage() error {
 		return err
 	}
 
+	flushed, err := c.storage.LoadFlushed()
+	if err != nil {
+		return err
+	}
+
 	for clientID, clientBatches := range batches {
 		state := c.getClientState(clientID)
 		for _, record := range clientBatches {
@@ -114,6 +119,11 @@ func (c *EOFCoordinator) restoreFromStorage() error {
 		for eofID, expectedTotal := range clientEOFs {
 			state.addOwnEOF(eofID, expectedTotal)
 		}
+	}
+
+	for flushedClientID := range flushed {
+		state := c.getClientState(flushedClientID)
+		state.flushed = true
 	}
 
 	return nil
@@ -453,6 +463,10 @@ func (c *EOFCoordinator) tryFlush(clientID string, state *clientState) error {
 		return err
 	}
 	state.flushed = true
+	if err := c.storage.WriteFlushed(clientID); err != nil {
+		return err
+	}
+
 	return nil
 }
 

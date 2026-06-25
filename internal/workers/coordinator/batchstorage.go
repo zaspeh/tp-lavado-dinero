@@ -14,6 +14,7 @@ const (
 	batchColumns       = 4
 	batchFormat        = "%s|%s|%d|%d\n"
 	eofFormat          = "%s|%s|%d\n"
+	flushFormat        = "%s|flushed\n"
 	clientIDIndex      = 0
 	batchIDIndex       = 1
 	eofIDIndex         = 1
@@ -29,10 +30,12 @@ type BatchRecord struct {
 }
 
 type BatchStorage struct {
-	batchFile   *os.File
-	batchWriter *bufio.Writer
-	eofFile     *os.File
-	eofWriter   *bufio.Writer
+	batchFile     *os.File
+	batchWriter   *bufio.Writer
+	eofFile       *os.File
+	eofWriter     *bufio.Writer
+	flushedFile   *os.File
+	flushedWriter *bufio.Writer
 }
 
 func NewBatchStorage(workerName string, workerID int) (*BatchStorage, error) {
@@ -52,11 +55,20 @@ func NewBatchStorage(workerName string, workerID int) (*BatchStorage, error) {
 		return nil, err
 	}
 
+	flushed, err := os.OpenFile(fmt.Sprintf("%s/flushed.log", dir), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		batchFile.Close()
+		eofFile.Close()
+		return nil, err
+	}
+
 	return &BatchStorage{
-		batchFile:   batchFile,
-		batchWriter: bufio.NewWriter(batchFile),
-		eofFile:     eofFile,
-		eofWriter:   bufio.NewWriter(eofFile),
+		batchFile:     batchFile,
+		batchWriter:   bufio.NewWriter(batchFile),
+		eofFile:       eofFile,
+		eofWriter:     bufio.NewWriter(eofFile),
+		flushedFile:   flushed,
+		flushedWriter: bufio.NewWriter(flushed),
 	}, nil
 }
 
@@ -120,6 +132,24 @@ func (s *BatchStorage) LoadEOFs() (map[string]map[string]uint64, error) {
 	return result, scanner.Err()
 }
 
+func (s *BatchStorage) LoadFlushed() (map[string]bool, error) {
+	if _, err := s.flushedFile.Seek(0, 0); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]bool)
+	scanner := bufio.NewScanner(s.flushedFile)
+	for scanner.Scan() {
+		parts := strings.Split(scanner.Text(), batchSeparator)
+		if len(parts) != 2 {
+			continue
+		}
+		clientID := parts[clientIDIndex]
+		result[clientID] = true
+	}
+	return result, scanner.Err()
+}
+
 func (s *BatchStorage) WriteBatch(clientID string, record BatchRecord) error {
 	_, err := fmt.Fprintf(s.batchWriter, batchFormat,
 		clientID, record.BatchID, record.Processed, record.Survivors)
@@ -137,11 +167,21 @@ func (s *BatchStorage) WriteEOF(clientID, eofID string, expectedTotal uint64) er
 	return s.eofWriter.Flush()
 }
 
+func (s *BatchStorage) WriteFlushed(clientID string) error {
+	_, err := fmt.Fprintf(s.flushedWriter, flushFormat, clientID)
+	if err != nil {
+		return err
+	}
+	return s.flushedWriter.Flush()
+}
+
 func (s *BatchStorage) Close() error {
 	s.batchWriter.Flush()
 	s.eofWriter.Flush()
+	s.flushedWriter.Flush()
 	s.batchFile.Close()
-	return s.eofFile.Close()
+	s.eofFile.Close()
+	return s.flushedFile.Close()
 }
 
 func (s *BatchStorage) ClearClient(clientID string) error {
