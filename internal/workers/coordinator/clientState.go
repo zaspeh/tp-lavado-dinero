@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"maps"
+	"sort"
 )
 
 type clientState struct {
@@ -56,7 +57,8 @@ func (cs *clientState) hasPeerEOF(peerID int, eofID string) bool {
 
 func (cs *clientState) addOwnEOF(eofID string, expectedTotal uint64) {
 	cs.ownEOFs[eofID] = expectedTotal
-	cs.lastEOFID = eofID
+
+	cs.getLastEOFID()
 }
 
 func (cs *clientState) addPeerEOF(peerID int, eofID string, expectedTotal uint64) {
@@ -64,7 +66,7 @@ func (cs *clientState) addPeerEOF(peerID int, eofID string, expectedTotal uint64
 		cs.peerEOFs[peerID] = make(map[string]uint64)
 	}
 	cs.peerEOFs[peerID][eofID] = expectedTotal
-	cs.lastEOFID = eofID
+	cs.getLastEOFID()
 }
 
 // totals calcula processed y survivors sobre la unión de batchIDs.
@@ -131,4 +133,21 @@ func (cs *clientState) isReadyToFlush(expectedEOFs uint32) bool {
 func (cs *clientState) hasAllEOFs(expectedEOFs uint32) bool {
 	eofCount, _ := cs.eofTotals()
 	return eofCount >= expectedEOFs
+}
+
+func (cs *clientState) getLastEOFID() {
+	allEOFIDs := make([]string, 0, len(cs.ownEOFs))
+
+	for eofID := range cs.ownEOFs {
+		allEOFIDs = append(allEOFIDs, eofID)
+	}
+
+	for _, peerEOFs := range cs.peerEOFs {
+		for eofID := range maps.Keys(peerEOFs) {
+			allEOFIDs = append(allEOFIDs, eofID)
+		}
+	}
+
+	sort.Strings(allEOFIDs)
+	cs.lastEOFID = allEOFIDs[len(allEOFIDs)-1]
 }

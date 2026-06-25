@@ -41,7 +41,7 @@ fault_hypervisor:
 # Nodos de la aplicación
 services:
   client:
-    count: 1
+    count: 2
     datasets_dir: ./datasets
     output_dir: ./outputs  
     max_batch_weight: 1000000
@@ -83,7 +83,7 @@ services:
     env:
       INPUT_EXCHANGE_NAME: microtransaction_join_exchange
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
     
   bank_router:
     count: 2
@@ -100,7 +100,7 @@ services:
     env:
       INPUT_EXCHANGE_NAME: max_bank_input_exchange
       OUTPUT_QUEUE_NAME: max_bank_join_input
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
   max_bank_router_to_join:
     count: 2
@@ -118,7 +118,7 @@ services:
       INPUT_EXCHANGE_NAME: max_bank_join_exchange
       CLIENT_EXCHANGE_NAME: client_results_exchange
       MAX_BANK_WORKER_AMOUNT: 2
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
     
 
   period_filter:
@@ -157,7 +157,7 @@ services:
     env:
       INPUT_EXCHANGE_NAME: payment_type_exchange
       OUTPUT_QUEUE_NAME: avg_by_type_router_to_join_input
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
   avg_by_type_router_to_join:
     count: 2
@@ -176,7 +176,7 @@ services:
       INPUT_EXCHANGE_NAME: avg_by_type_join_input
       CLIENT_EXCHANGE_NAME: client_results_exchange
       EXPECTED_EOFS: 1
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
 # Q4 exclusivo------------------------------------------------
   origin_destination_router:
@@ -199,7 +199,7 @@ services:
       INPUT_EXCHANGE_NAME: group_by_origin_destination
       OUTPUT_QUEUE_NAME: grouped_origin_accounts
 
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
   group_by_destination:
     count: 2
@@ -210,7 +210,7 @@ services:
       INPUT_EXCHANGE_NAME: group_by_origin_destination
       OUTPUT_QUEUE_NAME: grouped_destination_accounts
 
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
   
   origin_intermediary_router:
     count: 2
@@ -222,7 +222,7 @@ services:
       AGGREGATE_BY_INTERMEDIARY_EXCHANGE_NAME: origin_intermediary_aggregation
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 2
       INPUT_WORKERS_AMOUNT: 2 # Cantidad de workers group_by_origin
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
   destination_intermediary_router:
     count: 2
@@ -245,7 +245,7 @@ services:
 
       OUTPUT_QUEUE_NAME: suspicious_path_router_join_input
       OUTPUT_WORKER_AMOUNT: 2
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
   suspicious_path_router_to_join:
     count: 2
@@ -255,7 +255,7 @@ services:
       OUTPUT_EXCHANGE_NAME: suspicious_paths_output
       OUTPUT_WORKER_AMOUNT: 2
       EXPECTED_EOF_AMOUNT: 2
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
   scatter_gather_join:
     count: 2
@@ -265,7 +265,7 @@ services:
       INPUT_EXCHANGE_NAME: suspicious_paths_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
       AGGREGATE_BY_INTERMEDIARY_WORKER_AMOUNT: 1
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25
 
 # Q5 exclusivo------------------------------------------------
   payment_format_filter:
@@ -307,4 +307,4 @@ services:
     env:
       INPUT_EXCHANGE_NAME: converted_amount_output
       CLIENT_EXCHANGE_NAME: client_results_exchange
-      CHECKPOINT_EVERY_BATCHES: 100
+      CHECKPOINT_EVERY_BATCHES: 25

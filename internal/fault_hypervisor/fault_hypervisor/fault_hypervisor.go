@@ -202,6 +202,8 @@ func (fh *FaultHypervisor) checkWorkers() {
 		if worker.IsAlive && now.Sub(worker.LastSeen) > timeout {
 			worker.IsAlive = false
 			deadWorkers = append(deadWorkers, worker)
+		} else if !worker.IsAlive {
+			deadWorkers = append(deadWorkers, worker)
 		}
 	}
 
@@ -226,6 +228,10 @@ func (fh *FaultHypervisor) handleDeadWorker(worker *WorkerStatus) {
 		)
 		return
 	}
+
+	fh.mu.Lock()
+	worker.IsAlive = true
+	fh.mu.Unlock()
 
 	slog.Info("worker restarted", "container", worker.ContainerName)
 }
