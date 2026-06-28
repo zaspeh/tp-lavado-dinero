@@ -173,7 +173,7 @@ def build_fault_hypervisor(cfg, i, service_name):
         f"HYPERVISOR_COUNT={hypervisor_cfg.get('count', 1)}",
         f"COORDINATION_EXCHANGE_NAME={election_cfg.get('exchange_name')}",
         f"COORDINATION_HEARTBEAT_INTERVAL_SECONDS={election_cfg.get('heartbeat_interval_seconds')}",
-        f"LEADER_TIMEOUT_SECONDS={election_cfg.get('timeout_seconds')}",
+        f"LEADER_TIMEOUT_SECONDS={election_cfg.get('leader_timeout_seconds')}",
         f"ELECTION_TIMEOUT_SECONDS={election_cfg.get('election_timeout_seconds')}",
     ]
 

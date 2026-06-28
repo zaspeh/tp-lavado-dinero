@@ -25,7 +25,7 @@ fault_hypervisor:
   election:
     exchange_name: fault_hypervisor_coordination
     heartbeat_interval_seconds: 2
-    leader_timeout_seconds: 10
+    leader_timeout_seconds: 30
     election_timeout_seconds: 6
 
   env:

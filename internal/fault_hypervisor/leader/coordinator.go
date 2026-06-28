@@ -1,6 +1,7 @@
 package leader
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
@@ -64,6 +65,13 @@ func NewBullyCoordinator(
 	if config.ElectionTimeout == 0 {
 		config.ElectionTimeout = 3 * time.Second
 	}
+
+	slog.Info(
+		"bully config",
+		"heartbeat", config.HeartbeatInterval,
+		"leaderTimeout", config.LeaderTimeout,
+		"electionTimeout", config.ElectionTimeout,
+	)
 
 	var exchange *middleware.ExchangeMiddleware
 
