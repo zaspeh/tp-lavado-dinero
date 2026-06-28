@@ -4,7 +4,7 @@ COMPOSE_FILE=Compose.yml
 GENERATOR_SCRIPT=scripts/generate-compose.py
 TEST_SCRIPT=scripts/verify_outputs.py
 CHAOS_SCRIPT=scripts/chaos_monkey.py
-HYPERVISOR_CONTAINER=fault_hypervisor
+HYPERVISOR_CONTAINER ?= fault_hypervisor_2
 
 generate:
 	@python3 $(GENERATOR_SCRIPT)
@@ -13,8 +13,7 @@ up: generate $(COMPOSE_FILE)
 	docker compose -f $(COMPOSE_FILE) up -d --build --remove-orphans
 
 down:
-	docker compose -f $(COMPOSE_FILE) stop -t 1
-	docker compose -f $(COMPOSE_FILE) down
+	docker compose -f $(COMPOSE_FILE) down -v --remove-orphans
 
 logs:
 	docker compose -f $(COMPOSE_FILE) logs -f
@@ -34,7 +33,7 @@ chaos:
 	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) $(if $(TARGET),--target $(TARGET))
 
 real_chaos:
-	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) $(if $(TARGET),--target $(TARGET)) --kill
+	@python3 $(CHAOS_SCRIPT) --hypervisor-container $(HYPERVISOR_CONTAINER) $(if $(INTERVAL),--interval $(INTERVAL)) $(if $(TARGET),--target $(TARGET)) --kill
 
 catastrophe:
 	docker exec $(HYPERVISOR_CONTAINER) sh -c 'docker kill $$(docker ps -q)'

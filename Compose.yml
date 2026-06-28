@@ -63,7 +63,11 @@ services:
     depends_on:
       gateway:
         condition: service_started
-      fault_hypervisor:
+      fault_hypervisor_0:
+        condition: service_healthy
+      fault_hypervisor_1:
+        condition: service_healthy
+      fault_hypervisor_2:
         condition: service_healthy
     networks:
     - money_laundering_network
@@ -87,19 +91,105 @@ services:
     depends_on:
       gateway:
         condition: service_started
-      fault_hypervisor:
+      fault_hypervisor_0:
+        condition: service_healthy
+      fault_hypervisor_1:
+        condition: service_healthy
+      fault_hypervisor_2:
         condition: service_healthy
     networks:
     - money_laundering_network
-  fault_hypervisor:
+  fault_hypervisor_0:
     build:
       context: .
       dockerfile: cmd/fault_hypervisor/Dockerfile
-    container_name: fault_hypervisor
+    container_name: fault_hypervisor_0
     privileged: true
     environment:
     - MOM_HOST=rabbitmq
     - MOM_PORT=5672
+    - HYPERVISOR_ID=0
+    - HYPERVISOR_COUNT=3
+    - COORDINATION_EXCHANGE_NAME=fault_hypervisor_coordination
+    - COORDINATION_HEARTBEAT_INTERVAL_SECONDS=2
+    - LEADER_TIMEOUT_SECONDS=None
+    - ELECTION_TIMEOUT_SECONDS=6
+    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
+    - CHECK_INTERVAL_SECONDS=5
+    - HEARTBEAT_TIMEOUT_SECONDS=15
+    healthcheck:
+      test:
+      - CMD
+      - test
+      - -f
+      - /tmp/ready
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
+    volumes:
+    - ./Compose.yml:/app/Compose.yml:ro
+    - ./config.yml:/app/config.yml:ro
+    - .:/workspace:ro
+    - worker_storage:/worker-storage
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  fault_hypervisor_1:
+    build:
+      context: .
+      dockerfile: cmd/fault_hypervisor/Dockerfile
+    container_name: fault_hypervisor_1
+    privileged: true
+    environment:
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - HYPERVISOR_ID=1
+    - HYPERVISOR_COUNT=3
+    - COORDINATION_EXCHANGE_NAME=fault_hypervisor_coordination
+    - COORDINATION_HEARTBEAT_INTERVAL_SECONDS=2
+    - LEADER_TIMEOUT_SECONDS=None
+    - ELECTION_TIMEOUT_SECONDS=6
+    - HEARTBEAT_QUEUE_NAME=heartbeat_queue
+    - CHECK_INTERVAL_SECONDS=5
+    - HEARTBEAT_TIMEOUT_SECONDS=15
+    healthcheck:
+      test:
+      - CMD
+      - test
+      - -f
+      - /tmp/ready
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
+    volumes:
+    - ./Compose.yml:/app/Compose.yml:ro
+    - ./config.yml:/app/config.yml:ro
+    - .:/workspace:ro
+    - worker_storage:/worker-storage
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+    - money_laundering_network
+  fault_hypervisor_2:
+    build:
+      context: .
+      dockerfile: cmd/fault_hypervisor/Dockerfile
+    container_name: fault_hypervisor_2
+    privileged: true
+    environment:
+    - MOM_HOST=rabbitmq
+    - MOM_PORT=5672
+    - HYPERVISOR_ID=2
+    - HYPERVISOR_COUNT=3
+    - COORDINATION_EXCHANGE_NAME=fault_hypervisor_coordination
+    - COORDINATION_HEARTBEAT_INTERVAL_SECONDS=2
+    - LEADER_TIMEOUT_SECONDS=None
+    - ELECTION_TIMEOUT_SECONDS=6
     - HEARTBEAT_QUEUE_NAME=heartbeat_queue
     - CHECK_INTERVAL_SECONDS=5
     - HEARTBEAT_TIMEOUT_SECONDS=15

@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package protobuf;
+
+option go_package = "tp-lavado-dinero/internal/common/inner/protobuf";
+
+message CoordinatorHeartbeat {
+    int32 leader_id = 1;
+}

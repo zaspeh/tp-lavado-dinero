@@ -20,6 +20,14 @@ fault_hypervisor:
   enabled: true
   manages_workers: true
 
+  count: 3
+
+  election:
+    exchange_name: fault_hypervisor_coordination
+    heartbeat_interval_seconds: 2
+    leader_timeout_seconds: 10
+    election_timeout_seconds: 6
+
   env:
     HEARTBEAT_QUEUE_NAME: heartbeat_queue
     CHECK_INTERVAL_SECONDS: 5

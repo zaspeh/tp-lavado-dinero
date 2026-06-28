@@ -61,6 +61,9 @@ const (
 	MessageType_MAX_BANK_RESULT_BATCH                  MessageType = 34
 	MessageType_CONVERTED_MICRO_PAYMENT_RESULT_BATCH   MessageType = 35
 	MessageType_HEARTBEAT                              MessageType = 36
+	MessageType_COORDINATOR_ELECTION                   MessageType = 37
+	MessageType_COORDINATOR_OK                         MessageType = 38
+	MessageType_COORDINATOR_HEARTBEAT                  MessageType = 39
 )
 
 // Enum value maps for MessageType.
@@ -103,6 +106,9 @@ var (
 		34: "MAX_BANK_RESULT_BATCH",
 		35: "CONVERTED_MICRO_PAYMENT_RESULT_BATCH",
 		36: "HEARTBEAT",
+		37: "COORDINATOR_ELECTION",
+		38: "COORDINATOR_OK",
+		39: "COORDINATOR_HEARTBEAT",
 	}
 	MessageType_value = map[string]int32{
 		"EOF_":                                   0,
@@ -142,6 +148,9 @@ var (
 		"MAX_BANK_RESULT_BATCH":                  34,
 		"CONVERTED_MICRO_PAYMENT_RESULT_BATCH":   35,
 		"HEARTBEAT":                              36,
+		"COORDINATOR_ELECTION":                   37,
+		"COORDINATOR_OK":                         38,
+		"COORDINATOR_HEARTBEAT":                  39,
 	}
 )
 
@@ -201,8 +210,11 @@ type MoneyLaundry struct {
 	//	*MoneyLaundry_SuspiciouspathBatch
 	//	*MoneyLaundry_SuspiciousaccountBatch
 	//	*MoneyLaundry_ConvertedmicropaymentresultBatch
+	//	*MoneyLaundry_CoordinatorElection
+	//	*MoneyLaundry_CoordinatorOk
+	//	*MoneyLaundry_CoordinatorHeartbeat
 	InnerMessage  isMoneyLaundry_InnerMessage `protobuf_oneof:"inner_message"`
-	BatchID       string                      `protobuf:"bytes,23,opt,name=batchID,proto3" json:"batchID,omitempty"`
+	BatchID       string                      `protobuf:"bytes,26,opt,name=batchID,proto3" json:"batchID,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -436,6 +448,33 @@ func (x *MoneyLaundry) GetConvertedmicropaymentresultBatch() *ConvertedMicroPaym
 	return nil
 }
 
+func (x *MoneyLaundry) GetCoordinatorElection() *CoordinatorElection {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_CoordinatorElection); ok {
+			return x.CoordinatorElection
+		}
+	}
+	return nil
+}
+
+func (x *MoneyLaundry) GetCoordinatorOk() *CoordinatorOK {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_CoordinatorOk); ok {
+			return x.CoordinatorOk
+		}
+	}
+	return nil
+}
+
+func (x *MoneyLaundry) GetCoordinatorHeartbeat() *CoordinatorHeartbeat {
+	if x != nil {
+		if x, ok := x.InnerMessage.(*MoneyLaundry_CoordinatorHeartbeat); ok {
+			return x.CoordinatorHeartbeat
+		}
+	}
+	return nil
+}
+
 func (x *MoneyLaundry) GetBatchID() string {
 	if x != nil {
 		return x.BatchID
@@ -523,6 +562,18 @@ type MoneyLaundry_ConvertedmicropaymentresultBatch struct {
 	ConvertedmicropaymentresultBatch *ConvertedMicroPaymentResultBatch `protobuf:"bytes,22,opt,name=convertedmicropaymentresult_batch,json=convertedmicropaymentresultBatch,proto3,oneof"`
 }
 
+type MoneyLaundry_CoordinatorElection struct {
+	CoordinatorElection *CoordinatorElection `protobuf:"bytes,23,opt,name=coordinator_election,json=coordinatorElection,proto3,oneof"`
+}
+
+type MoneyLaundry_CoordinatorOk struct {
+	CoordinatorOk *CoordinatorOK `protobuf:"bytes,24,opt,name=coordinator_ok,json=coordinatorOk,proto3,oneof"`
+}
+
+type MoneyLaundry_CoordinatorHeartbeat struct {
+	CoordinatorHeartbeat *CoordinatorHeartbeat `protobuf:"bytes,25,opt,name=coordinator_heartbeat,json=coordinatorHeartbeat,proto3,oneof"`
+}
+
 func (*MoneyLaundry_Transactions) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ToConvertBatch) isMoneyLaundry_InnerMessage() {}
@@ -561,11 +612,17 @@ func (*MoneyLaundry_SuspiciousaccountBatch) isMoneyLaundry_InnerMessage() {}
 
 func (*MoneyLaundry_ConvertedmicropaymentresultBatch) isMoneyLaundry_InnerMessage() {}
 
+func (*MoneyLaundry_CoordinatorElection) isMoneyLaundry_InnerMessage() {}
+
+func (*MoneyLaundry_CoordinatorOk) isMoneyLaundry_InnerMessage() {}
+
+func (*MoneyLaundry_CoordinatorHeartbeat) isMoneyLaundry_InnerMessage() {}
+
 var File_internal_common_inner_protobuf_protomessages_moneylaundry_proto protoreflect.FileDescriptor
 
 const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDesc = "" +
 	"\n" +
-	"?internal/common/inner/protobuf/protomessages/moneylaundry.proto\x12\bprotobuf\x1a>internal/common/inner/protobuf/protomessages/transaction.proto\x1a=internal/common/inner/protobuf/protomessages/conversion.proto\x1a6internal/common/inner/protobuf/protomessages/eof.proto\x1a:internal/common/inner/protobuf/protomessages/maxbank.proto\x1aCinternal/common/inner/protobuf/protomessages/microtransaction.proto\x1a?internal/common/inner/protobuf/protomessages/periodfilter.proto\x1aGinternal/common/inner/protobuf/protomessages/avgbytypetransaction.proto\x1a@internal/common/inner/protobuf/protomessages/scattergather.proto\x1aCinternal/common/inner/protobuf/protomessages/intermediarypair.proto\x1a<internal/common/inner/protobuf/protomessages/heartbeat.proto\x1aGinternal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto\x1aBinternal/common/inner/protobuf/protomessages/avgbytyperesult.proto\x1aAinternal/common/inner/protobuf/protomessages/suspiciouspath.proto\x1aDinternal/common/inner/protobuf/protomessages/suspiciousaccount.proto\"\x8d\x0e\n" +
+	"?internal/common/inner/protobuf/protomessages/moneylaundry.proto\x12\bprotobuf\x1a>internal/common/inner/protobuf/protomessages/transaction.proto\x1a=internal/common/inner/protobuf/protomessages/conversion.proto\x1a6internal/common/inner/protobuf/protomessages/eof.proto\x1a:internal/common/inner/protobuf/protomessages/maxbank.proto\x1aCinternal/common/inner/protobuf/protomessages/microtransaction.proto\x1a?internal/common/inner/protobuf/protomessages/periodfilter.proto\x1aGinternal/common/inner/protobuf/protomessages/avgbytypetransaction.proto\x1a@internal/common/inner/protobuf/protomessages/scattergather.proto\x1aCinternal/common/inner/protobuf/protomessages/intermediarypair.proto\x1a<internal/common/inner/protobuf/protomessages/heartbeat.proto\x1aGinternal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto\x1aBinternal/common/inner/protobuf/protomessages/avgbytyperesult.proto\x1aAinternal/common/inner/protobuf/protomessages/suspiciouspath.proto\x1aDinternal/common/inner/protobuf/protomessages/suspiciousaccount.proto\x1aFinternal/common/inner/protobuf/protomessages/coordinatorelection.proto\x1a@internal/common/inner/protobuf/protomessages/coordinatorok.proto\x1aGinternal/common/inner/protobuf/protomessages/coordinatorheartbeat.proto\"\xfa\x0f\n" +
 	"\fMoneyLaundry\x12\x1a\n" +
 	"\bclientID\x18\x01 \x01(\tR\bclientID\x12)\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x15.protobuf.MessageTypeR\x04type\x12\x18\n" +
@@ -590,9 +647,12 @@ const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDe
 	"\x16avgbytype_result_batch\x18\x13 \x01(\v2\x1e.protobuf.AvgByTypeResultBatchH\x00R\x14avgbytypeResultBatch\x12R\n" +
 	"\x14suspiciouspath_batch\x18\x14 \x01(\v2\x1d.protobuf.SuspiciousPathBatchH\x00R\x13suspiciouspathBatch\x12[\n" +
 	"\x17suspiciousaccount_batch\x18\x15 \x01(\v2 .protobuf.SuspiciousAccountBatchH\x00R\x16suspiciousaccountBatch\x12y\n" +
-	"!convertedmicropaymentresult_batch\x18\x16 \x01(\v2*.protobuf.ConvertedMicroPaymentResultBatchH\x00R convertedmicropaymentresultBatch\x12\x18\n" +
-	"\abatchID\x18\x17 \x01(\tR\abatchIDB\x0f\n" +
-	"\rinner_message*\xd3\a\n" +
+	"!convertedmicropaymentresult_batch\x18\x16 \x01(\v2*.protobuf.ConvertedMicroPaymentResultBatchH\x00R convertedmicropaymentresultBatch\x12R\n" +
+	"\x14coordinator_election\x18\x17 \x01(\v2\x1d.protobuf.CoordinatorElectionH\x00R\x13coordinatorElection\x12@\n" +
+	"\x0ecoordinator_ok\x18\x18 \x01(\v2\x17.protobuf.CoordinatorOKH\x00R\rcoordinatorOk\x12U\n" +
+	"\x15coordinator_heartbeat\x18\x19 \x01(\v2\x1e.protobuf.CoordinatorHeartbeatH\x00R\x14coordinatorHeartbeat\x12\x18\n" +
+	"\abatchID\x18\x1a \x01(\tR\abatchIDB\x0f\n" +
+	"\rinner_message*\x9c\b\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04EOF_\x10\x00\x12\x0f\n" +
 	"\vTRANSACTION\x10\x01\x12\x14\n" +
@@ -631,7 +691,10 @@ const file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDe
 	"\x16INTERMEDIARYPAIR_BATCH\x10!\x12\x19\n" +
 	"\x15MAX_BANK_RESULT_BATCH\x10\"\x12(\n" +
 	"$CONVERTED_MICRO_PAYMENT_RESULT_BATCH\x10#\x12\r\n" +
-	"\tHEARTBEAT\x10$B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
+	"\tHEARTBEAT\x10$\x12\x18\n" +
+	"\x14COORDINATOR_ELECTION\x10%\x12\x12\n" +
+	"\x0eCOORDINATOR_OK\x10&\x12\x19\n" +
+	"\x15COORDINATOR_HEARTBEAT\x10'B1Z/tp-lavado-dinero/internal/common/inner/protobufb\x06proto3"
 
 var (
 	file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_rawDescOnce sync.Once
@@ -669,6 +732,9 @@ var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_goTypes
 	(*SuspiciousPathBatch)(nil),               // 18: protobuf.SuspiciousPathBatch
 	(*SuspiciousAccountBatch)(nil),            // 19: protobuf.SuspiciousAccountBatch
 	(*ConvertedMicroPaymentResultBatch)(nil),  // 20: protobuf.ConvertedMicroPaymentResultBatch
+	(*CoordinatorElection)(nil),               // 21: protobuf.CoordinatorElection
+	(*CoordinatorOK)(nil),                     // 22: protobuf.CoordinatorOK
+	(*CoordinatorHeartbeat)(nil),              // 23: protobuf.CoordinatorHeartbeat
 }
 var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_depIdxs = []int32{
 	0,  // 0: protobuf.MoneyLaundry.type:type_name -> protobuf.MessageType
@@ -691,11 +757,14 @@ var file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_depIdxs
 	18, // 17: protobuf.MoneyLaundry.suspiciouspath_batch:type_name -> protobuf.SuspiciousPathBatch
 	19, // 18: protobuf.MoneyLaundry.suspiciousaccount_batch:type_name -> protobuf.SuspiciousAccountBatch
 	20, // 19: protobuf.MoneyLaundry.convertedmicropaymentresult_batch:type_name -> protobuf.ConvertedMicroPaymentResultBatch
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	21, // 20: protobuf.MoneyLaundry.coordinator_election:type_name -> protobuf.CoordinatorElection
+	22, // 21: protobuf.MoneyLaundry.coordinator_ok:type_name -> protobuf.CoordinatorOK
+	23, // 22: protobuf.MoneyLaundry.coordinator_heartbeat:type_name -> protobuf.CoordinatorHeartbeat
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init() }
@@ -717,6 +786,9 @@ func file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init()
 	file_internal_common_inner_protobuf_protomessages_avgbytyperesult_proto_init()
 	file_internal_common_inner_protobuf_protomessages_suspiciouspath_proto_init()
 	file_internal_common_inner_protobuf_protomessages_suspiciousaccount_proto_init()
+	file_internal_common_inner_protobuf_protomessages_coordinatorelection_proto_init()
+	file_internal_common_inner_protobuf_protomessages_coordinatorok_proto_init()
+	file_internal_common_inner_protobuf_protomessages_coordinatorheartbeat_proto_init()
 	file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_msgTypes[0].OneofWrappers = []any{
 		(*MoneyLaundry_Transactions)(nil),
 		(*MoneyLaundry_ToConvertBatch)(nil),
@@ -737,6 +809,9 @@ func file_internal_common_inner_protobuf_protomessages_moneylaundry_proto_init()
 		(*MoneyLaundry_SuspiciouspathBatch)(nil),
 		(*MoneyLaundry_SuspiciousaccountBatch)(nil),
 		(*MoneyLaundry_ConvertedmicropaymentresultBatch)(nil),
+		(*MoneyLaundry_CoordinatorElection)(nil),
+		(*MoneyLaundry_CoordinatorOk)(nil),
+		(*MoneyLaundry_CoordinatorHeartbeat)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

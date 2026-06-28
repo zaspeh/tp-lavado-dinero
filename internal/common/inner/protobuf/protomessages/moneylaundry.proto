@@ -18,6 +18,9 @@ import "internal/common/inner/protobuf/protomessages/groupedaccountsbatch.proto"
 import "internal/common/inner/protobuf/protomessages/avgbytyperesult.proto";
 import "internal/common/inner/protobuf/protomessages/suspiciouspath.proto";
 import "internal/common/inner/protobuf/protomessages/suspiciousaccount.proto";
+import "internal/common/inner/protobuf/protomessages/coordinatorelection.proto";
+import "internal/common/inner/protobuf/protomessages/coordinatorok.proto";
+import "internal/common/inner/protobuf/protomessages/coordinatorheartbeat.proto";
 
 enum MessageType {
     EOF_ = 0;
@@ -62,6 +65,10 @@ enum MessageType {
     CONVERTED_MICRO_PAYMENT_RESULT_BATCH = 35;
 
     HEARTBEAT = 36;
+
+    COORDINATOR_ELECTION = 37;
+    COORDINATOR_OK = 38;
+    COORDINATOR_HEARTBEAT = 39;
 }
 
 message MoneyLaundry {
@@ -90,6 +97,9 @@ message MoneyLaundry {
         SuspiciousPathBatch suspiciouspath_batch = 20;
         SuspiciousAccountBatch suspiciousaccount_batch = 21;
         ConvertedMicroPaymentResultBatch convertedmicropaymentresult_batch = 22;
+        CoordinatorElection coordinator_election = 23;
+        CoordinatorOK coordinator_ok = 24;
+        CoordinatorHeartbeat coordinator_heartbeat = 25;
     }
-    string batchID = 23;
+    string batchID = 26;
 }

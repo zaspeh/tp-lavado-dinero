@@ -13,6 +13,7 @@ import (
 	protobuf "github.com/zaspeh/tp-lavado-dinero/internal/common/inner/protobuf/protomessages"
 	"github.com/zaspeh/tp-lavado-dinero/internal/common/inner/serializer"
 	configloader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/config_loader"
+	"github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/leader"
 	runtimepkg "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/runtime"
 )
 
@@ -31,7 +32,15 @@ type FaultHypervisorConfig struct {
 	HeartbeatQueueName      string
 	CheckIntervalSeconds    int
 	HeartbeatTimeoutSeconds int
-	RuntimeConfig           runtimepkg.RuntimeConfig
+
+	HypervisorID                 int
+	HypervisorCount              int
+	CoordinationExchangeName     string
+	CoordinationHeartbeatSeconds int
+	LeaderTimeoutSeconds         int
+	ElectionTimeoutSeconds       int
+
+	RuntimeConfig runtimepkg.RuntimeConfig
 }
 
 type FaultHypervisor struct {
@@ -41,7 +50,10 @@ type FaultHypervisor struct {
 	workers                 map[string]*WorkerStatus
 	runtime                 runtimepkg.Runtime
 	mu                      sync.RWMutex
-	ready                   bool
+	monitorOnce             sync.Once
+	readyOnce               sync.Once
+
+	coordinator leader.Coordinator
 }
 
 func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) {
@@ -63,7 +75,7 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 		return nil, err
 	}
 
-	return &FaultHypervisor{
+	fh := &FaultHypervisor{
 		HeartbeatQueue: heartbeatQueue,
 
 		CheckIntervalSeconds:    config.CheckIntervalSeconds,
@@ -71,7 +83,28 @@ func NewFaultHypervisor(config FaultHypervisorConfig) (*FaultHypervisor, error) 
 
 		workers: workers,
 		runtime: runtime,
-	}, nil
+	}
+
+	coordinator, err := leader.NewBullyCoordinator(
+		leader.BullyConfig{
+			ID:                 config.HypervisorID,
+			Count:              config.HypervisorCount,
+			ExchangeName:       config.CoordinationExchangeName,
+			ConnectionSettings: config.ConnectionSettings,
+
+			HeartbeatInterval: time.Duration(config.CoordinationHeartbeatSeconds) * time.Second,
+			LeaderTimeout:     time.Duration(config.LeaderTimeoutSeconds) * time.Second,
+			ElectionTimeout:   time.Duration(config.ElectionTimeoutSeconds) * time.Second,
+		},
+		fh,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	fh.coordinator = coordinator
+
+	return fh, nil
 }
 
 func (fh *FaultHypervisor) Run() error {
@@ -79,25 +112,9 @@ func (fh *FaultHypervisor) Run() error {
 		return err
 	}
 
-	if err := fh.StartWorkers(); err != nil {
-		return err
-	}
-
-	if err := os.WriteFile("/tmp/ready", []byte("ready"), 0644); err != nil {
-		slog.Error("failed to create ready file", "error", err)
-		return err
-	}
-
-	fh.startBackgroundTasks()
-
-	slog.Info("starting consuming heartbeats")
-
-	return fh.consumeHeartbeats()
-}
-
-func (fh *FaultHypervisor) startBackgroundTasks() {
 	go fh.handleSignals()
-	go fh.monitorWorkers()
+
+	return fh.coordinator.Run()
 }
 
 func (fh *FaultHypervisor) consumeHeartbeats() error {
@@ -121,7 +138,7 @@ func (fh *FaultHypervisor) handleSignals() {
 	)
 	<-signals
 	slog.Info("fault hypervisor shutting down")
-	fh.HeartbeatQueue.Close()
+	_ = fh.coordinator.Close()
 }
 
 func (fh *FaultHypervisor) handleHeartbeat(msg middleware.Message, ack, nack func()) {
@@ -325,4 +342,44 @@ func (fh *FaultHypervisor) initializeRuntime() error {
 	slog.Info("worker image built")
 
 	return nil
+}
+
+func (fh *FaultHypervisor) BecomeLeader() error {
+	slog.Info("became leader")
+
+	if err := fh.StartWorkers(); err != nil {
+		return err
+	}
+	fh.mu.Lock()
+	for _, worker := range fh.workers {
+		worker.IsAlive = false
+		worker.LastSeen = time.Time{}
+	}
+	fh.mu.Unlock()
+
+	fh.monitorOnce.Do(func() {
+		go fh.monitorWorkers()
+	})
+
+	if err := fh.MarkReady(); err != nil {
+		return err
+	}
+
+	go func() {
+		if err := fh.consumeHeartbeats(); err != nil {
+			slog.Error("heartbeat consumer stopped", "error", err)
+		}
+	}()
+
+	return nil
+}
+
+func (fh *FaultHypervisor) MarkReady() error {
+	var err error
+
+	fh.readyOnce.Do(func() {
+		err = os.WriteFile("/tmp/ready", []byte("ready"), 0644)
+	})
+
+	return err
 }

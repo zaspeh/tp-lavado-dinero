@@ -27,6 +27,36 @@ func BuildFaultHypervisor() (*hypervisor.FaultHypervisor, error) {
 		return nil, err
 	}
 
+	hypervisorID, err := getEnvIntStrict("HYPERVISOR_ID")
+	if err != nil {
+		return nil, err
+	}
+
+	hypervisorCount, err := getEnvIntStrict("HYPERVISOR_COUNT")
+	if err != nil {
+		return nil, err
+	}
+
+	coordinationExchangeName, err := getEnvStrict("COORDINATION_EXCHANGE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	coordinationHeartbeatSeconds, err := getEnvIntStrict("COORDINATION_HEARTBEAT_INTERVAL_SECONDS")
+	if err != nil {
+		return nil, err
+	}
+
+	leaderTimeoutSeconds, err := getEnvIntStrict("ELECTION_TIMEOUT_SECONDS")
+	if err != nil {
+		return nil, err
+	}
+
+	electionTimeoutSeconds, err := getEnvIntStrict("ELECTION_TIMEOUT_SECONDS")
+	if err != nil {
+		return nil, err
+	}
+
 	loadedConfig, err := configloader.LoadRuntimeConfig("/app/config.yml")
 	if err != nil {
 		return nil, err
@@ -49,7 +79,15 @@ func BuildFaultHypervisor() (*hypervisor.FaultHypervisor, error) {
 		HeartbeatQueueName:      heartbeatQueueName,
 		CheckIntervalSeconds:    checkIntervalSeconds,
 		HeartbeatTimeoutSeconds: heartbeatTimeoutSeconds,
-		RuntimeConfig:           runtimeConfig,
+
+		HypervisorID:                 hypervisorID,
+		HypervisorCount:              hypervisorCount,
+		CoordinationExchangeName:     coordinationExchangeName,
+		CoordinationHeartbeatSeconds: coordinationHeartbeatSeconds,
+		LeaderTimeoutSeconds:         leaderTimeoutSeconds,
+		ElectionTimeoutSeconds:       electionTimeoutSeconds,
+
+		RuntimeConfig: runtimeConfig,
 	}
 
 	return hypervisor.NewFaultHypervisor(config)

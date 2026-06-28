@@ -154,7 +154,7 @@ def main():
 
     parser.add_argument(
         "--hypervisor-container",
-        default="fault_hypervisor",
+        default="fault_hypervisor_2",
         help="Contenedor que corre Docker-in-Docker.",
     )
 

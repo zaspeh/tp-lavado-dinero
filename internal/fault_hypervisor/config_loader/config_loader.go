@@ -29,6 +29,13 @@ type rabbitConfig struct {
 	AmqpPort int `yaml:"amqp_port"`
 }
 
+type ElectionConfig struct {
+	ExchangeName             string `yaml:"exchange_name"`
+	HeartbeatIntervalSeconds int    `yaml:"heartbeat_interval_seconds"`
+	TimeoutSeconds           int    `yaml:"timeout_seconds"`
+	ElectionTimeoutSeconds   int    `yaml:"election_timeout_seconds"`
+}
+
 type RuntimeConfig struct {
 	NetworkName                 string `yaml:"network_name"`
 	WorkerImage                 string `yaml:"worker_image"`
@@ -39,10 +46,18 @@ type RuntimeConfig struct {
 	HeartbeatQueueName          string `yaml:"heartbeat_queue_name"`
 	HypervisorWorkerStoragePath string `yaml:"hypervisor_worker_storage_path"`
 	WorkerStoragePath           string `yaml:"worker_storage_path"`
+
+	HypervisorCount              int
+	CoordinationExchangeName     string
+	CoordinationHeartbeatSeconds int
+	LeaderTimeoutSeconds         int
+	ElectionTimeoutSeconds       int
 }
 
 type faultHypervisorConfig struct {
-	Runtime RuntimeConfig `yaml:"runtime"`
+	Runtime  RuntimeConfig  `yaml:"runtime"`
+	Election ElectionConfig `yaml:"election"`
+	Count    int            `yaml:"count"`
 }
 
 type serviceConfig struct {
@@ -114,6 +129,12 @@ func LoadRuntimeConfig(path string) (RuntimeConfig, error) {
 		HeartbeatQueueName:          cfg.FaultHypervisor.Runtime.HeartbeatQueueName,
 		HypervisorWorkerStoragePath: cfg.FaultHypervisor.Runtime.HypervisorWorkerStoragePath,
 		WorkerStoragePath:           cfg.FaultHypervisor.Runtime.WorkerStoragePath,
+
+		HypervisorCount:              cfg.FaultHypervisor.Count,
+		CoordinationExchangeName:     cfg.FaultHypervisor.Election.ExchangeName,
+		CoordinationHeartbeatSeconds: cfg.FaultHypervisor.Election.HeartbeatIntervalSeconds,
+		LeaderTimeoutSeconds:         cfg.FaultHypervisor.Election.TimeoutSeconds,
+		ElectionTimeoutSeconds:       cfg.FaultHypervisor.Election.ElectionTimeoutSeconds,
 	}, nil
 }
 

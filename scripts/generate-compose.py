@@ -67,12 +67,13 @@ def build_gateway(cfg, log_level):
 def build_client(cfg, i, log_level):
     gateway_port = cfg['gateway']['port']
     client_cfg = cfg['services']['client']
+    hypervisor_services = build_fault_hypervisor_service_names(cfg)
     
     host_datasets = client_cfg.get('datasets_dir', './datasets')
     host_output_base = client_cfg.get('output_dir_base', './outputs')
     max_batch_weight = client_cfg.get('max_batch_weight', 8192)
 
-    return {
+    service = {
         'build': {
             'context': '.',
             'dockerfile': 'cmd/client/Dockerfile'
@@ -95,13 +96,16 @@ def build_client(cfg, i, log_level):
         'depends_on': {
             'gateway': {
                 'condition': 'service_started'
-            },
-            'fault_hypervisor': {
-                'condition': 'service_healthy'
             }
         },
         'networks': ['money_laundering_network']
     }
+
+    for hypervisor_service in hypervisor_services:
+        service['depends_on'][hypervisor_service] ={
+            'condition': 'service_healthy'
+        }
+    return service
 
 def build_worker(svc_name, cfg, i, log_level):
     amqp_port = cfg['rabbitmq']['amqp_port']
@@ -145,18 +149,32 @@ def build_worker(svc_name, cfg, i, log_level):
         'networks': ['money_laundering_network']
     }
 
+def build_fault_hypervisor_service_names(cfg):
+    count = cfg.get('fault_hypervisor', {}).get('count', 1)
+    if count <= 1:
+        return ['fault_hypervisor']
+    return [f'fault_hypervisor_{i}' for i in range(count)]
 
-def build_fault_hypervisor(cfg):
+
+def build_fault_hypervisor(cfg, i, service_name):
     amqp_port = cfg['rabbitmq']['amqp_port']
     runtime_cfg = cfg.get('fault_hypervisor', {}).get('runtime', {})
     hypervisor_worker_storage_path = runtime_cfg.get(
         'hypervisor_worker_storage_path',
         '/worker-storage',
     )
+    hypervisor_cfg = cfg.get('fault_hypervisor', {})
+    election_cfg = hypervisor_cfg.get('election', {})
 
     env_list = [
         "MOM_HOST=rabbitmq",
         f"MOM_PORT={amqp_port}",
+        f"HYPERVISOR_ID={i}",
+        f"HYPERVISOR_COUNT={hypervisor_cfg.get('count', 1)}",
+        f"COORDINATION_EXCHANGE_NAME={election_cfg.get('exchange_name')}",
+        f"COORDINATION_HEARTBEAT_INTERVAL_SECONDS={election_cfg.get('heartbeat_interval_seconds')}",
+        f"LEADER_TIMEOUT_SECONDS={election_cfg.get('timeout_seconds')}",
+        f"ELECTION_TIMEOUT_SECONDS={election_cfg.get('election_timeout_seconds')}",
     ]
 
     for key, value in cfg['fault_hypervisor']['env'].items():
@@ -167,7 +185,7 @@ def build_fault_hypervisor(cfg):
             'context': '.',
             'dockerfile': 'cmd/fault_hypervisor/Dockerfile'
         },
-        'container_name': 'fault_hypervisor',
+        'container_name': service_name,
         'privileged': True,
         'environment': env_list,
         'healthcheck': {
@@ -248,7 +266,12 @@ def generate_compose(cfg):
             )
 
     if cfg.get('fault_hypervisor', {}).get('enabled', False):
-        compose['services']['fault_hypervisor'] = build_fault_hypervisor(cfg)
+        for i, service_name in enumerate(build_fault_hypervisor_service_names(cfg)):
+            compose['services'][service_name] = build_fault_hypervisor(
+                cfg,
+                i,
+                service_name,
+            )
 
     return compose
 
