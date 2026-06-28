@@ -7,13 +7,14 @@ import pandas as pd
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 EXPECTED_DIR = ROOT_DIR / "expected_outputs" / "expected_hi_small"
-OUTPUTS_DIR = ROOT_DIR / "outputs" / "client_1"
+DEFAULT_CLIENT = "1"
 
-def get_queries_spec(expected_dir) -> dict:
+
+def get_queries_spec(expected_dir: Path, outputs_dir: Path) -> dict:
     query_specs = {
     "q1": {
         "expected": expected_dir / "q1_results.csv",
-        "actual": OUTPUTS_DIR / "q1_result.csv",
+        "actual": outputs_dir / "q1_result.csv",
         "columns": ["account", "to_account", "amount"],
         "types": {"account": "str", "to_account": "str", "amount": "float"},
         "sort": ["account", "to_account", "amount"],
@@ -21,7 +22,7 @@ def get_queries_spec(expected_dir) -> dict:
     },
     "q2": {
         "expected": expected_dir / "q2_results.csv",
-        "actual": OUTPUTS_DIR / "q2_result.csv",
+        "actual": outputs_dir / "q2_result.csv",
         "columns": ["bank_name", "account", "amount"],
         "types": {"bank_name": "str", "account": "str", "amount": "float"},
         "sort": ["bank_name", "account", "amount"],
@@ -29,7 +30,7 @@ def get_queries_spec(expected_dir) -> dict:
     },
     "q3": {
         "expected": expected_dir / "q3_results.csv",
-        "actual": OUTPUTS_DIR / "q3_result.csv",
+        "actual": outputs_dir / "q3_result.csv",
         "columns": ["account", "amount"],
         "types": {"account": "str", "amount": "float"},
         "sort": ["account", "amount"],
@@ -37,7 +38,7 @@ def get_queries_spec(expected_dir) -> dict:
     },
     "q4": {
         "expected": expected_dir / "q4_results.csv",
-        "actual": OUTPUTS_DIR / "q4_result.csv",
+        "actual": outputs_dir / "q4_result.csv",
         "columns": ["bank", "account"],
         "types": {"bank": "str", "account": "str"},
         "sort": ["bank", "account"],
@@ -45,7 +46,7 @@ def get_queries_spec(expected_dir) -> dict:
     },
     "q5": {
         "expected": expected_dir / "q5_results.csv",
-        "actual": OUTPUTS_DIR / "q5_result.csv",
+        "actual": outputs_dir / "q5_result.csv",
         "columns": ["count"],
         "types": {"count": "int"},
         "sort": ["count"],
@@ -125,10 +126,21 @@ def main() -> int:
         default=EXPECTED_DIR,
         help="Directorio con los archivos de resultados esperados.",
     )
+    parser.add_argument(
+        "--client",
+        default=DEFAULT_CLIENT,
+        help="Numero de cliente a verificar.",
+    )
 
     args = parser.parse_args()
 
-    query_specs = get_queries_spec(args.expected_dir)
+    outputs_dir = ROOT_DIR / "outputs" / f"client_{args.client}"
+
+    print(f"Verificando outputs en: {outputs_dir}")
+    print(f"Comparando contra: {args.expected_dir}")
+    print("")
+
+    query_specs = get_queries_spec(args.expected_dir, outputs_dir)
 
     all_ok = True
     for query_name in sorted(query_specs.keys()):

@@ -5,6 +5,7 @@ GENERATOR_SCRIPT=scripts/generate-compose.py
 TEST_SCRIPT=scripts/verify_outputs.py
 CHAOS_SCRIPT=scripts/chaos_monkey.py
 HYPERVISOR_CONTAINER ?= fault_hypervisor_2
+CLIENT ?= 1
 
 generate:
 	@python3 $(GENERATOR_SCRIPT)
@@ -24,10 +25,10 @@ clean:
 	docker image prune -f
 
 medium_test:
-	@python3 $(TEST_SCRIPT) --expected-dir expected_outputs/expected_hi_medium
+	@python3 $(TEST_SCRIPT) --expected-dir expected_outputs/expected_hi_medium --client $(CLIENT)
 
 small_test:
-	@python3 $(TEST_SCRIPT) --expected-dir expected_outputs/expected_hi_small
+	@python3 $(TEST_SCRIPT) --expected-dir expected_outputs/expected_hi_small --client $(CLIENT)
 
 chaos:
 	@python3 $(CHAOS_SCRIPT) $(if $(INTERVAL),--interval $(INTERVAL)) $(if $(TARGET),--target $(TARGET))
