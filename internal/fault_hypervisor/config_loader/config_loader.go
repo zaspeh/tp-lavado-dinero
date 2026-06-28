@@ -30,13 +30,15 @@ type rabbitConfig struct {
 }
 
 type RuntimeConfig struct {
-	NetworkName              string `yaml:"network_name"`
-	WorkerImage              string `yaml:"worker_image"`
-	WorkerDockerfile         string `yaml:"worker_dockerfile"`
-	BuildContext             string `yaml:"build_context"`
-	MomPort                  int    `yaml:"mom_port"`
-	HeartbeatIntervalSeconds int    `yaml:"heartbeat_interval_seconds"`
-	HeartbeatQueueName       string `yaml:"heartbeat_queue_name"`
+	NetworkName                 string `yaml:"network_name"`
+	WorkerImage                 string `yaml:"worker_image"`
+	WorkerDockerfile            string `yaml:"worker_dockerfile"`
+	BuildContext                string `yaml:"build_context"`
+	MomPort                     int    `yaml:"mom_port"`
+	HeartbeatIntervalSeconds    int    `yaml:"heartbeat_interval_seconds"`
+	HeartbeatQueueName          string `yaml:"heartbeat_queue_name"`
+	HypervisorWorkerStoragePath string `yaml:"hypervisor_worker_storage_path"`
+	WorkerStoragePath           string `yaml:"worker_storage_path"`
 }
 
 type faultHypervisorConfig struct {
@@ -103,13 +105,15 @@ func LoadRuntimeConfig(path string) (RuntimeConfig, error) {
 	}
 
 	return RuntimeConfig{
-		NetworkName:              cfg.FaultHypervisor.Runtime.NetworkName,
-		WorkerImage:              cfg.FaultHypervisor.Runtime.WorkerImage,
-		WorkerDockerfile:         cfg.FaultHypervisor.Runtime.WorkerDockerfile,
-		BuildContext:             cfg.FaultHypervisor.Runtime.BuildContext,
-		MomPort:                  cfg.FaultHypervisor.Runtime.MomPort,
-		HeartbeatIntervalSeconds: cfg.FaultHypervisor.Runtime.HeartbeatIntervalSeconds,
-		HeartbeatQueueName:       cfg.FaultHypervisor.Runtime.HeartbeatQueueName,
+		NetworkName:                 cfg.FaultHypervisor.Runtime.NetworkName,
+		WorkerImage:                 cfg.FaultHypervisor.Runtime.WorkerImage,
+		WorkerDockerfile:            cfg.FaultHypervisor.Runtime.WorkerDockerfile,
+		BuildContext:                cfg.FaultHypervisor.Runtime.BuildContext,
+		MomPort:                     cfg.FaultHypervisor.Runtime.MomPort,
+		HeartbeatIntervalSeconds:    cfg.FaultHypervisor.Runtime.HeartbeatIntervalSeconds,
+		HeartbeatQueueName:          cfg.FaultHypervisor.Runtime.HeartbeatQueueName,
+		HypervisorWorkerStoragePath: cfg.FaultHypervisor.Runtime.HypervisorWorkerStoragePath,
+		WorkerStoragePath:           cfg.FaultHypervisor.Runtime.WorkerStoragePath,
 	}, nil
 }
 

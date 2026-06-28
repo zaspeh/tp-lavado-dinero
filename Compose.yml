@@ -1,6 +1,8 @@
 networks:
   money_laundering_network:
     driver: bridge
+volumes:
+  worker_storage: {}
 services:
   rabbitmq:
     image: rabbitmq:3-management
@@ -115,6 +117,7 @@ services:
     - ./Compose.yml:/app/Compose.yml:ro
     - ./config.yml:/app/config.yml:ro
     - .:/workspace:ro
+    - worker_storage:/worker-storage
     depends_on:
       rabbitmq:
         condition: service_healthy

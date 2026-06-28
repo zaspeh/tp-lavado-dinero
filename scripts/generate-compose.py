@@ -82,8 +82,8 @@ def build_client(cfg, i, log_level):
             f'ID={i}',
             'SERVER_HOST=gateway',
             f'SERVER_PORT={gateway_port}',
-            f'INPUT_FILE_TRANSACTIONS=/datasets/client_{1}_transactions.csv',
-            f'INPUT_FILE_ACCOUNTS=/datasets/client_{1}_accounts.csv',
+            f'INPUT_FILE_TRANSACTIONS=/datasets/client_{i}_transactions.csv',
+            f'INPUT_FILE_ACCOUNTS=/datasets/client_{i}_accounts.csv',
             'OUTPUT_DIR=/outputs',
             f'MAX_BATCH_WEIGHT={max_batch_weight}',
             f'LOG_LEVEL={log_level}'
@@ -106,6 +106,8 @@ def build_client(cfg, i, log_level):
 def build_worker(svc_name, cfg, i, log_level):
     amqp_port = cfg['rabbitmq']['amqp_port']
     svc_config = cfg['services'][svc_name]
+    runtime_cfg = cfg.get('fault_hypervisor', {}).get('runtime', {})
+    worker_storage_path = runtime_cfg.get('worker_storage_path', '/storage')
     worker_type = svc_config.get('worker_type', 'UNKNOWN')
     count = svc_config.get('count', 1)
     worker_exchange_name = svc_config.get('worker_exchange_name', worker_type)
@@ -119,7 +121,8 @@ def build_worker(svc_name, cfg, i, log_level):
         "MOM_HOST=rabbitmq",
         f"MOM_PORT={amqp_port}",
         f"WORKER_COUNT={count}",
-        f"WORKER_EXCHANGE_NAME={worker_exchange_name}"
+        f"WORKER_EXCHANGE_NAME={worker_exchange_name}",
+        f"WORKER_STORAGE_PATH={worker_storage_path}"
     ]
         
     if 'env' in svc_config:
@@ -136,12 +139,20 @@ def build_worker(svc_name, cfg, i, log_level):
         'depends_on': {
             'rabbitmq': {'condition': 'service_healthy'}
         },
+        'volumes': [
+            f'worker_storage:{worker_storage_path}'
+        ],
         'networks': ['money_laundering_network']
     }
 
 
 def build_fault_hypervisor(cfg):
     amqp_port = cfg['rabbitmq']['amqp_port']
+    runtime_cfg = cfg.get('fault_hypervisor', {}).get('runtime', {})
+    hypervisor_worker_storage_path = runtime_cfg.get(
+        'hypervisor_worker_storage_path',
+        '/worker-storage',
+    )
 
     env_list = [
         "MOM_HOST=rabbitmq",
@@ -169,7 +180,8 @@ def build_fault_hypervisor(cfg):
         'volumes': [
             './Compose.yml:/app/Compose.yml:ro',
             './config.yml:/app/config.yml:ro',
-            '.:/workspace:ro'
+            '.:/workspace:ro',
+            f'worker_storage:{hypervisor_worker_storage_path}'
         ],
         'depends_on': {
             'rabbitmq': {'condition': 'service_healthy'}
@@ -183,6 +195,9 @@ def generate_compose(cfg):
     compose = {
         'networks': {
             'money_laundering_network': {'driver': 'bridge'}
+        },
+        'volumes': {
+            'worker_storage': {}
         },
         'services': {}
     }

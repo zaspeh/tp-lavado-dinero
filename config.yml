@@ -37,6 +37,8 @@ fault_hypervisor:
 
     heartbeat_interval_seconds: 5
     heartbeat_queue_name: heartbeat_queue
+    hypervisor_worker_storage_path: /worker-storage
+    worker_storage_path: /storage
 
 # Nodos de la aplicación
 services:

@@ -39,6 +39,11 @@ type CheckpointManagerConfig struct {
 	CheckpointEveryBatches int
 }
 
+const (
+	defaultWorkerStoragePath = "/storage"
+	workerStoragePathEnv     = "WORKER_STORAGE_PATH"
+)
+
 func NewCheckpointManager(checkpointConfig *CheckpointManagerConfig) *CheckpointManager {
 	return &CheckpointManager{
 		workerName:             checkpointConfig.WorkerName,
@@ -414,7 +419,7 @@ func parseLogLine(line string) (CheckpointLogEntry, bool, error) {
 }
 
 func (cm *CheckpointManager) stateDir() string {
-	return fmt.Sprintf("/storage/%s-%d/state", cm.workerName, cm.workerID)
+	return filepath.Join(workerStoragePath(), fmt.Sprintf("%s-%d", cm.workerName, cm.workerID), "state")
 }
 
 func (cm *CheckpointManager) clientStateDir(clientID string) string {
@@ -423,6 +428,13 @@ func (cm *CheckpointManager) clientStateDir(clientID string) string {
 
 func (cm *CheckpointManager) logPath(clientID string) string {
 	return filepath.Join(cm.clientStateDir(clientID), "changes.log")
+}
+
+func workerStoragePath() string {
+	if path := os.Getenv(workerStoragePathEnv); path != "" {
+		return path
+	}
+	return defaultWorkerStoragePath
 }
 
 func MarshalState(v any) ([]byte, error) {

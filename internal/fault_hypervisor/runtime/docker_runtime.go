@@ -2,10 +2,17 @@ package runtime
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	configloader "github.com/zaspeh/tp-lavado-dinero/internal/fault_hypervisor/config_loader"
+)
+
+const (
+	defaultHypervisorWorkerStoragePath = "/worker-storage"
+	defaultWorkerStoragePath           = "/storage"
 )
 
 type DockerRuntime struct {
@@ -25,6 +32,10 @@ func NewDockerRuntime(config RuntimeConfig) (*DockerRuntime, error) {
 }
 
 func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definition configloader.WorkerDefinition) error {
+	workerStoragePath, err := r.workerStoragePath(containerName)
+	if err != nil {
+		return err
+	}
 
 	args := []string{
 		"run",
@@ -35,6 +46,9 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 
 		"--network",
 		r.config.NetworkName,
+
+		"-v",
+		fmt.Sprintf("%s:%s", workerStoragePath, r.workerStorageMountPath()),
 
 		"-e", fmt.Sprintf("HEARTBEAT_QUEUE_NAME=%s", r.config.HeartbeatQueueName),
 		"-e", fmt.Sprintf("HEARTBEAT_INTERVAL_SECONDS=%d", r.config.HeartbeatInterval),
@@ -47,6 +61,7 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 		"-e", fmt.Sprintf("WORKER_EXCHANGE_NAME=%s", definition.WorkerExchangeName),
 		"-e", fmt.Sprintf("LOG_LEVEL=%s", definition.LogLevel),
 		"-e", fmt.Sprintf("MAX_BATCH_WEIGHT=%d", definition.MaxBatchSize),
+		"-e", fmt.Sprintf("WORKER_STORAGE_PATH=%s", r.workerStorageMountPath()),
 	}
 
 	for key, value := range definition.Env {
@@ -68,6 +83,27 @@ func (r *DockerRuntime) CreateWorker(containerName string, workerID int, definit
 	}
 
 	return nil
+}
+
+func (r *DockerRuntime) workerStoragePath(containerName string) (string, error) {
+	basePath := r.config.HypervisorWorkerStoragePath
+	if basePath == "" {
+		basePath = defaultHypervisorWorkerStoragePath
+	}
+
+	path := filepath.Join(basePath, containerName)
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return "", err
+	}
+
+	return path, nil
+}
+
+func (r *DockerRuntime) workerStorageMountPath() string {
+	if r.config.WorkerStoragePath == "" {
+		return defaultWorkerStoragePath
+	}
+	return r.config.WorkerStoragePath
 }
 
 func (r *DockerRuntime) ContainerExists(containerName string) (bool, error) {
